@@ -13,7 +13,7 @@ Web · Windows · macOS · Linux
 [**📥 Download**](https://github.com/RyuSeoJin/markcont/releases/latest) &nbsp;·&nbsp;
 [**📘 User guide**](app/docs/guide.en.md)
 
-<img src=".github/assets/demo.gif" width="860" alt="markcont demo: folder tree, nicely formatted documents, a preview that updates as you type, dark mode">
+<img src=".github/assets/demo.gif" width="860" alt="markcont demo: folder tree, nicely formatted documents, an rsj flowchart, a preview that updates as you type, dark mode, checking spots that look different in other viewers">
 
 </div>
 

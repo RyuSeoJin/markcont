@@ -13,7 +13,7 @@
 [**📥 내려받기**](https://github.com/RyuSeoJin/markcont/releases/latest) &nbsp;·&nbsp;
 [**📘 사용 안내서**](app/docs/guide.md)
 
-<img src=".github/assets/demo.gif" width="860" alt="markcont 데모: 폴더 트리, 보기 좋은 문서, 입력하는 즉시 바뀌는 미리보기, 다크 모드">
+<img src=".github/assets/demo.gif" width="860" alt="markcont 데모: 폴더 트리, 보기 좋은 문서, rsj 흐름도, 입력하는 즉시 바뀌는 미리보기, 다크 모드, 다른 뷰어에서 다르게 보이는 곳 확인">
 
 </div>
 
