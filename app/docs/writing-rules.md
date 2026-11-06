@@ -814,7 +814,7 @@ markcont
 ![화면 녹화](images/시연.mp4)
 ![인터뷰](audio/인터뷰.mp3)
 
-https://www.youtube.com/watch?v=jNQXAC9IVRw
+https://youtu.be/SEgHM748yrE?si=HsLb-OZOiQqXq3ng
 ```
 
 - 그림 문법에 동영상(`mp4` `webm` `mov`)이나 소리(`mp3` `wav` `m4a` `flac`) 파일을 넣으면 **재생기**로 보입니다.

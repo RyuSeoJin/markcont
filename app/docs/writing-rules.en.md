@@ -814,7 +814,7 @@ Links that jump straight to another document when you've opened a folder. Leave 
 ![Screen recording](images/demo.mp4)
 ![Interview](audio/interview.mp3)
 
-https://www.youtube.com/watch?v=jNQXAC9IVRw
+https://youtu.be/SEgHM748yrE?si=HsLb-OZOiQqXq3ng
 ```
 
 - Put a video (`mp4` `webm` `mov`) or audio (`mp3` `wav` `m4a` `flac`) file in image syntax and it shows as a **player**.
