@@ -21,6 +21,7 @@
     example: () => [L('쓰는 법 · 결과 나란히 블록', 'Side-by-side example block'), L('일반 코드 블록으로', 'to a plain code block')],
     chem: () => [L('화학식 \\ce{}', 'Chemistry \\ce{}'), L('바꾸지 않음 (GitHub 수식은 \\ce 를 모름)', 'not converted (GitHub math has no \\ce)')],
     diagramErr: () => [L('다이어그램 (틀린 곳 있음)', 'Diagram (has errors)'), L('바꾸지 않음', 'not converted')],
+    uiTree: () => [L('노출 위치 블록', 'Exposure block'), L('일반 들여 쓴 목록으로', 'to a normal indented list')],
   };
   const STD = { note: 1, tip: 1, important: 1, warning: 1, caution: 1 };
   const MAP = { info: 'NOTE', todo: 'NOTE', example: 'NOTE', question: 'NOTE', faq: 'NOTE', danger: 'CAUTION' };
@@ -86,6 +87,12 @@
         while (j < lines.length && !closeRe.test(lines[j])) j++;
         const body = lines.slice(i + 1, j), close = j < lines.length ? lines[j] : null;
         const kind = window.MarkDiagram && MarkDiagram.kindOf(lang);
+        if (kind === 'ui') {
+          out.push(...body.map((b) => (/^\s*([-*+]|\d+[.)])\s/.test(b) || !b.trim() ? b : b.replace(/^(\s*)/, '$1- '))));
+          note(ln, 'uiTree', lang);
+          i = j + 1;
+          continue;
+        }
         if (kind) {
           try {
             const mm = MarkDiagram.toMermaid(kind, body.join('\n'));

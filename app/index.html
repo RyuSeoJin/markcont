@@ -64,8 +64,9 @@
 .markdown-body h4, .markdown-body h5, .markdown-body h6 {
   line-height: 1.35; font-weight: 700; margin: 2em 0 .7em; scroll-margin-top: 24px;
 }
-.markdown-body h1 { font-size: 2.05em; letter-spacing: -.02em; padding-bottom: .35em; border-bottom: 1px solid var(--border); }
-.markdown-body h2 { font-size: 1.5em; letter-spacing: -.015em; padding-bottom: .3em; border-bottom: 1px solid var(--border); }
+/* 제목에는 밑줄을 두지 않고, 섹션 사이는 --- 구분선으로만 나눔 */
+.markdown-body h1 { font-size: 2.05em; letter-spacing: -.02em; }
+.markdown-body h2 { font-size: 1.5em; letter-spacing: -.015em; }
 .markdown-body h3 { font-size: 1.22em; }
 .markdown-body h4 { font-size: 1.05em; }
 .markdown-body h5, .markdown-body h6 { font-size: .95em; color: var(--muted); }
@@ -116,12 +117,20 @@
   border-radius: 10px; padding: 1em 1.2em; overflow: auto; line-height: 1.6;
 }
 .markdown-body pre code { background: transparent; border: 0; padding: 0; font-size: .86em; white-space: pre; }
-.markdown-body .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
-.markdown-body table { border-collapse: collapse; width: 100%; font-size: .94em; }
-.markdown-body th, .markdown-body td { padding: .6em .9em; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
-.markdown-body th { background: var(--surface-2); font-weight: 600; white-space: nowrap; }
+.markdown-body .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+.markdown-body table { border-collapse: collapse; width: 100%; font-size: .93em; line-height: 1.6; }
+.markdown-body th, .markdown-body td { padding: .65em 1em; border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent); text-align: left; vertical-align: top; }
+.markdown-body th { background: var(--surface-2); color: var(--muted); font-size: .9em; font-weight: 700; letter-spacing: .01em; white-space: nowrap; border-bottom: 1px solid var(--border); }
 .markdown-body tr:last-child td { border-bottom: 0; }
-.markdown-body tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
+.markdown-body tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface-2) 38%, transparent); }
+.markdown-body tbody tr:hover td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.markdown-body td + td, .markdown-body th + th { border-left: 1px solid color-mix(in srgb, var(--border) 55%, transparent); }
+/* 짧은 값만 있는 칸은 한 줄로 좁게, 긴 글 칸이 자리를 넓게 씀 */
+.markdown-body .col-short { white-space: nowrap; width: 1%; }
+/* ID · 코드 칸 */
+.markdown-body td.col-id { font-family: var(--mono); font-size: .88em; color: var(--accent); font-weight: 600; white-space: nowrap; width: 1%; }
+/* 상태 칸 */
+.markdown-body td.col-status { min-width: 8.5em; font-size: .94em; }
 .markdown-body img, .markdown-body video { max-width: 100%; height: auto; border-radius: 8px; }
 .markdown-body audio { width: 100%; max-width: 520px; }
 .markdown-body img.broken { display: inline-block; padding: .5em .8em; border: 1px dashed var(--border); color: var(--muted); font-size: .9em; }
@@ -229,6 +238,36 @@
 :root[data-theme="dark"] { --dg-line: #d4d7dc; --dg-yes: #60a5fa; --dg-no: #f87171; --dg-sec: #94a3b8; --dg-node: #1f2328; --dg-stroke: #8b98a9; --dg-ret: #fb923c; --dg-sub: #a78bfa; }
 .markdown-body .dg { margin: 0 0 1.1em; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
 .markdown-body .dg-scroll { overflow-x: auto; }
+/* 노출 위치 나무 */
+.markdown-body .ut { font-size: .95em; line-height: 1.5; }
+.markdown-body .ut-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px dashed var(--border); }
+.markdown-body .ut ul { list-style: none; margin: 0; padding: 0 0 0 20px; border: 0; }
+.markdown-body .ut > ul { padding-left: 0; }
+.markdown-body .ut li { position: relative; margin: 0; padding: 4px 0 4px 18px; }
+.markdown-body .ut li + li { margin: 0; }
+.markdown-body .ut li::before { content: ''; position: absolute; left: 0; top: 19px; width: 14px; border-top: 1.5px solid color-mix(in srgb, var(--muted) 40%, transparent); }
+.markdown-body .ut li::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; border-left: 1.5px solid color-mix(in srgb, var(--muted) 40%, transparent); }
+.markdown-body .ut li:last-child::after { bottom: auto; height: 19px; }
+.markdown-body .ut > ul > li { padding-left: 0; }
+.markdown-body .ut > ul > li::before, .markdown-body .ut > ul > li::after { display: none; }
+.markdown-body .ut-row { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 7px; padding: 4px 11px; border: 1px solid var(--border); border-left-width: 3px; border-radius: 8px; background: var(--surface); max-width: 100%; }
+.markdown-body .ut-row[data-t="path"] { background: transparent; border-style: dashed; border-left-width: 1px; color: var(--muted); }
+.markdown-body .ut-row[data-t="entry"] { border-color: var(--c-green); background: color-mix(in srgb, var(--c-green) 11%, var(--surface)); font-weight: 600; }
+.markdown-body .ut-row[data-t="screen"] { border-left-color: var(--c-purple); }
+.markdown-body .ut-row[data-t="sheet"] { border-left-color: var(--c-blue); }
+.markdown-body .ut-row[data-t="popup"] { border-left-color: var(--c-amber); }
+.markdown-body .ut-row[data-t="toast"] { border-left-color: var(--muted); }
+.markdown-body .ut-row[data-t="dot"] { border-left-color: var(--c-red); }
+.markdown-body .ut-row[data-t="button"], .markdown-body .ut-row[data-t="list"], .markdown-body .ut-row[data-t="card"] { border-left-color: color-mix(in srgb, var(--accent) 60%, var(--border)); }
+.markdown-body .ut-ico { font-size: .95em; }
+.markdown-body .ut-trigger { color: var(--muted); font-size: .93em; }
+.markdown-body .ut-arrow { color: var(--muted); }
+.markdown-body .ut-note { color: var(--muted); font-size: .85em; }
+.markdown-body .ut-btn { display: inline-block; padding: 0 .45em; border: 1px solid var(--border); border-radius: 5px; background: var(--surface-2); font-size: .9em; font-weight: 600; line-height: 1.55; }
+.markdown-body .ut-tag { font-size: 11px; font-weight: 700; color: #fff; background: var(--c-green); border-radius: 999px; padding: 0 8px; line-height: 1.7; }
+.markdown-body .ut-exposed { margin: 6px 0 2px; padding: 8px 12px 6px 8px; border: 1px dashed color-mix(in srgb, var(--c-green) 50%, var(--border)); border-radius: 10px; background: color-mix(in srgb, var(--c-green) 4%, transparent); }
+.markdown-body .ut-exposed-label { font-size: 11.5px; font-weight: 700; color: var(--c-green); margin: 0 0 4px 4px; }
+.markdown-body .ut-exposed > ul { padding-left: 4px; }
 .markdown-body .dg svg { display: block; margin: 0 auto; max-width: none; font-family: var(--font); }
 .markdown-body .dg, .markdown-body .mermaid { position: relative; }
 .markdown-body .dg-expand { position: absolute; top: 8px; right: 8px; z-index: 2; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; display: grid; place-items: center; opacity: .8; }
@@ -1367,12 +1406,13 @@ body.zen .zen-exit:hover { opacity: 1; }
   const BUILTIN = {
     guide: { file: L('guide.md', 'guide.en.md'), name: L('사용-안내서.md', 'User-Guide.md'), title: L('사용 안내서', 'User guide') },
     rules: { file: L('writing-rules.md', 'writing-rules.en.md'), name: L('마크다운-작성-규칙.md', 'Markdown-Writing-Rules.md'), title: L('마크다운 작성 규칙', 'Markdown writing rules') },
+    workflow: { file: L('workflow-rules.md', 'workflow-rules.en.md'), name: L('워크플로우-작성-규칙.md', 'Workflow-Writing-Rules.md'), title: L('워크플로우 작성 규칙', 'Workflow writing rules') },
     features: { file: L('features.md', 'features.en.md'), name: L('기능-예제.md', 'Feature-Examples.md'), title: L('기능 예제', 'Feature examples') },
     licenses: { file: L('licenses.md', 'licenses.en.md'), name: L('오픈소스-라이선스.md', 'Open-Source-Licenses.md'), title: L('오픈소스 라이선스', 'Open-source licenses') },
   };
   const builtinPath = (key) => L('markcont 안내/', 'markcont docs/') + BUILTIN[key].name;
   // 링크가 앱에 들어 있는 안내 문서를 가리키는지 (한국어 · 영어 이름, guide.md 같은 파일 이름 모두)
-  const BUILTIN_NAMES = { guide: ['사용-안내서', 'user-guide', 'guide'], rules: ['마크다운-작성-규칙', 'markdown-writing-rules', 'writing-rules'], features: ['기능-예제', 'feature-examples', 'features'], licenses: ['오픈소스-라이선스', 'open-source-licenses', 'licenses'] };
+  const BUILTIN_NAMES = { guide: ['사용-안내서', 'user-guide', 'guide'], rules: ['마크다운-작성-규칙', 'markdown-writing-rules', 'writing-rules'], workflow: ['워크플로우-작성-규칙', 'workflow-writing-rules', 'workflow-rules'], features: ['기능-예제', 'feature-examples', 'features'], licenses: ['오픈소스-라이선스', 'open-source-licenses', 'licenses'] };
   function builtinKeyFor(ref) {
     let d = ref;
     try { d = decodeURIComponent(ref); } catch {}
@@ -2002,6 +2042,23 @@ body.zen .zen-exit:hover { opacity: 1; }
       }
     });
 
+    // 표 칸 모양: 값이 모두 짧은 칸은 한 줄로, ID · 코드 칸과 상태 칸은 따로 꾸밈
+    doc.querySelectorAll('table').forEach((t) => {
+      if (t.closest('.front-matter') || !t.tHead) return;
+      const heads = [...t.tHead.rows[0].cells];
+      const rows = [...t.tBodies].flatMap((b) => [...b.rows]);
+      heads.forEach((th, ci) => {
+        const cells = rows.map((r) => r.cells[ci]).filter(Boolean);
+        const vals = cells.map((c) => c.textContent.trim()).filter((v) => v && v !== '—');
+        if (!vals.length) return;
+        const hk = th.textContent.trim().toLowerCase();
+        const idLike = vals.every((v) => /^[A-Za-z][A-Za-z0-9]*([-_.][A-Za-z0-9]+)+$/.test(v) || /^[A-Z]{1,4}\d+(-\d+)?$/.test(v));
+        if (idLike) { cells.forEach((c) => c.classList.add('col-id')); th.classList.add('col-short'); return; }
+        if (/^(상태|status|판정|state)$/.test(hk)) { cells.forEach((c) => c.classList.add('col-status')); return; }
+        if (Math.max(...vals.map((v) => v.length)) <= 12 && th.textContent.trim().length <= 12) [th, ...cells].forEach((c) => c.classList.add('col-short'));
+      });
+    });
+
     // 표 가로 스크롤
     doc.querySelectorAll('table').forEach((t) => {
       if (t.closest('.front-matter')) return;
@@ -2117,7 +2174,10 @@ body.zen .zen-exit:hover { opacity: 1; }
         const d = document.createElement('div');
         d.className = 'dg';
         if (lineAttr) d.dataset.line = lineAttr;
-        try { d.innerHTML = '<div class="dg-scroll">' + MarkDiagram.render(dgKind, code.textContent) + '</div>'; addDgExpand(d); }
+        try {
+          if (dgKind === 'ui') { d.classList.add('dg-html'); d.innerHTML = MarkDiagram.render(dgKind, code.textContent); }
+          else { d.innerHTML = '<div class="dg-scroll">' + MarkDiagram.render(dgKind, code.textContent) + '</div>'; addDgExpand(d); }
+        }
         catch (err) { d.classList.add('dg-error'); d.textContent = L('다이어그램을 그리지 못했습니다\n', "Couldn't draw the diagram\n") + err.message; }
         pre.replaceWith(d);
         return;

@@ -213,6 +213,7 @@ Diagrams that markcont draws itself. Flowcharts follow the **markcont flowchart 
 | `sequence` | Message order | Requests and responses between people, apps and servers |
 | `state` | State changes | Order, document and approval states |
 | `timeline` | Timeline | Project schedules, milestones |
+| `ui` (or `노출`) | Exposure locations | Where a feature sits and what shows after entering it |
 
 > [!NOTE]
 > These are markcont-only. GitHub and Obsidian show them as plain code blocks. If the diagram must render elsewhere too, use Mermaid (7-3).
@@ -378,6 +379,24 @@ Testing: 3d, crit
 ◆ Launch: 2026-11-20
 ```
 ````
+
+#### Exposure locations
+
+Put an indented list in a ```` ```ui ```` block and it shows as a **📍 location → 🚪 entry point → shown after entering** tree. A line starting with `🚪` or `entry:` (or ending with `(들어오는 곳: …)`) is an entry point.
+
+````markdown example
+```ui
+- Home tab
+  - entry: Navigation bar [Mailbox]
+    - Red dot (when rewards are waiting)
+    - Mailbox sheet
+      - [Receive] → Rewards popup
+      - [Delete] → Delete confirm popup
+```
+````
+
+> [!TIP]
+> Guidelines for flowcharts and exposure locations with many nodes are collected in the [Workflow writing rules](Workflow-Writing-Rules.md).
 
 #### Diagram rules (markcont style)
 

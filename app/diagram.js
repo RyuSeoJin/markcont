@@ -281,50 +281,87 @@
         default: n.w = Math.max(90, tw + 24); n.h = Math.max(40, th + 18);
       }
     }
-    // 같은 행의 사각형 도형은 가장 높은 도형에 맞춤
-    const rowH = { u: [], s: [] };
-    for (const n of nodes.values()) rowH[n.zone][n.slot] = Math.max(rowH[n.zone][n.slot] || 0, n.h);
-    for (const n of nodes.values()) if (!['decision', 'ref', 'goto', 'ret'].includes(n.type)) n.h = rowH[n.zone][n.slot];
+    // 갈래가 많은 도형은 높이를 늘려 나가는 선 사이를 넉넉하게 (선 글자가 들어갈 자리)
+    for (const n of nodes.values()) {
+      if (n.type === 'decision' || n.virtual) continue;
+      const fw = (outs.get(n.id) || []).filter((e) => !e.back && !e.hidden).length;
+      if (fw >= 3) n.h = Math.max(n.h, fw * 26 + 10);
+    }
 
-    // 5) 자리
-    const GX = 78, GY = 34, SEC_PAD = 20, SEC_HEAD = 30, LANE_HEAD = hasZones ? 34 : 0, M = 12, LP = 26;
-    const framedAny = secOrder.some((s) => s);
-    const colBox = new Map(), secBox = new Map();
-    let x = M + LANE_HEAD + (hasZones ? 10 : 0);
-    for (const sec of secOrder) {
+    // 5) 자리 — 섹션이 여럿이고 옆으로 너무 길면 섹션을 위아래로 쌓음 (섹션마다 유저 · 시스템 구역)
+    const GX = 78, GY = 34, SEC_PAD = 20, SEC_HEAD = 30, LANE_HEAD = hasZones ? 34 : 0, M = 12, LP = 26, SEC_GAP = 36, STACK_GAP = 22;
+    // 열 사이 틈: 그 틈을 지나는 선이 많을수록 넓게
+    const gapCount = new Map();
+    for (const e of edges) {
+      if (e.hidden || !nodes.has(e.to)) continue;
+      const a = nodes.get(e.from), b = nodes.get(e.to);
+      const k = e.back ? `${b.sec}|${b.col - 1}` : `${a.sec}|${a.col}`;
+      gapCount.set(k, (gapCount.get(k) || 0) + 1);
+    }
+    const gapW = (sec, c) => GX + Math.min(110, Math.max(0, (gapCount.get(`${sec}|${c}`) || 0) - 2) * 14);
+    const secInfo = secOrder.map((sec) => {
       const list = [...nodes.values()].filter((n) => n.sec === sec);
       const ncol = Math.max(...list.map((n) => n.col)) + 1;
       const framed = !!sec && (f.secNames.has(sec) || f.explicit.has(sec) || secOrder.length > 1);
-      const x0 = x;
-      if (framed) x += SEC_PAD;
-      for (let c = 0; c < ncol; c++) {
-        const w = Math.max(0, ...list.filter((n) => n.col === c).map((n) => n.w));
-        colBox.set(`${sec}|${c}`, { x, w });
-        x += w + (w ? GX : 0);
+      const colW = [];
+      for (let c = 0; c < ncol; c++) colW[c] = Math.max(0, ...list.filter((n) => n.col === c).map((n) => n.w));
+      let w = framed ? SEC_PAD * 2 : 0, last = -1;
+      colW.forEach((cw, c) => { if (cw) { if (last >= 0) w += gapW(sec, last); w += cw; last = c; } });
+      return { sec, list, ncol, framed, colW, w };
+    });
+    const startX = M + LANE_HEAD + (hasZones ? 10 : 0);
+    const totalW = startX + secInfo.reduce((sum, i) => sum + i.w, 0) + SEC_GAP * (secInfo.length - 1) + M;
+    const stacked = secInfo.length > 1 && totalW > 1400;
+    const blocks = stacked ? secInfo.map((i) => [i]) : [secInfo];
+    const colBox = new Map(), secBox = new Map(), laneBoxes = [];
+    let y = M, W = 0;
+    for (const blk of blocks) {
+      // 가로: 이 줄의 섹션들을 왼쪽부터
+      let x = startX;
+      for (const i of blk) {
+        const x0 = x;
+        if (i.framed) x += SEC_PAD;
+        let lastGap = 0;
+        i.colW.forEach((cw, c) => {
+          colBox.set(`${i.sec}|${c}`, { x, w: cw, gap: gapW(i.sec, c) });
+          if (cw) { x += cw + gapW(i.sec, c); lastGap = gapW(i.sec, c); }
+        });
+        x -= lastGap;
+        if (i.framed) x += SEC_PAD;
+        secBox.set(i.sec, { x0, x1: x, framed: i.framed, sub: subTargets.has(i.sec) });
+        x += SEC_GAP;
       }
-      x -= GX;
-      if (framed) x += SEC_PAD;
-      secBox.set(sec, { x0, x1: x, framed, sub: subTargets.has(sec) });
-      x += 36;
+      W = Math.max(W, x - SEC_GAP + M);
+      const blockRight = x - SEC_GAP;
+      // 세로: 이 줄 안에서 같은 행의 사각형 도형은 가장 높은 도형에 맞춤
+      const bn = blk.flatMap((i) => i.list);
+      const rowH = { u: [], s: [] };
+      for (const n of bn) rowH[n.zone][n.slot] = Math.max(rowH[n.zone][n.slot] || 0, n.h);
+      for (const n of bn) if (!['decision', 'ref', 'goto', 'ret'].includes(n.type)) n.h = rowH[n.zone][n.slot];
+      const framedAny = blk.some((i) => i.framed);
+      const top = y;
+      y += framedAny ? SEC_HEAD : 0;
+      const nU = hasZones ? Math.max(1, rowH.u.length) : 0, nS = Math.max(1, rowH.s.length);
+      const rowY = { u: [], s: [] };
+      const lane = { top, right: blockRight };
+      if (hasZones) {
+        lane.u0 = y; y += LP;
+        for (let s = nU - 1; s >= 0; s--) { rowH.u[s] = rowH.u[s] || 40; rowY.u[s] = y; y += rowH.u[s] + GY; }
+        y += LP - GY; lane.mid = y; y += LP;
+      } else { y += 6; }
+      for (let s = 0; s < nS; s++) { rowH.s[s] = rowH.s[s] || 40; rowY.s[s] = y; y += rowH.s[s] + GY; }
+      y += (hasZones ? LP : 6) - GY;
+      lane.s1 = y;
+      laneBoxes.push(lane);
+      for (const n of bn) { n.rowTop = rowY[n.zone][n.slot]; n.rowH = rowH[n.zone][n.slot]; }
+      for (const i of blk) { const b = secBox.get(i.sec); b.y0 = top + 4; b.y1 = y + 8; }
+      y += 8 + STACK_GAP;
     }
-    const W = x - 36 + M;
-    const nU = hasZones ? Math.max(1, rowH.u.length) : 0, nS = Math.max(1, rowH.s.length);
-    const rowY = { u: [], s: [] };
-    let y = M + (framedAny ? SEC_HEAD : 0);
-    const lane = {};
-    if (hasZones) {
-      lane.u0 = y; y += LP;
-      for (let s = nU - 1; s >= 0; s--) { rowH.u[s] = rowH.u[s] || 40; rowY.u[s] = y; y += rowH.u[s] + GY; }
-      y += LP - GY; lane.mid = y; y += LP;
-    } else { y += 6; }
-    for (let s = 0; s < nS; s++) { rowH.s[s] = rowH.s[s] || 40; rowY.s[s] = y; y += rowH.s[s] + GY; }
-    y += (hasZones ? LP : 6) - GY;
-    lane.s1 = y;
-    const H = y + M + 6;
+    const H = y - STACK_GAP + M;
     for (const n of nodes.values()) {
       const cb = colBox.get(`${n.sec}|${n.col}`);
       n.cx = cb.x + cb.w / 2;
-      n.cy = rowY[n.zone][n.slot] + rowH[n.zone][n.slot] / 2;
+      n.cy = n.rowTop + n.rowH / 2;
       n.cb = cb;
     }
 
@@ -342,9 +379,9 @@
       return false;
     };
     const gapUse = new Map();
-    const lane_ = (k) => { const c = gapUse.get(k) || 0; gapUse.set(k, c + 1); return (c % 2 ? 1 : -1) * Math.ceil(c / 2) * 8; };
-    const gapAfter = (n) => n.cb.x + n.cb.w + GX / 2 + lane_(`${n.sec}|${n.col}|a`);
-    const gapBefore = (n) => n.cb.x - GX / 2 + lane_(`${n.sec}|${n.col - 1}|a`); // 앞 열의 오른쪽 틈과 같은 칸을 나눠 씀
+    const lane_ = (k) => { const c = gapUse.get(k) || 0; gapUse.set(k, c + 1); return (c % 2 ? 1 : -1) * Math.ceil(c / 2) * 11; };
+    const gapAfter = (n) => n.cb.x + n.cb.w + n.cb.gap / 2 + lane_(`${n.sec}|${n.col}|a`);
+    const gapBefore = (n) => { const pb = colBox.get(`${n.sec}|${n.col - 1}`); return n.cb.x - (pb ? pb.gap : GX) / 2 + lane_(`${n.sec}|${n.col - 1}|a`); }; // 앞 열의 오른쪽 틈과 같은 칸을 나눠 씀
     const inPort = (n, dy) => {
       if (n.type === 'decision' || n.type === 'ref') return { x: n.cx - n.w / 2, y: n.cy };
       const sk = n.type === 'input' || n.type === 'output' ? SKEW / 2 : 0;
@@ -390,7 +427,7 @@
           g.forEach((e, i) => (e.exDx = (i - (g.length - 1) / 2) * 18));
         }
       } else {
-        const step = Math.min(14, (a.h - 8) / Math.max(1, fw.length));
+        const step = Math.min(26, (a.h - 8) / Math.max(1, fw.length));
         fw.forEach((e, i) => { e.side = 'right'; e.outDy = (i - (fw.length - 1) / 2) * step; });
       }
     }
@@ -413,7 +450,7 @@
       const S = outPort(a, e.side, e.outDy || 0, e.exDx || 0), E = inPort(b, e.inDy || 0);
       const cands = [];
       const xb = Math.min(gapBefore(b), E.x - 18);
-      const rowTop = rowY[b.zone][b.slot], rowBot = rowTop + rowH[b.zone][b.slot];
+      const rowTop = b.rowTop, rowBot = b.rowTop + b.rowH;
       if (e.side === 'top' || e.side === 'bottom') {
         cands.push([S, { x: S.x, y: E.y }, E]);
         const yc = e.side === 'bottom' ? a.cy + a.h / 2 + GY / 2 : a.cy - a.h / 2 - GY / 2;
@@ -433,17 +470,18 @@
 
     // 7) 그리기
     let svg = markers(uid, ['normal', 'yes', 'no']);
-    if (hasZones) {
-      svg += `<rect class="dg-lane u" x="${M}" y="${r1(lane.u0)}" width="${r1(W - M * 2)}" height="${r1(lane.mid - lane.u0)}" rx="8"/>`;
-      svg += `<rect class="dg-lane s" x="${M}" y="${r1(lane.mid)}" width="${r1(W - M * 2)}" height="${r1(lane.s1 - lane.mid)}" rx="8"/>`;
-      svg += `<line class="dg-lane-line" x1="${M}" x2="${r1(W - M)}" y1="${r1(lane.mid)}" y2="${r1(lane.mid)}"/>`;
+    if (hasZones) for (const lane of laneBoxes) {
+      const lw = (stacked ? lane.right + 8 : W - M) - M; // 쌓은 섹션은 그 섹션 폭까지만
+      svg += `<rect class="dg-lane u" x="${M}" y="${r1(lane.u0)}" width="${r1(lw)}" height="${r1(lane.mid - lane.u0)}" rx="8"/>`;
+      svg += `<rect class="dg-lane s" x="${M}" y="${r1(lane.mid)}" width="${r1(lw)}" height="${r1(lane.s1 - lane.mid)}" rx="8"/>`;
+      svg += `<line class="dg-lane-line" x1="${M}" x2="${r1(M + lw)}" y1="${r1(lane.mid)}" y2="${r1(lane.mid)}"/>`;
       const lx = M + LANE_HEAD / 2;
       svg += `<text class="dg-lane-label" transform="translate(${r1(lx)},${r1((lane.u0 + lane.mid) / 2)}) rotate(-90)">${esc(L('유저', 'User'))}</text>`;
       svg += `<text class="dg-lane-label" transform="translate(${r1(lx)},${r1((lane.mid + lane.s1) / 2)}) rotate(-90)">${esc(L('시스템', 'System'))}</text>`;
     }
     for (const [sec, b] of secBox) {
       if (!b.framed) continue;
-      const y0 = M + 4, y1 = H - M + 2;
+      const y0 = b.y0, y1 = b.y1;
       svg += `<rect class="dg-sec${b.sub ? ' sub' : ''}" x="${r1(b.x0)}" y="${r1(y0)}" width="${r1(b.x1 - b.x0)}" height="${r1(y1 - y0)}" rx="10"/>`;
       svg += `<text class="dg-sec-label" x="${r1(b.x0 + 12)}" y="${r1(y0 + 17)}">${esc(secLabel(f, sec))}</text>`;
     }
@@ -458,7 +496,9 @@
     for (const e of vis) {
       if (!e.label) continue;
       const [p0, p1] = e.pts;
-      const w = textW(e.label, 11, 600) + 10, h = 17;
+      let lines = wrap(e.label, 130, 11, 600);
+      if (lines.length > 2) { lines = [lines[0], lines[1]]; while (lines[1].length > 1 && textW(lines[1] + '…', 11, 600) > 130) lines[1] = lines[1].slice(0, -1); lines[1] += '…'; }
+      const w = Math.max(...lines.map((l) => textW(l, 11, 600))) + 10, h = lines.length * 14 + 3;
       const cands = [];
       if (Math.abs(p0.y - p1.y) < 0.5) {
         const dir = p1.x >= p0.x ? 1 : -1;
@@ -470,11 +510,12 @@
       // 겹치지 않는 자리가 없으면 가장 덜 겹치는 자리
       const area = (c) => {
         const r = { x0: c.x, x1: c.x + w, y0: c.y, y1: c.y + h };
-        return placed.reduce((sum, q) => sum + Math.max(0, Math.min(r.x1, q.x1) - Math.max(r.x0, q.x0)) * Math.max(0, Math.min(r.y1, q.y1) - Math.max(r.y0, q.y0)), 0);
+        return [...placed, ...rects].reduce((sum, q) => sum + Math.max(0, Math.min(r.x1, q.x1) - Math.max(r.x0, q.x0)) * Math.max(0, Math.min(r.y1, q.y1) - Math.max(r.y0, q.y0)), 0);
       };
       const pick = cands.find((c) => !clash({ x0: c.x, x1: c.x + w, y0: c.y, y1: c.y + h })) || cands.reduce((m, c) => (area(c) < area(m) ? c : m), cands[0]);
       placed.push({ x0: pick.x, x1: pick.x + w, y0: pick.y, y1: pick.y + h });
-      svg += labelBox(e.label, pick.x, pick.y + h / 2, e.kind, 'start');
+      svg += `<g class="dg-label ${e.kind}"><title>${esc(e.label)}</title><rect x="${r1(pick.x)}" y="${r1(pick.y)}" width="${r1(w)}" height="${r1(h)}" rx="4"/>` +
+        lines.map((l, i) => `<text x="${r1(pick.x + w / 2)}" y="${r1(pick.y + 8.5 + i * 14)}">${esc(l)}</text>`).join('') + '</g>';
     }
     for (const n of nodes.values()) {
       if (n.type === 'decision' && n.judge) svg += `<text class="dg-judge" x="${r1(n.cx + n.w / 4 + 6)}" y="${r1(n.cy + n.h / 4 + 12)}">${esc(L('판정: ', 'Rule: ') + n.judge)}</text>`;
@@ -1117,9 +1158,73 @@
     return out.join('\n');
   }
 
+  /* =====================================================================
+     노출 위치 (ui) — 들여 쓴 목록을 「📍 위치 → 🚪 진입점 → 진입하면 노출」 나무로
+     ===================================================================== */
+  const UI_TYPES = [
+    ['toast', '💬', /토스트|toast/i], ['popup', '🪟', /팝업|모달|다이얼로그|popup|modal|dialog/i],
+    ['sheet', '🗂', /바텀\s*시트|시트|sheet|drawer/i], ['screen', '🖥', /화면|탭|페이지|screen|tab|page/i],
+    ['dot', '🔴', /레드닷|배지|뱃지|알림 점|badge|red\s*dot/i], ['list', '📋', /목록|리스트|list/i],
+    ['card', '🃏', /카드|card/i], ['button', '🔘', /^\[[^\]]+\]$/],
+  ];
+  const uiType = (t) => UI_TYPES.find(([, , re]) => re.test(t)) || ['item', '▫️'];
+  function uiInline(t) {
+    return esc(t).replace(/\[([^\]]+)\]/g, '<span class="ut-btn">$1</span>');
+  }
+  function renderUiTree(src) {
+    const root = { kids: [], level: -1 };
+    const stack = [{ node: root, indent: -1 }];
+    let count = 0;
+    for (const raw of src.split('\n')) {
+      if (!raw.trim() || /^\s*(%%|\/\/)/.test(raw)) continue;
+      const indent = raw.replace(/\t/g, '    ').match(/^ */)[0].length;
+      let text = raw.trim().replace(/^([-*+]|\d+[.)])\s+/, '');
+      const n = { kids: [], entry: false };
+      // 진입점: 「🚪 」 · 「진입:」 · 「[진입]」 으로 시작하거나 「(들어오는 곳 …)」 이 붙은 줄
+      const em = text.match(/^(🚪|진입\s*[:：]|\[진입\]|entry\s*[:：])\s*/i);
+      if (em) { n.entry = true; text = text.slice(em[0].length); }
+      if (/\((들어오는\s*곳|진입)[^)]*\)/.test(text)) n.entry = true;
+      // 끝의 (설명)
+      const nm = text.match(/^(.*?)\s*\(([^()]*)\)\s*$/);
+      if (nm && nm[1]) { text = nm[1]; n.note = nm[2]; }
+      // 「조작 → 결과」
+      const parts = text.split(/\s*(?:→|->)\s*/);
+      if (parts.length > 1 && parts[0]) { n.trigger = parts[0]; n.name = parts.slice(1).join(' → '); }
+      else n.name = text.replace(/^\s*(?:→|->)\s*/, '');
+      n.type = uiType(n.name);
+      while (stack.length > 1 && stack[stack.length - 1].indent >= indent) stack.pop();
+      stack[stack.length - 1].node.kids.push(n);
+      stack.push({ node: n, indent });
+      count++;
+    }
+    if (!count) fail([{ msg: L('목록이 비어 있습니다 (들여 쓴 줄로 씁니다)', 'The list is empty (write indented lines)') }]);
+    // 진입점의 위쪽 줄은 「위치」
+    const markPath = (n) => { let has = n.entry; for (const k of n.kids) has = markPath(k) || has; if (has && !n.entry) n.path = true; return has; };
+    root.kids.forEach(markPath);
+    const hasEntry = root.kids.some(function f(n) { return n.entry || n.kids.some(f); });
+    const row = (n) => {
+      const tag = n.entry ? `<span class="ut-tag">${esc(L('진입점', 'Entry'))}</span>` : '';
+      const ico = n.entry ? '🚪' : n.path ? '📍' : n.type[1];
+      return `<div class="ut-row" data-t="${n.entry ? 'entry' : n.path ? 'path' : n.type[0]}"><span class="ut-ico">${ico}</span>` +
+        (n.trigger ? `<span class="ut-trigger">${uiInline(n.trigger)}</span><span class="ut-arrow">→</span>` : '') +
+        `<span class="ut-name">${uiInline(n.name)}</span>` + (n.note ? `<span class="ut-note">${uiInline(n.note)}</span>` : '') + tag + '</div>';
+    };
+    const list = (kids) => '<ul>' + kids.map((n) => {
+      let sub = '';
+      if (n.kids.length) sub = n.entry
+        ? `<div class="ut-exposed"><div class="ut-exposed-label">${esc(L('진입하면 노출', 'Shown after entering'))}</div>${list(n.kids)}</div>`
+        : list(n.kids);
+      return `<li class="${n.entry ? 'ut-entry' : n.path ? 'ut-path' : ''}">${row(n)}${sub}</li>`;
+    }).join('') + '</ul>';
+    const legend = (hasEntry ? [['📍', L('위치', 'Location')], ['🚪', L('진입점', 'Entry point')]] : [])
+      .concat([['🖥', L('화면 · 탭', 'Screen · tab')], ['🗂', L('바텀시트', 'Sheet')], ['🪟', L('팝업', 'Popup')], ['💬', L('토스트', 'Toast')], ['🔘', L('버튼', 'Button')], ['🔴', L('표시', 'Badge')]])
+      .map(([i, t]) => `<span>${i} ${esc(t)}</span>`).join('');
+    return `<div class="ut"><div class="ut-legend">${legend}</div>${list(root.kids)}</div>`;
+  }
+
   /* ===================================================================== */
   const KIND = {};
-  [['flow', 'flow 흐름도'], ['sequence', 'sequence seq 주고받기 순서'], ['state', 'state 상태'], ['timeline', 'timeline schedule 일정표 일정']]
+  [['flow', 'flow 흐름도'], ['sequence', 'sequence seq 주고받기 순서'], ['state', 'state 상태'], ['timeline', 'timeline schedule 일정표 일정'], ['ui', 'ui 노출 노출위치 exposure']]
     .forEach(([k, names]) => names.split(' ').forEach((n) => (KIND[n] = k)));
   let uidN = 0;
   window.MarkDiagram = {
@@ -1130,6 +1235,7 @@
       if (kind === 'sequence') return renderSequence(src, uid);
       if (kind === 'state') return renderState(src, uid);
       if (kind === 'timeline') return renderTimeline(src, uid);
+      if (kind === 'ui') return renderUiTree(src);
       throw new Error('unknown diagram kind');
     },
     // 다른 뷰어용: 같은 내용을 Mermaid 문법으로
