@@ -1,7 +1,9 @@
 // 오프라인에서도 열리도록 앱 파일을 저장해 두는 서비스 워커
 // 새 버전을 올릴 때는 아래 VERSION 숫자를 올리세요.
 const VERSION = 'v1.0.3';
-const CACHE = 'markcont-' + VERSION;
+// 웹 앱만 고쳐 다시 올릴 때는 BUILD 숫자를 올리세요 (PC 프로그램 버전과 따로)
+const BUILD = 2;
+const CACHE = 'markcont-' + VERSION + '-' + BUILD;
 
 const APP_FILES = [
   './',
@@ -53,7 +55,7 @@ const APP_FILES = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(APP_FILES)).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(APP_FILES.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {
@@ -77,7 +79,11 @@ self.addEventListener('fetch', (event) => {
       event.respondWith(
         caches.open(CACHE).then(async (cache) => {
           try {
-            const res = await fetch(req, { cache: 'no-cache' });
+            // 페이지 이동(navigate) 요청은 옵션을 붙여 다시 만들 수 없어서, 주소로 새 요청을 만듦
+            const target = req.mode === 'navigate'
+              ? new Request(url.href, { cache: 'no-cache', credentials: 'same-origin' })
+              : new Request(req, { cache: 'no-cache' });
+            const res = await fetch(target);
             if (res.ok) cache.put(req, res.clone());
             return res;
           } catch {
