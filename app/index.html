@@ -634,6 +634,16 @@ body.zen .zen-exit:hover { opacity: 1; }
 .hist-item .tag.saved { background: color-mix(in srgb, var(--c-green) 15%, transparent); color: var(--c-green); }
 .hist-cap { font-size: 13px; font-weight: 600; margin: 0 0 8px; }
 
+/* 저장 단추 + ▾ 메뉴 */
+.save-group { display: inline-flex; }
+.save-group #btnSave { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.save-group .save-more { width: 28px; padding: 0; justify-content: center; border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 1px solid color-mix(in srgb, #fff 35%, transparent); }
+.save-menu { width: 330px; }
+.save-menu .menu-item { align-items: flex-start; }
+.save-menu .menu-item svg { margin-top: 2px; }
+.save-menu .mi-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.save-menu .mi-text small { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+
 /* 처음 사용 안내 (튜토리얼) */
 .tour { position: fixed; inset: 0; z-index: 90; }
 .tour-shade { position: absolute; inset: 0; background: rgba(10, 12, 16, .55); }
@@ -780,10 +790,24 @@ body.zen .zen-exit:hover { opacity: 1; }
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
       <span class="label">편집</span>
     </button>
-    <button class="btn primary" id="btnSave" title="저장 (Ctrl+S)" hidden>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8M7 21v-7h10v7"/></svg>
-      <span class="label">저장</span>
-    </button>
+    <div class="menu-wrap save-group" id="saveGroup" hidden>
+      <button class="btn primary" id="btnSave" title="기존 파일에 저장 (Ctrl+S)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8M7 21v-7h10v7"/></svg>
+        <span class="label">저장</span>
+      </button><button class="btn primary save-more" id="btnSaveMenu" title="저장 방법 고르기" aria-label="저장 방법 고르기">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="menu save-menu" id="saveMenu" hidden>
+        <button class="menu-item" id="mSaveOver">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8M7 21v-7h10v7"/></svg>
+          <span class="mi-text"><b>기존 파일에 저장</b><small id="saveOverWhere"></small></span><kbd>Ctrl+S</kbd>
+        </button>
+        <button class="menu-item" id="mSaveAs">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 11v6M9 14h6"/></svg>
+          <span class="mi-text"><b>새 파일로 저장…</b><small>이름 · 위치를 새로 정합니다. 원래 파일은 그대로</small></span><kbd>Ctrl+Shift+S</kbd>
+        </button>
+      </div>
+    </div>
     <div class="seg" id="viewSeg" hidden title="보기 방식">
       <button data-v="edit">편집만</button><button data-v="split">나란히</button><button data-v="preview">미리보기</button>
     </div>
@@ -2069,7 +2093,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       el.docTitle.append(d);
     }
     document.title = (state.dirty ? '• ' : '') + state.current.name + ' — markcont';
-    el.btnSave.hidden = !(state.editing || state.dirty);
+    $('#saveGroup').hidden = !(state.editing || state.dirty);
     if (state.editing) requestAnimationFrame(updateCursor);
   }
   function markDirty() {
@@ -3598,6 +3622,83 @@ body.zen .zen-exit:hover { opacity: 1; }
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
+  /* ---------- 새 파일로 저장 ---------- */
+  const canOverwrite = (e) => !!(e && !e.builtin && ((e.tauriPath && window.__TAURI__) || (e.handle && e.handle.createWritable)));
+  function suggestName(e) {
+    const n = (e && e.name) || '새 문서.md';
+    return MD_EXT.test(n) ? n : n + '.md';
+  }
+  async function saveAs({ reason } = {}) {
+    const cur = state.current;
+    if (!cur) return;
+    const text = source();
+    if (reason) toast(reason, 2600);
+    try {
+      if (isTauri()) {
+        const startDir = cur.tauriPath ? cur.tauriPath.replace(/[\\/][^\\/]*$/, '') : null;
+        const path = await tinvoke('pick_save_path', { defaultName: suggestName(cur), startDir });
+        if (!path) return;
+        const modified = await tinvoke('save_file', { path, text });
+        await adoptSaved({ tauriPath: path, name: path.split(/[\\/]/).pop(), lastModified: modified }, text);
+      } else if (window.showSaveFilePicker) {
+        const fh = await window.showSaveFilePicker({
+          suggestedName: suggestName(cur),
+          types: [{ description: '마크다운', accept: { 'text/markdown': ['.md', '.markdown', '.txt'] } }],
+        });
+        const w = await fh.createWritable(); await w.write(text); await w.close();
+        await adoptSaved({ handle: fh, name: fh.name, lastModified: (await fh.getFile()).lastModified }, text);
+      } else {
+        // 파일 위치를 고를 수 없는 브라우저(Safari · Firefox): 이름만 정해 다운로드
+        let name = prompt('저장할 파일 이름 (다운로드 폴더에 저장됩니다)', suggestName(cur));
+        if (!name) return;
+        name = name.trim();
+        if (!MD_EXT.test(name)) name += '.md';
+        download(name, text, 'text/markdown;charset=utf-8');
+        cur.text = text; state.dirty = false;
+        snapshot('다운로드로 저장', { saved: true });
+        updateTitle(); applyChangeMarks();
+        toast('다운로드 폴더에 저장했습니다: ' + name);
+      }
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+      toast('저장하지 못했습니다: ' + ((e && e.message) || e), 4000);
+    }
+  }
+  // 새로 저장한 파일을 지금 문서로 삼음 (열린 폴더 안이면 그 트리의 파일로)
+  async function adoptSaved(info, text) {
+    const old = state.current;
+    let root = null, path = null;
+    for (const r of state.roots) {
+      if (info.handle && r.kind === 'handle' && r.handle.resolve) {
+        try { const segs = await r.handle.resolve(info.handle); if (segs && segs.length) { root = r; path = r.key + '/' + segs.join('/'); break; } } catch {}
+      }
+      if (info.tauriPath && r.kind === 'tauri') {
+        const norm = (x) => x.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+        const base = norm(r.path) + '/', full = info.tauriPath.replace(/\\/g, '/');
+        if (full.toLowerCase().startsWith(base)) { root = r; path = r.key + '/' + full.slice(base.length); break; }
+      }
+    }
+    let entry = null;
+    if (root) { await refreshFolder({ quiet: true, only: root.key }); entry = state.files.find((f) => f.path === path); }
+    if (!entry) {
+      let p = info.name, n = 2;
+      while (state.files.some((f) => f.path === p && f !== old)) p = info.name.replace(/(\.[^.]+)?$/, ` (${n++})$1`);
+      entry = { name: info.name, path: p, loose: true };
+      state.files.push(entry);
+    }
+    Object.assign(entry, { text, lastModified: info.lastModified, builtin: false });
+    if (info.handle) entry.handle = info.handle;
+    if (info.tauriPath) entry.tauriPath = info.tauriPath;
+    entry.history = (old && old.history ? old.history.slice() : []);
+    state.current = entry;
+    state.dirty = false;
+    if (state.hist[state.histPos] !== entry) { state.hist = state.hist.slice(0, state.histPos + 1); state.hist.push(entry); state.histPos = state.hist.length - 1; updateNav(); }
+    snapshot('새 파일로 저장', { saved: true });
+    if (root) openDirInTree(parentOf(path));
+    updateTitle(); updateMeta(source()); applyChangeMarks(); renderFileList(); remember(entry);
+    toast(`새 파일로 저장했습니다: ${entry.path}` + (old && old !== entry && (old.handle || old.tauriPath) ? ' (원래 파일은 그대로)' : ''), 3500);
+  }
+
   async function save({ quiet = false } = {}) {
     const cur = state.current;
     if (!cur) return;
@@ -3626,8 +3727,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     }
     if (!saved) {
       if (quiet) return;
-      download(cur.name, text, 'text/markdown;charset=utf-8');
-      toast('다운로드 폴더에 저장했습니다');
+      return saveAs({ reason: '원래 파일 위치를 알 수 없어서 새 파일로 저장합니다' });
     }
     cur.text = text;
     state.dirty = false;
@@ -3766,6 +3866,16 @@ ${clone.innerHTML}
   $('#mPrint').onclick = () => { closeMenus(); window.print(); };
   el.btnEdit.onclick = () => setEditing(!state.editing);
   el.btnSave.onclick = () => save();
+  $('#btnSaveMenu').onclick = (e) => {
+    e.stopPropagation();
+    const cur = state.current;
+    $('#saveOverWhere').textContent = !cur ? '' : canOverwrite(cur)
+      ? (cur.tauriPath || cur.path) + ' 에 덮어씁니다'
+      : '원래 위치를 몰라서 새 파일로 저장하게 됩니다';
+    toggleMenu('#saveMenu');
+  };
+  $('#mSaveOver').onclick = () => { closeMenus(); save(); };
+  $('#mSaveAs').onclick = () => { closeMenus(); saveAs(); };
   $('#mOpen').onclick = () => { closeMenus(); pickFiles(); };
   $('#mFolder').onclick = () => { closeMenus(); pickFolder(); };
   $('#mSettings').onclick = (e) => { e.stopPropagation(); toggleMenu('#settingsMenu'); };
@@ -3795,7 +3905,7 @@ ${clone.innerHTML}
     const k = e.key.toLowerCase();
     if (k === 'o') { e.preventDefault(); pickFiles(); }
     else if (k === 'e' && state.current) { e.preventDefault(); setEditing(!state.editing); }
-    else if (k === 's' && state.current) { e.preventDefault(); save(); }
+    else if (k === 's' && state.current) { e.preventDefault(); if (e.shiftKey) saveAs(); else save(); }
     else if (k === 'f' && state.current && !el.workspace.hidden) { e.preventDefault(); openFind(); }
     else if (k === '.' && state.current) { e.preventDefault(); setZen(!document.body.classList.contains('zen')); }
   });

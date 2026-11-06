@@ -81,6 +81,19 @@ fn pick_files() -> Vec<String> {
         .collect()
 }
 
+/// "새 파일로 저장" 창: 고른 경로를 돌려줌 (취소하면 None)
+#[tauri::command]
+fn pick_save_path(default_name: String, start_dir: Option<String>) -> Option<String> {
+    let mut dialog = rfd::FileDialog::new()
+        .set_title("새 파일로 저장")
+        .add_filter("마크다운", &["md", "markdown", "txt"])
+        .set_file_name(&default_name);
+    if let Some(dir) = start_dir {
+        dialog = dialog.set_directory(dir);
+    }
+    dialog.save_file().map(|p| p.to_string_lossy().into_owned())
+}
+
 #[tauri::command]
 fn pick_folder() -> Option<String> {
     rfd::FileDialog::new()
@@ -202,6 +215,7 @@ fn main() {
             file_modified,
             startup_file,
             pick_files,
+            pick_save_path,
             pick_folder,
             list_dir,
             read_binary,
