@@ -18,7 +18,8 @@ jobs:
       matrix:
         include:
           - platform: windows-latest
-            args: ''
+            # MSI(WiX)는 한글 설명을 못 다뤄서 NSIS 설치 파일(-setup.exe)만 만듭니다
+            args: '--bundles nsis'
           - platform: macos-latest
             args: '--target universal-apple-darwin'
           - platform: ubuntu-22.04
