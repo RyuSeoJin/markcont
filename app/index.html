@@ -670,6 +670,31 @@ body.zen .zen-exit:hover { opacity: 1; }
 .save-menu .mi-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .save-menu .mi-text small { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
 
+/* 밖에서 바뀐 곳 강조 */
+@keyframes extFlash { 0%, 60% { background: color-mix(in srgb, #ffd43b 38%, transparent); } 100% { background: transparent; } }
+.markdown-body .ext-flash { animation: extFlash 4.5s ease-out; border-radius: 6px; }
+.editor-hl .ln.ln-ext { animation: extFlash 4.5s ease-out; }
+.toast.has-action { pointer-events: auto; display: flex; align-items: center; gap: 12px; }
+.toast-btn { border: 0; background: color-mix(in srgb, var(--bg) 22%, transparent); color: var(--bg); font-weight: 700; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 13px; }
+.toast-btn:hover { background: color-mix(in srgb, var(--bg) 35%, transparent); }
+
+/* Claude 연결 */
+.mcp-pill {
+  flex: none; max-width: 320px; border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); background: var(--accent-soft);
+  color: var(--accent); border-radius: 999px; padding: 3px 10px; font-size: 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mcp-section { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+.mcp-section h4 { margin: 0 0 8px; font-size: 14.5px; display: flex; align-items: center; gap: 8px; }
+.mcp-section p, .mcp-section li { font-size: 13.5px; line-height: 1.7; color: var(--muted); margin: 0 0 6px; }
+.mcp-section ul { margin: 0; padding-left: 1.2em; }
+.mcp-section b { color: var(--text); }
+.mcp-badge { font-size: 11.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
+.mcp-badge.ok { background: color-mix(in srgb, var(--c-green) 16%, transparent); color: var(--c-green); }
+.mcp-badge.no { background: var(--surface-2); color: var(--muted); }
+.mcp-code { display: flex; gap: 6px; align-items: stretch; margin: 6px 0; }
+.mcp-code code { flex: 1; font-family: var(--mono); font-size: 12px; background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; overflow-x: auto; white-space: pre; }
+.mcp-legal { font-size: 12px; color: var(--muted); line-height: 1.6; margin-top: 4px; }
+
 /* 처음 사용 안내 (튜토리얼) */
 .tour { position: fixed; inset: 0; z-index: 90; }
 .tour-shade { position: absolute; inset: 0; background: rgba(10, 12, 16, .55); }
@@ -802,6 +827,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     </button>
   </div>
   <div class="doc-title" id="docTitle"></div>
+  <button class="mcp-pill" id="mcpPill" type="button" hidden title="Claude 연결 (MCP)"></button>
   <div class="actions">
     <button class="btn" id="btnOpen" title="파일 열기 (Ctrl+O)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
@@ -919,6 +945,10 @@ body.zen .zen-exit:hover { opacity: 1; }
           인쇄 · PDF로 저장<kbd>Ctrl+P</kbd>
         </button>
         <hr style="border:0;border-top:1px solid var(--border);margin:4px 0">
+        <button class="menu-item" id="mMcp">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0z"/><path d="M12 16v5"/></svg>
+          Claude와 연결 (MCP)
+        </button>
         <button class="menu-item" id="mGuide">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>
           사용 안내서
@@ -926,6 +956,10 @@ body.zen .zen-exit:hover { opacity: 1; }
         <button class="menu-item" id="mRules">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
           마크다운 작성 규칙
+        </button>
+        <button class="menu-item" id="mLicenses">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
+          오픈소스 라이선스
         </button>
         <button class="menu-item" id="mTour">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z"/></svg>
@@ -1120,6 +1154,16 @@ body.zen .zen-exit:hover { opacity: 1; }
 <div class="drop-overlay" id="dropOverlay"><div>여기에 놓으면 열립니다</div></div>
 <div class="toast" id="toast" role="status"></div>
 
+<!-- Claude와 연결 (MCP) -->
+<div class="modal" id="mcpModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-label="Claude와 연결">
+    <div class="modal-head"><div class="modal-title">Claude와 연결 (MCP)</div>
+      <button class="btn icon ghost" id="mcpClose" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body" id="mcpBody"></div>
+  </div>
+</div>
+
 <!-- 바뀐 내용 · 되돌리기 기록 -->
 <div class="modal" id="changesModal" hidden>
   <div class="modal-card" role="dialog" aria-modal="true" aria-label="바뀐 내용">
@@ -1266,8 +1310,20 @@ body.zen .zen-exit:hover { opacity: 1; }
      알림
      ========================================================= */
   let toastTimer;
-  function toast(msg, ms = 2400) {
-    el.toast.textContent = msg;
+  function toast(msg, ms = 2400, action) {
+    el.toast.textContent = '';
+    const span = document.createElement('span');
+    span.textContent = msg;
+    el.toast.append(span);
+    if (action) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'toast-btn';
+      b.textContent = action.label;
+      b.onclick = () => { el.toast.classList.remove('show'); action.onClick(); };
+      el.toast.append(b);
+    }
+    el.toast.classList.toggle('has-action', !!action);
     el.toast.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => el.toast.classList.remove('show'), ms);
@@ -2371,6 +2427,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     box.append(frag);
     renderSideEmpty();
     updateSidebar();
+    if (typeof syncMcpState === 'function') syncMcpState();
   }
 
   // 트리 클릭: 폴더 접기/펴기, 파일 열기, ⋯ 메뉴
@@ -2442,9 +2499,11 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (folders.length) {
       rf.innerHTML = '<h3>최근 폴더</h3>';
       for (const f of folders) {
-        const row = treeRow({ kind: 'dir recent', name: f.name, path: '', depth: 0, count: fmtDate(f.time) });
-        row.querySelector('.chev').remove();
-        row.querySelector('.more').remove();
+        const row = treeRow({ kind: 'dir', name: f.name, path: '', depth: 0, count: fmtDate(f.time) });
+        row.classList.add('recent');
+        delete row.dataset.kind;
+        row.querySelector('.chev')?.remove();
+        row.querySelector('.more')?.remove();
         row.title = f.path || f.name;
         row.onclick = () => reopenFolder(f);
         rf.append(row);
@@ -2457,7 +2516,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       rs.innerHTML = '<h3>최근 파일</h3>';
       for (const r of files.slice(0, 5)) {
         const row = treeRow({ kind: 'file', name: baseName(r.name), path: r.name, depth: 0 });
-        row.querySelector('.more').remove();
+        row.querySelector('.more')?.remove();
         row.onclick = () => {
           let entry = state.files.find((f) => f.path === r.name);
           if (!entry && r.tauriPath && window.__TAURI__) { openTauriPaths([r.tauriPath]); return; }
@@ -3652,6 +3711,48 @@ body.zen .zen-exit:hover { opacity: 1; }
     const rs = $('#chgRestore');
     if (rs) rs.onclick = () => { replaceAll(sel.text, fmtTime(sel.t) + ' 로 되돌림'); chg.pick = 1; toast(fmtTime(sel.t) + ' 시점으로 되돌렸습니다 (Ctrl+Z 로 취소)'); renderChanges(); };
   }
+  // 밖에서(Claude 등) 바뀐 곳을 몇 초 동안 빛나게
+  function flashExternal(oldText, newText) {
+    const hunks = hunksOf(lineDiff(oldText.split('\n'), newText.split('\n')));
+    if (!hunks.length) return;
+    const hit = (line) => hunks.some((h) => (h.bEnd > h.bStart ? line >= h.bStart && line < h.bEnd : line === h.bStart));
+    const flashed = [];
+    const blocks = [...el.doc.children].filter((n) => n.dataset.line != null);
+    blocks.forEach((n, i) => {
+      const start = +n.dataset.line;
+      const end = i + 1 < blocks.length ? +blocks[i + 1].dataset.line : Infinity;
+      if (hunks.some((h) => { const a = h.bStart, b = Math.max(h.bEnd, h.bStart + 1); return a < end && b > start; })) { n.classList.add('ext-flash'); flashed.push(n); }
+    });
+    if (state.editing) [...elHl.children].forEach((ln, j) => { if (hit(j)) { ln.classList.add('ln-ext'); flashed.push(ln); } });
+    flashed[0]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    setTimeout(() => flashed.forEach((n) => n.classList.remove('ext-flash', 'ln-ext')), 4500);
+  }
+  function showExternalDiff(oldText, newText, who) {
+    if (!state.current) return;
+    $('#chgTabs').hidden = true;
+    const title = $('#chgTitle');
+    title.hidden = false;
+    title.textContent = `${who} 바꾼 내용`;
+    $('#chgBody').innerHTML = `<p class="chg-help">${escapeHtml(state.current.path)} 이(가) 바깥에서 고쳐졌습니다. <span class="chg-del">− 지운 줄</span> · <span class="chg-add">+ 새로 쓴 줄</span></p>` + diffHtml(oldText, newText);
+    $('#chgFoot').innerHTML = '<button class="btn" id="extRevert">이 변경 되돌리기</button><span style="flex:1"></span><button class="btn primary" id="extKeep">그대로 두기</button>';
+    $('#changesModal').hidden = false;
+    $('#extKeep').onclick = closeChanges;
+    $('#extRevert').onclick = async () => {
+      if (el.editor.value !== newText) { toast('그 뒤로 문서가 또 바뀌어서 되돌릴 수 없습니다. 되돌리기 기록을 써 주세요.', 4000); return; }
+      replaceAll(oldText, `${who} 고치기 전으로 되돌림`);
+      closeChanges();
+      await save({ skipConfirm: true });
+      toast('바깥에서 바뀌기 전으로 되돌려 저장했습니다');
+    };
+  }
+  // PC 프로그램: Claude(MCP)가 최근에 고친 파일 (경로 → 시각)
+  const mcpRecent = new Map();
+  const normPath = (p) => (p || '').replace(/\\/g, '/').toLowerCase();
+  function recentMcpWrite(e) {
+    const t = e && e.tauriPath ? mcpRecent.get(normPath(e.tauriPath)) : 0;
+    return !!t && Date.now() - t < 20000;
+  }
+
   // 저장 전 확인: 'save' | 'saveAs' | 'cancel' 를 돌려줌
   let confirmResolve = null;
   function confirmSave(mode) {
@@ -3699,7 +3800,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     $('#changesModal').hidden = false;
     renderChanges();
   }
-  function closeChanges() { if (confirmResolve) { finishConfirm('cancel'); return; } $('#changesModal').hidden = true; el.editor.focus({ preventScroll: true }); }
+  function closeChanges() { if (confirmResolve) { finishConfirm('cancel'); return; } $('#changesModal').hidden = true; $('#chgTitle').hidden = true; $('#chgTitle').textContent = '저장 전에 바뀐 내용 확인'; $('#chgTabs').hidden = false; el.editor.focus({ preventScroll: true }); }
   $('#chgTabs').onclick = (e) => { const v = e.target.closest('button')?.dataset.v; if (v) { chg.tab = v; chg.pick = -1; renderChanges(); } };
   $('#chgClose').onclick = closeChanges;
   $('#changesModal').addEventListener('click', (e) => { if (e.target.id === 'changesModal') closeChanges(); });
@@ -3949,12 +4050,17 @@ body.zen .zen-exit:hover { opacity: 1; }
           const text = cur.tauriPath ? (await tauriInvoke('read_file', { path: cur.tauriPath })).text : await readText(f);
           cur.lastModified = f.lastModified;
           if (text !== cur.text) {
+            const oldText = cur.text;
+            const who = recentMcpWrite(cur) ? 'Claude가' : '밖에서';
+            snapshot('밖에서 바뀌기 전');
             cur.text = text;
             const keep = el.editor.scrollTop;
             el.editor.value = text;
             el.editor.scrollTop = keep;
             render(true);
-            toast('파일이 바뀌어서 다시 불러왔습니다');
+            snapshot(who === 'Claude가' ? 'Claude가 고침' : '밖에서 고침', { saved: true });
+            flashExternal(oldText, text);
+            toast(`${who} 이 문서를 고쳤습니다`, 7000, { label: '바뀐 내용 보기', onClick: () => showExternalDiff(oldText, text, who) });
           }
         } else if (warnedChange !== f.lastModified) {
           warnedChange = f.lastModified;
@@ -4119,6 +4225,7 @@ ${clone.innerHTML}
     guide: { file: 'guide.md', name: '사용-안내서.md' },
     rules: { file: 'writing-rules.md', name: '마크다운-작성-규칙.md' },
     features: { file: 'features.md', name: '기능-예제.md' },
+    licenses: { file: 'licenses.md', name: '오픈소스-라이선스.md' },
   };
   async function openBuiltinDoc(key) {
     closeMenus();
@@ -4145,6 +4252,7 @@ ${clone.innerHTML}
   $('#wFeatures').onclick = () => openBuiltinDoc('features');
   document.querySelectorAll('[data-feat]').forEach((b) => (b.onclick = () => openBuiltinDoc('features')));
   $('#mRules').onclick = () => openBuiltinDoc('rules');
+  $('#mLicenses').onclick = () => openBuiltinDoc('licenses');
 
   /* =========================================================
      처음 사용 안내 (튜토리얼): 처음 한 번 자동으로, ⋯ 메뉴에서 다시 보기
@@ -4326,6 +4434,123 @@ ${clone.innerHTML}
       addFiles(params.files.map((h) => ({ name: h.name, path: h.name, handle: h, text: null })), false);
     });
   }
+
+
+  /* =========================================================
+     Claude와 연결 (MCP) — PC 프로그램에서만
+     markcont 가 MCP 서버(markcont --mcp)에게 '열어 둔 폴더 · 지금 문서 · 선택한 부분'을 알려주고,
+     Claude 가 고친 파일은 자동 새로고침 + '바뀐 내용 보기'로 보여줌
+     ========================================================= */
+  function currentAbsPath() {
+    const cur = state.current;
+    if (!cur) return null;
+    if (cur.tauriPath) return cur.tauriPath;
+    const r = !cur.loose && rootOf(cur.path);
+    return r && r.kind === 'tauri' ? absPath(cur.path) : null;
+  }
+  function currentSelection() {
+    if (state.editing && el.editor.selectionEnd > el.editor.selectionStart) return el.editor.value.slice(el.editor.selectionStart, el.editor.selectionEnd);
+    const sel = window.getSelection();
+    return sel && sel.rangeCount && el.doc.contains(sel.anchorNode) ? String(sel).trim() : '';
+  }
+  var mcpSyncTimer, mcpLastSent = ''; // var: 시작할 때 먼저 불려도 안전하게
+  function syncMcpState() {
+    if (!isTauri()) return;
+    clearTimeout(mcpSyncTimer);
+    mcpSyncTimer = setTimeout(() => {
+      const payload = {
+        roots: state.roots.filter((r) => r.kind === 'tauri').map((r) => ({ name: r.key, path: r.path })),
+        current: currentAbsPath(),
+        selection: currentSelection().slice(0, 8000) || null,
+      };
+      const key = JSON.stringify(payload);
+      if (key === mcpLastSent) return;
+      mcpLastSent = key;
+      tinvoke('set_mcp_state', payload).catch(() => {});
+    }, 400);
+  }
+  document.addEventListener('selectionchange', () => { if (state.current) syncMcpState(); });
+
+  // Claude 활동 보기 (2초마다)
+  let mcpSince = Date.now();
+  function fileLabel(p) { return (p || '').split(/[\\/]/).pop(); }
+  async function pollMcp() {
+    if (!isTauri() || document.hidden) return;
+    let list = [];
+    try { list = await tinvoke('mcp_activity', { since: mcpSince }); } catch { return; }
+    if (!list.length) return;
+    let wrote = false;
+    for (const a of list) {
+      mcpSince = Math.max(mcpSince, a.t);
+      if (a.tool === 'write') { mcpRecent.set(normPath(a.path), a.t); wrote = true; }
+    }
+    const last = list[list.length - 1];
+    const pill = $('#mcpPill');
+    pill.hidden = false;
+    pill.textContent = `🔌 Claude가 ${fileLabel(last.path)} ${last.tool === 'write' ? '고침' : '읽음'}`;
+    clearTimeout(pollMcp.hideTimer);
+    pollMcp.hideTimer = setTimeout(() => { pill.hidden = true; }, 15000);
+    if (wrote) refreshFolder({ quiet: true });
+  }
+  if (isTauri()) setInterval(pollMcp, 2000);
+  $('#mcpPill').onclick = () => openMcp();
+
+  // 연결 창
+  async function openMcp() {
+    closeMenus();
+    const body = $('#mcpBody');
+    const legal = '<p class="mcp-legal">Claude는 Anthropic의 상표입니다. markcont는 Anthropic과 관계없는 독립 오픈소스 프로그램입니다.</p>';
+    const privacy = `<div class="mcp-section"><h4>🔒 연결하기 전에 알아 두세요</h4><ul>
+      <li>연결하면 Claude가 <b>markcont에서 열어 둔 폴더의 마크다운 파일</b>을 읽고 고칠 수 있습니다.</li>
+      <li>Claude가 읽은 문서 내용은 <b>Anthropic으로 보내져 처리</b>됩니다 (Anthropic의 이용 약관 · 개인정보 처리방침이 적용됩니다). markcont가 따로 문서를 어디로 보내지는 않습니다.</li>
+      <li>Claude는 <b>열어 둔 폴더 안의 마크다운 · 텍스트 파일만</b> 다룰 수 있고, 파일 삭제 · 이름 바꾸기 · 명령 실행은 할 수 없습니다.</li>
+      <li>Claude 앱은 도구를 쓰기 전에 허락을 묻습니다. 고친 곳은 markcont에서 <b>바로 보이고 되돌릴 수 있습니다</b>.</li>
+      <li>내 구독(Claude Pro · Max 등)으로 <b>Claude 앱에서</b> 대화합니다. markcont는 구독이나 API 키를 쓰지 않습니다.</li></ul></div>`;
+    if (!isTauri()) {
+      body.innerHTML = privacy.replace('연결하기 전에 알아 두세요', 'Claude와 연결이란?') +
+        '<div class="mcp-section"><h4>💻 PC 프로그램에서만 됩니다</h4><p>Claude Desktop · Claude Code가 markcont에 연결하려면 내 컴퓨터에 설치된 markcont가 필요합니다. 웹 앱(브라우저)에서는 쓸 수 없습니다.</p>' +
+        '<p><a href="https://github.com/RyuSeoJin/markcont/releases/latest" target="_blank" rel="noopener">PC 프로그램 내려받기 →</a></p></div>' + legal;
+      $('#mcpModal').hidden = false;
+      return;
+    }
+    let info = {};
+    try { info = await tinvoke('mcp_setup_info'); } catch {}
+    const exe = info.exe || 'markcont';
+    const ccCmd = `claude mcp add markcont -- "${exe}" --mcp`;
+    const json = JSON.stringify({ mcpServers: { markcont: { command: exe, args: ['--mcp'] } } }, null, 2);
+    const folders = state.roots.filter((r) => r.kind === 'tauri').map((r) => escapeHtml(r.key));
+    body.innerHTML = privacy +
+      `<div class="mcp-section"><h4>📁 Claude가 다룰 수 있는 폴더</h4><p>${folders.length ? folders.join(' · ') : '아직 없습니다. <b>폴더 열기</b>로 폴더를 먼저 여세요.'}</p></div>` +
+      `<div class="mcp-section"><h4>Claude Desktop <span class="mcp-badge ${info.added ? 'ok' : 'no'}">${info.added ? '연결됨' : '연결 안 됨'}</span></h4>
+        <p>단추를 누르면 Claude Desktop 설정에 markcont를 더합니다 (기존 설정은 <code>.bak</code> 으로 백업, 다른 항목은 그대로).</p>
+        <button class="btn primary" id="mcpAdd">${info.added ? '다시 연결하기' : 'Claude Desktop에 연결'}</button>
+        <p style="margin-top:8px">연결한 뒤 <b>Claude Desktop을 완전히 종료했다가 다시 여세요</b>. 대화창의 도구 목록에 markcont가 보이면 됩니다.</p></div>` +
+      `<div class="mcp-section"><h4>Claude Code</h4><p>터미널에서 한 번 실행하세요.</p>
+        <div class="mcp-code"><code id="mcpCc"></code><button class="btn" id="mcpCopyCc">복사</button></div></div>` +
+      `<div class="mcp-section"><h4>직접 설정하기</h4><p>다른 MCP 프로그램이나 직접 설정할 때 쓰는 내용입니다.</p>
+        <div class="mcp-code"><code id="mcpJson"></code><button class="btn" id="mcpCopyJson">복사</button></div></div>` +
+      `<div class="mcp-section"><h4>💬 이렇게 요청해 보세요</h4><ul><li>"markcont에서 보고 있는 문서를 작성 규칙에 맞게 다듬어 줘"</li><li>"회의록 폴더의 문서들을 한 장으로 요약해서 새 문서로 만들어 줘"</li><li>"선택한 부분을 표로 바꿔 줘"</li></ul></div>` + legal;
+    $('#mcpCc').textContent = ccCmd;
+    $('#mcpJson').textContent = json;
+    $('#mcpCopyCc').onclick = () => copyText(ccCmd).then(() => toast('명령을 복사했습니다'));
+    $('#mcpCopyJson').onclick = () => copyText(json).then(() => toast('설정 내용을 복사했습니다'));
+    $('#mcpAdd').onclick = async () => {
+      try {
+        const path = await tinvoke('mcp_add_claude_desktop');
+        toast('Claude Desktop 설정에 더했습니다. Claude Desktop을 다시 열어 주세요.', 5000);
+        syncMcpState();
+        openMcp();
+        void path;
+      } catch (e) { toast('연결하지 못했습니다: ' + e, 5000); }
+    };
+    syncMcpState();
+    $('#mcpModal').hidden = false;
+  }
+  function closeMcp() { $('#mcpModal').hidden = true; }
+  $('#mMcp').onclick = openMcp;
+  $('#mcpClose').onclick = closeMcp;
+  $('#mcpModal').addEventListener('click', (e) => { if (e.target.id === 'mcpModal') closeMcp(); });
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#mcpModal').hidden) { e.preventDefault(); e.stopImmediatePropagation(); closeMcp(); } }, true);
 
   // 테스트·자동화용: 텍스트를 바로 열기
   window.mdViewer = {

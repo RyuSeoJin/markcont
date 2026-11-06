@@ -2,6 +2,8 @@
 // 화면은 app/index.html 을 그대로 쓰고, 여기서는 파일 읽기 · 저장 · 선택 창만 맡습니다.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod mcp;
+
 use serde::Serialize;
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
 
@@ -230,7 +232,30 @@ fn delete_path(path: String) -> Result<(), String> {
     trash::delete(&path).map_err(|e| e.to_string())
 }
 
+// ---------- Claude 연결 (MCP) : 화면에서 쓰는 명령 ----------
+#[tauri::command]
+fn set_mcp_state(roots: Vec<mcp::McpRoot>, current: Option<String>, selection: Option<String>) -> Result<(), String> {
+    mcp::write_state(&mcp::McpState { roots, current, selection })
+}
+#[tauri::command]
+fn mcp_setup_info() -> serde_json::Value {
+    mcp::setup_info()
+}
+#[tauri::command]
+fn mcp_add_claude_desktop() -> Result<String, String> {
+    mcp::add_to_claude_desktop()
+}
+#[tauri::command]
+fn mcp_activity(since: u64) -> Vec<serde_json::Value> {
+    mcp::read_activity(since)
+}
+
 fn main() {
+    // `markcont --mcp` : 화면 없이 MCP 서버로 동작 (Claude Desktop · Claude Code 가 실행)
+    if std::env::args().any(|a| a == "--mcp") {
+        mcp::serve();
+        return;
+    }
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             read_file,
@@ -240,6 +265,10 @@ fn main() {
             pick_files,
             pick_save_path,
             reveal_in_folder,
+            set_mcp_state,
+            mcp_setup_info,
+            mcp_add_claude_desktop,
+            mcp_activity,
             pick_folder,
             list_dir,
             read_binary,

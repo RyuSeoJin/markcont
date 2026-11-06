@@ -52,6 +52,12 @@ jobs:
       - name: 아이콘 만들기
         run: npm run icons
 
+      - name: 오픈소스 라이선스 목록 만들기
+        shell: bash
+        run: |
+          cargo fetch --manifest-path src-tauri/Cargo.toml
+          python3 scripts/gen_notices.py || python scripts/gen_notices.py
+
       - name: 설치 파일 만들고 Releases 에 올리기
         uses: tauri-apps/tauri-action@v0
         env:

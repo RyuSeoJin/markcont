@@ -17,6 +17,7 @@ const APP_FILES = [
   './docs/guide.md',
   './docs/writing-rules.md',
   './docs/features.md',
+  './docs/licenses.md',
   './vendor/highlight.min.js',
   './vendor/hljs-github-dark.min.css',
   './vendor/hljs-github.min.css',

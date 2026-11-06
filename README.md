@@ -67,8 +67,30 @@ curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh 
 - 실시간 편집: 줄 번호와 문법 색이 있는 원본, 지금 고치는 곳 표시, 스크롤 맞춤
 - 바뀐 파일 자동 새로고침, HTML 파일로 저장, 인쇄 · PDF
 - 처음 실행할 때 기능을 짚어 주는 안내(튜토리얼)
+- PC 프로그램: Claude Desktop · Claude Code와 MCP로 연결해 열어 둔 폴더의 문서를 고치기, 밖에서 바뀐 곳 강조 · 되돌리기
 
 보기 좋은 문서를 쓰는 방법은 [마크다운 작성 규칙](app/docs/writing-rules.md)에, 쓰는 법은 [사용 안내서](app/docs/guide.md)에 있습니다.
+
+---
+
+## 🔌 Claude와 연결 (PC 프로그램)
+
+PC 프로그램은 **MCP 서버**로도 동작합니다. Claude Desktop · Claude Code에서 "markcont에서 보고 있는 문서 다듬어 줘"라고 하면, Claude가 markcont에서 열어 둔 폴더의 문서를 고치고 markcont 화면에 **바로** 바뀐 곳이 보입니다.
+
+1. markcont에서 **폴더 열기**로 작업할 폴더를 엽니다.
+2. **⋯ → Claude와 연결 (MCP)** 에서 **Claude Desktop에 연결**을 누르거나, Claude Code 명령을 복사해 실행합니다.
+3. Claude 앱을 다시 열고 요청합니다. 내 Claude 구독으로 **Claude 앱에서** 대화하며, markcont는 구독이나 API 키를 쓰지 않습니다.
+
+- Claude는 **열어 둔 폴더 안의 마크다운 · 텍스트 파일만** 읽고 고칠 수 있습니다. 삭제 · 이름 바꾸기 · 명령 실행은 할 수 없습니다.
+- 바뀐 곳은 markcont에서 강조되고, **바뀐 내용 보기 · 되돌리기**로 확인할 수 있습니다.
+
+## 🔒 개인정보
+
+- markcont는 문서를 **내 기기 안에서만** 읽고 씁니다. 사용 기록 수집(텔레메트리)도 없습니다.
+- **Claude와 연결**을 쓰면 Claude가 읽은 문서 내용이 Anthropic으로 보내져 처리됩니다 (Anthropic 약관 · 개인정보 처리방침 적용). 연결하지 않으면 아무것도 보내지 않습니다.
+- 웹 앱의 설정 · 최근 문서는 브라우저 저장소에만 남습니다.
+
+> Claude는 Anthropic의 상표입니다. markcont는 Anthropic과 관계없는 독립 오픈소스 프로그램입니다.
 
 ---
 
@@ -94,4 +116,4 @@ install.ps1 / .sh   한 줄 설치 스크립트
 
 [MIT](LICENSE) © 2026 RyuSeoJin
 
-포함된 라이브러리의 라이선스는 `app/vendor/licenses/` 에 있습니다.
+포함된 라이브러리의 라이선스는 [오픈소스 라이선스](app/docs/licenses.md)와 `app/vendor/licenses/` 에 있습니다. PC 프로그램에 들어간 라이브러리 목록은 설치 파일을 만들 때 자동으로 더해지고, 앱의 **⋯ → 오픈소스 라이선스**에서 볼 수 있습니다.
