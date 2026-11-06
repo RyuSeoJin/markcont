@@ -903,6 +903,10 @@ body.zen .zen-exit:hover { opacity: 1; }
         <div class="set-row">
           <label class="check-row"><input type="checkbox" id="optSync"><span>편집할 때 스크롤 맞추기<small>원본과 미리보기가 같은 위치를 보여줍니다</small></span></label>
         </div>
+        <div class="set-row">
+          <div class="set-label"><span>언어</span><span id="langHint">Language</span></div>
+          <div class="seg" id="langSeg"><button data-v="ko">한국어</button><button data-v="en">English</button></div>
+        </div>
       </div>
     </div>
     <div class="menu-wrap">
@@ -1207,8 +1211,11 @@ body.zen .zen-exit:hover { opacity: 1; }
 <script src="vendor/highlight.min.js"></script>
 <script src="vendor/katex/katex.min.js"></script>
 <script src="vendor/katex/mhchem.min.js"></script>
+<script src="i18n.js"></script>
 <script>
 (() => {
+  translateStatic(document.body);
+  if (LANG === 'en') document.getElementById('langHint').textContent = '언어';
   const $ = (s) => document.querySelector(s);
   const MD_EXT = /\.(md|markdown|mdown|mkd|txt)$/i;
   const IMG_EXT = /\.(png|jpe?g|gif|svg|webp|bmp|avif)$/i;
@@ -1272,6 +1279,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     document.querySelectorAll('#fontSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === settings.font));
     document.querySelectorAll('#widthSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === settings.width));
     document.querySelectorAll('#calloutSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === settings.callout));
+    document.querySelectorAll('#langSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === LANG));
     $('#optLines').checked = settings.lines;
     $('#optConfirmSave').checked = settings.confirmSave;
     $('#optBreaks').checked = settings.breaks;
@@ -1285,6 +1293,15 @@ body.zen .zen-exit:hover { opacity: 1; }
   $('#sizeUp').onclick = () => setSize(settings.size + 0.5);
   $('#fontSeg').onclick = (e) => { if (e.target.dataset.v) { settings.font = e.target.dataset.v; applySettings(); } };
   $('#widthSeg').onclick = (e) => { if (e.target.dataset.v) { settings.width = e.target.dataset.v; applySettings(); } };
+  // 언어 바꾸기: 저장하고 화면을 다시 불러옴 (저장 안 한 내용이 있으면 먼저 묻기)
+  $('#langSeg').onclick = (e) => {
+    const v = e.target.closest('button')?.dataset.v;
+    if (!v || v === LANG) return;
+    if (state.dirty && !confirm(L('저장하지 않은 변경 사항이 있습니다. 버리고 언어를 바꿀까요?', 'You have unsaved changes. Discard them and switch language?'))) return;
+    store.set('mdv-lang', v);
+    state.dirty = false;
+    location.reload();
+  };
   $('#calloutSeg').onclick = (e) => { const v = e.target.closest('button')?.dataset.v; if (v) { settings.callout = v; applySettings(true); } };
   $('#optLines').onchange = (e) => { settings.lines = e.target.checked; applySettings(true); };
   $('#optConfirmSave').onchange = (e) => { settings.confirmSave = e.target.checked; applySettings(); };
@@ -1495,8 +1512,8 @@ body.zen .zen-exit:hover { opacity: 1; }
         const out = md.render(src, { nested: true, depth: depth + 1, docId: 'ex' + depth + '-' + idx }); // docId: 예시 안 각주 번호가 본문과 겹치지 않게
         const line = t.map && !depth ? ` data-line="${t.map[0]}"` : '';
         return `<div class="md-example"${line}>` +
-          `<div class="ex-pane ex-src"><div class="ex-label">✏️ 이렇게 쓰면</div><pre><code class="language-markdown">${hl}</code></pre></div>` +
-          `<div class="ex-pane ex-out"><div class="ex-label">👀 이렇게 보입니다</div><div class="ex-body">${out}</div></div></div>\n`;
+          `<div class="ex-pane ex-src"><div class="ex-label">${L('✏️ 이렇게 쓰면', '✏️ Write this')}</div><pre><code class="language-markdown">${hl}</code></pre></div>` +
+          `<div class="ex-pane ex-out"><div class="ex-label">${L('👀 이렇게 보입니다', '👀 Looks like this')}</div><div class="ex-body">${out}</div></div></div>\n`;
       }
       return defaultFence(tokens, idx, options, env, self);
     };
@@ -1591,10 +1608,10 @@ body.zen .zen-exit:hover { opacity: 1; }
      렌더링
      ========================================================= */
   const ALERTS = {
-    note: ['참고', 'blue', 'i'], info: ['정보', 'blue', 'i'], todo: ['할 일', 'blue', 'check'],
-    tip: ['팁', 'green', 'bulb'], important: ['중요', 'purple', 'star'], example: ['예시', 'purple', 'list'],
-    warning: ['주의', 'amber', 'warn'], question: ['질문', 'amber', 'q'], faq: ['FAQ', 'amber', 'q'],
-    caution: ['경고', 'red', 'stop'], danger: ['위험', 'red', 'stop'],
+    note: [L('참고', 'Note'), 'blue', 'i'], info: [L('정보', 'Info'), 'blue', 'i'], todo: [L('할 일', 'To do'), 'blue', 'check'],
+    tip: [L('팁', 'Tip'), 'green', 'bulb'], important: [L('중요', 'Important'), 'purple', 'star'], example: [L('예시', 'Example'), 'purple', 'list'],
+    warning: [L('주의', 'Warning'), 'amber', 'warn'], question: [L('질문', 'Question'), 'amber', 'q'], faq: ['FAQ', 'amber', 'q'],
+    caution: [L('경고', 'Caution'), 'red', 'stop'], danger: [L('위험', 'Danger'), 'red', 'stop'],
   };
   const ICONS = {
     i: '<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/>',
@@ -1633,7 +1650,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     }
     if (!rows.length) return '';
     const body = rows.map(([k, v]) => `<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(v)}</td></tr>`).join('');
-    return `<details class="front-matter" open><summary>문서 정보</summary><table>${body}</table></details>`;
+    return `<details class="front-matter" open><summary>${L('문서 정보', 'Document info')}</summary><table>${body}</table></details>`;
   }
 
   const source = () => el.editor.value;
@@ -1702,8 +1719,8 @@ body.zen .zen-exit:hover { opacity: 1; }
       h.dataset.title = title;
       const tools = document.createElement('span');
       tools.className = 'h-tools';
-      tools.innerHTML = '<button type="button" class="h-anchor" title="이 제목으로 가는 링크 복사">#</button>' +
-        '<button type="button" class="h-fold" title="접기 / 펴기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>';
+      tools.innerHTML = '<button type="button" class="h-anchor" title="' + L('이 제목으로 가는 링크 복사', 'Copy a link to this heading') + '">#</button>' +
+        '<button type="button" class="h-fold" title="' + L('접기 / 펴기', 'Fold / unfold') + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>';
       h.append(tools);
     });
 
@@ -1751,7 +1768,7 @@ body.zen .zen-exit:hover { opacity: 1; }
           const s = document.createElement('span');
           s.className = 'fn-missing';
           s.textContent = m;
-          s.title = `각주 설명이 없습니다. 문서 아무 곳에나 한 줄로 [^${id}]: 설명 을 쓰세요.`;
+          s.title = L(`각주 설명이 없습니다. 문서 아무 곳에나 한 줄로 [^${id}]: 설명 을 쓰세요.`, `This footnote has no text. Add a line like [^${id}]: text anywhere in the document.`);
           frag.append(s);
           last = off + m.length;
           return m;
@@ -1779,7 +1796,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       if (!heading) { a.replaceWith(document.createTextNode(raw)); return; }
       a.classList.add('missing');
       a.dataset.path = '';
-      a.title = '이 문서를 찾지 못했습니다. 폴더 열기로 열면 이동할 수 있어요.';
+      a.title = L('이 문서를 찾지 못했습니다. 폴더 열기로 열면 이동할 수 있어요.', "Couldn't find this document. Open its folder with Open folder to follow the link.");
     });
     // 첨부 ![[그림.png]]
     doc.querySelectorAll('span.wiki-embed').forEach((sp) => {
@@ -1865,7 +1882,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       if (lineAttr) block.dataset.line = lineAttr;
       const head = document.createElement('div');
       head.className = 'code-head';
-      head.innerHTML = `<span class="code-lang"></span><button type="button" class="code-copy" title="복사">${COPY_ICON}</button><button type="button" class="code-expand" title="크게 보기">${EXPAND_ICON}</button>`;
+      head.innerHTML = `<span class="code-lang"></span><button type="button" class="code-copy" title="${L('복사', 'Copy')}">${COPY_ICON}</button><button type="button" class="code-expand" title="${L('크게 보기', 'Expand')}">${EXPAND_ICON}</button>`;
       head.firstChild.textContent = lang || 'code';
       const body = document.createElement('div');
       body.className = 'code-body';
@@ -1906,8 +1923,8 @@ body.zen .zen-exit:hover { opacity: 1; }
     a.href = 'https://www.youtube.com/watch?v=' + id;
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
-    a.title = '유튜브에서 보기';
-    a.innerHTML = `<img src="https://i.ytimg.com/vi/${id}/hqdefault.jpg" alt="유튜브 동영상" loading="lazy"><span>▶</span>`;
+    a.title = L('유튜브에서 보기', 'Watch on YouTube');
+    a.innerHTML = `<img src="https://i.ytimg.com/vi/${id}/hqdefault.jpg" alt="${L('유튜브 동영상', 'YouTube video')}" loading="lazy"><span>▶</span>`;
     return a;
   }
   function mediaNode(src, alt) {
@@ -1931,7 +1948,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     const copy = t.closest('.code-copy');
     if (copy) {
       await copyText(copy.closest('.code-block').querySelector('pre code').textContent);
-      toast('코드를 복사했습니다', 1400);
+      toast(L('코드를 복사했습니다', 'Code copied'), 1400);
       return;
     }
     const expand = t.closest('.code-expand');
@@ -1940,7 +1957,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (anchor) {
       const h = anchor.closest('h1,h2,h3,h4,h5,h6');
       await copyText(`[${h.dataset.title}](#${h.id})`);
-      toast(`링크를 복사했습니다: [${h.dataset.title}](#${h.id})`);
+      toast(L('링크를 복사했습니다: ', 'Link copied: ') + `[${h.dataset.title}](#${h.id})`);
       return;
     }
     const fold = t.closest('.h-fold');
@@ -1960,9 +1977,9 @@ body.zen .zen-exit:hover { opacity: 1; }
     }
     if ('path' in a.dataset) {
       e.preventDefault();
-      if (a.classList.contains('missing')) { toast('이 문서를 찾지 못했습니다. 폴더 열기로 열면 이동할 수 있어요.'); return; }
+      if (a.classList.contains('missing')) { toast(L('이 문서를 찾지 못했습니다. 폴더 열기로 열면 이동할 수 있어요.', "Couldn't find this document. Open its folder with Open folder to follow the link.")); return; }
       const entry = state.files.find((f) => f.path === a.dataset.path);
-      if (!entry) { toast('이 파일은 열려 있지 않습니다. 폴더 열기로 폴더를 열면 링크로 이동할 수 있어요.', 3200); return; }
+      if (!entry) { toast(L('이 파일은 열려 있지 않습니다. 폴더 열기로 폴더를 열면 링크로 이동할 수 있어요.', "This file isn't open. Open its folder with Open folder to follow the link."), 3200); return; }
       const ok = await openEntry(entry);
       const hash = a.dataset.hash || (a.dataset.heading ? slugify(a.dataset.heading) : '');
       if (ok && hash) setTimeout(() => scrollToId(decodeURIComponent(hash)), 50);
@@ -2003,7 +2020,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     document.querySelectorAll('.code-block.expanded').forEach((b) => b.classList.remove('expanded'));
     if (on) block.classList.add('expanded');
     const btn = block.querySelector('.code-expand');
-    if (btn) btn.title = on ? '작게 보기 (Esc)' : '크게 보기';
+    if (btn) btn.title = on ? L('작게 보기 (Esc)', 'Shrink (Esc)') : L('크게 보기', 'Expand');
   }
 
   /* ---------- 문서에서 찾기 ---------- */
@@ -2045,7 +2062,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       frag.append(text.slice(last));
       node.replaceWith(frag);
     }
-    if (find.hits.length) gotoHit(0); else $('#findCount').textContent = '0개';
+    if (find.hits.length) gotoHit(0); else $('#findCount').textContent = L('0개', '0');
   }
   function gotoHit(i) {
     if (!find.hits.length) return;
@@ -2200,23 +2217,25 @@ body.zen .zen-exit:hover { opacity: 1; }
   function describeLocation(e) {
     if (!e) return {};
     const dirOf = (p) => p.replace(/[\\/][^\\/]*$/, '');
-    if (e.builtin) return { icon: '📘', short: 'markcont 안내 문서', note: '앱에 들어 있는 문서입니다. 고친 내용은 새 파일로 저장됩니다.' };
-    if (e.isNew) return { icon: '📝', short: '아직 저장하지 않은 새 문서', note: '저장하면 위치를 정할 수 있습니다.' };
+    if (e.builtin) return { icon: '📘', short: L('markcont 안내 문서', 'markcont built-in document'), note: L('앱에 들어 있는 문서입니다. 고친 내용은 새 파일로 저장됩니다.', 'This document comes with the app. Your edits are saved as a new file.') };
+    if (e.isNew) return { icon: '📝', short: L('아직 저장하지 않은 새 문서', 'New document, not saved yet'), note: L('저장하면 위치를 정할 수 있습니다.', 'You can choose where to put it when you save.') };
     if (e.tauriPath) return { icon: '📁', short: dirOf(e.tauriPath), full: e.tauriPath, reveal: true };
     if (!e.loose) {
       const r = rootOf(e.path);
-      return { icon: '📁', short: e.path, full: e.path, note: r && r.kind === 'handle' ? `'${r.name}' 폴더 안의 파일입니다. 그 폴더가 컴퓨터의 어디에 있는지는 브라우저가 알려주지 않습니다.` : '' };
+      return { icon: '📁', short: e.path, full: e.path, note: r && r.kind === 'handle' ? L(`'${r.name}' 폴더 안의 파일입니다. 그 폴더가 컴퓨터의 어디에 있는지는 브라우저가 알려주지 않습니다.`, `A file in the '${r.name}' folder. The browser doesn't tell where that folder is on your computer.`) : '' };
     }
-    if (e.handle) return { icon: '📄', short: e.name, note: 'Chrome · Edge는 보안 때문에 파일의 전체 위치를 알려주지 않습니다. 그 파일이 든 폴더를 "폴더 열기"로 열면 트리에서 위치를 볼 수 있고, PC 프로그램에서는 전체 경로가 보입니다.' };
-    if (e.fromRecent) return { icon: '🕘', short: '최근 문서 기록', note: '마지막으로 열었을 때 기록해 둔 내용입니다. 원래 파일과 연결되어 있지 않아서, 저장하면 새 파일로 저장됩니다.' };
-    if (e.file) return { icon: '📄', short: e.name + ' (복사본)', note: '원래 파일 위치를 알 수 없는 방식으로 열렸습니다. 저장하면 새 파일로 저장됩니다. "파일 열기" 단추로 다시 열면 원래 파일에 저장할 수 있습니다.' };
+    if (e.handle) return { icon: '📄', short: e.name, note: L('Chrome · Edge는 보안 때문에 파일의 전체 위치를 알려주지 않습니다. 그 파일이 든 폴더를 "폴더 열기"로 열면 트리에서 위치를 볼 수 있고, PC 프로그램에서는 전체 경로가 보입니다.', 'For security, Chrome and Edge don\'t reveal a file\'s full location. Open its folder with "Open folder" to see where it sits in the tree; the PC app shows the full path.') };
+    if (e.fromRecent) return { icon: '🕘', short: L('최근 문서 기록', 'Recent document copy'), note: L('마지막으로 열었을 때 기록해 둔 내용입니다. 원래 파일과 연결되어 있지 않아서, 저장하면 새 파일로 저장됩니다.', 'The content saved when you last opened it. It isn\'t linked to the original file, so saving creates a new file.') };
+    if (e.file) return { icon: '📄', short: e.name + L(' (복사본)', ' (copy)'), note: L('원래 파일 위치를 알 수 없는 방식으로 열렸습니다. 저장하면 새 파일로 저장됩니다. "파일 열기" 단추로 다시 열면 원래 파일에 저장할 수 있습니다.', 'Opened in a way that hides the original location, so saving creates a new file. Reopen it with "Open file" to save to the original.') };
     return { icon: '📄', short: e.path };
   }
   function fmtModified(t) {
     if (!t) return '';
     const d = new Date(t), now = new Date();
     const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    return d.toDateString() === now.toDateString() ? `오늘 ${hm}` : `${d.getFullYear() !== now.getFullYear() ? d.getFullYear() + '년 ' : ''}${d.getMonth() + 1}월 ${d.getDate()}일 ${hm}`;
+    if (d.toDateString() === now.toDateString()) return L(`오늘 ${hm}`, `Today ${hm}`);
+    if (LANG === 'en') return d.toLocaleDateString('en', { month: 'short', day: 'numeric', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined }) + ' ' + hm;
+    return `${d.getFullYear() !== now.getFullYear() ? d.getFullYear() + '년 ' : ''}${d.getMonth() + 1}월 ${d.getDate()}일 ${hm}`;
   }
   function updateMeta(src) {
     const chars = src.replace(/data:[\w/+.-]+;base64,[A-Za-z0-9+/=]+/g, '').replace(/\s/g, '').length;
@@ -2230,20 +2249,20 @@ body.zen .zen-exit:hover { opacity: 1; }
     line.title = loc.full || loc.short || cur.path;
     if (loc.full) {
       const b = document.createElement('button');
-      b.className = 'meta-btn'; b.type = 'button'; b.textContent = '경로 복사';
-      b.onclick = () => copyText(loc.full).then(() => toast('경로를 복사했습니다: ' + loc.full));
+      b.className = 'meta-btn'; b.type = 'button'; b.textContent = L('경로 복사', 'Copy path');
+      b.onclick = () => copyText(loc.full).then(() => toast(L('경로를 복사했습니다: ', 'Path copied: ') + loc.full));
       line.append(b);
     }
     if (loc.reveal && window.__TAURI__) {
       const b = document.createElement('button');
-      b.className = 'meta-btn'; b.type = 'button'; b.textContent = '폴더에서 보기';
-      b.onclick = () => window.__TAURI__.core.invoke('reveal_in_folder', { path: cur.tauriPath }).catch((e) => toast('폴더를 열지 못했습니다: ' + e));
+      b.className = 'meta-btn'; b.type = 'button'; b.textContent = L('폴더에서 보기', 'Show in folder');
+      b.onclick = () => window.__TAURI__.core.invoke('reveal_in_folder', { path: cur.tauriPath }).catch((e) => toast(L('폴더를 열지 못했습니다: ', "Couldn't open the folder: ") + e));
       line.append(b);
     }
     el.docMeta.append(line);
     const facts = document.createElement('div');
     facts.className = 'meta-facts';
-    for (const t of [cur.lastModified ? '마지막 수정 ' + fmtModified(cur.lastModified) : '', `${chars.toLocaleString()}자`, `약 ${minutes}분 분량`].filter(Boolean)) {
+    for (const t of [cur.lastModified ? L('마지막 수정 ', 'Modified ') + fmtModified(cur.lastModified) : '', L(`${chars.toLocaleString()}자`, `${chars.toLocaleString()} chars`), L(`약 ${minutes}분 분량`, `~${minutes} min read`)].filter(Boolean)) {
       const sp = document.createElement('span');
       sp.textContent = t;
       facts.append(sp);
@@ -2265,7 +2284,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (state.dirty) {
       const d = document.createElement('span');
       d.className = 'dirty';
-      d.textContent = ' • 저장 안 됨';
+      d.textContent = L(' • 저장 안 됨', ' • Unsaved');
       el.docTitle.append(d);
     }
     document.title = (state.dirty ? '• ' : '') + state.current.name + ' — markcont';
@@ -2348,8 +2367,8 @@ body.zen .zen-exit:hover { opacity: 1; }
       if (i >= 0) label = escapeHtml(name.slice(0, i)) + '<mark>' + escapeHtml(name.slice(i, i + q.length)) + '</mark>' + escapeHtml(name.slice(i + q.length));
     }
     row.innerHTML = (kind === 'dir' ? ICON.chev : '<span style="width:14px;flex:none"></span>') + (kind === 'dir' ? ICON.dir : ICON.md) +
-      `<span class="nm">${label}</span>` + (readonly ? '<span class="cnt" title="읽기 전용 (Safari · Firefox 에서 연 폴더)">읽기 전용</span>' : '') + (kind === 'dir' ? `<span class="cnt">${count}</span>` : '') +
-      `<button class="more" type="button" aria-label="더 보기">${ICON.more}</button>`;
+      `<span class="nm">${label}</span>` + (readonly ? `<span class="cnt" title="${L('읽기 전용 (Safari · Firefox 에서 연 폴더)', 'Read-only (folder opened in Safari · Firefox)')}">${L('읽기 전용', 'Read-only')}</span>` : '') + (kind === 'dir' ? `<span class="cnt">${count}</span>` : '') +
+      `<button class="more" type="button" aria-label="${L('더 보기', 'More')}">${ICON.more}</button>`;
     row.title = path || name;
     if (entry) row._entry = entry;
     return row;
@@ -2365,7 +2384,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     $('#sideEmpty').hidden = total > 0 || hasRoot;
     $('#sideHead').hidden = !hasRoot && !total;
     $('#sideSearch').hidden = total < 6;
-    $('#rootName').textContent = !hasRoot ? '열린 파일' : state.roots.length === 1 ? state.roots[0].name : `작업 공간 · 폴더 ${state.roots.length}개`;
+    $('#rootName').textContent = !hasRoot ? L('열린 파일', 'Open files') : state.roots.length === 1 ? state.roots[0].name : L(`작업 공간 · 폴더 ${state.roots.length}개`, `Workspace · ${state.roots.length} folders`);
     const canWrite = state.roots.some(writable);
     $('#sNewFile').hidden = !canWrite;
     $('#sRefresh').hidden = !canWrite;
@@ -2394,7 +2413,7 @@ body.zen .zen-exit:hover { opacity: 1; }
               const p = document.createElement('div');
               p.className = 'tree-empty';
               p.style.paddingLeft = '34px';
-              p.textContent = '마크다운 파일이 없습니다.';
+              p.textContent = L('마크다운 파일이 없습니다.', 'No markdown files.');
               frag.append(p);
             }
           }
@@ -2412,7 +2431,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       if (hasRoot) {
         const g = document.createElement('div');
         g.className = 'tree-group';
-        g.textContent = '따로 연 파일';
+        g.textContent = L('따로 연 파일', 'Separately opened files');
         frag.append(g);
       }
       for (const f of looseShown) {
@@ -2420,7 +2439,7 @@ body.zen .zen-exit:hover { opacity: 1; }
         const l = describeLocation(f);
         const sub = document.createElement('small');
         sub.className = 'row-sub';
-        sub.textContent = f.tauriPath ? l.short : l.short === f.name ? '위치는 브라우저가 알려주지 않음' : l.short;
+        sub.textContent = f.tauriPath ? l.short : l.short === f.name ? L('위치는 브라우저가 알려주지 않음', 'Location hidden by the browser') : l.short;
         row.querySelector('.nm').append(sub);
         row.title = l.full || [f.name, l.note].filter(Boolean).join('\n');
         frag.append(row);
@@ -2430,7 +2449,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (q && !shown) {
       const p = document.createElement('div');
       p.className = 'tree-empty';
-      p.textContent = `"${side.filter}"이(가) 들어간 파일이 없습니다.`;
+      p.textContent = L(`"${side.filter}"이(가) 들어간 파일이 없습니다.`, `No files containing "${side.filter}".`);
       frag.append(p);
     }
     box.append(frag);
@@ -2498,7 +2517,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   function fmtDate(t) {
     const d = new Date(t), now = new Date();
     if (d.toDateString() === now.toDateString()) return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    return `${d.getMonth() + 1}월 ${d.getDate()}일`;
+    return LANG === 'en' ? d.toLocaleDateString('en', { month: 'short', day: 'numeric' }) : `${d.getMonth() + 1}월 ${d.getDate()}일`;
   }
   async function renderSideEmpty() {
     if ($('#sideEmpty').hidden) return;
@@ -2506,7 +2525,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     const folders = await recentFolders();
     rf.innerHTML = '';
     if (folders.length) {
-      rf.innerHTML = '<h3>최근 폴더</h3>';
+      rf.innerHTML = '<h3>' + L('최근 폴더', 'Recent folders') + '</h3>';
       for (const f of folders) {
         const row = treeRow({ kind: 'dir', name: f.name, path: '', depth: 0, count: fmtDate(f.time) });
         row.classList.add('recent');
@@ -2522,7 +2541,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     const files = store.json('mdv-recent', []);
     rs.innerHTML = '';
     if (files.length) {
-      rs.innerHTML = '<h3>최근 파일</h3>';
+      rs.innerHTML = '<h3>' + L('최근 파일', 'Recent files') + '</h3>';
       for (const r of files.slice(0, 5)) {
         const row = treeRow({ kind: 'file', name: baseName(r.name), path: r.name, depth: 0 });
         row.querySelector('.more')?.remove();
@@ -2589,17 +2608,19 @@ body.zen .zen-exit:hover { opacity: 1; }
     try {
       if (f.handle) {
         const perm = await f.handle.requestPermission({ mode: 'read' });
-        if (perm !== 'granted') { toast('폴더를 읽을 권한이 없습니다'); return; }
+        if (perm !== 'granted') { toast(L('폴더를 읽을 권한이 없습니다', 'No permission to read the folder')); return; }
         await openFolder({ kind: 'handle', handle: f.handle, name: f.handle.name });
       } else if (f.path) {
         await openFolder({ kind: 'tauri', path: f.path, name: f.name });
       }
-    } catch { toast('이 폴더를 다시 열지 못했습니다. 폴더 열기로 다시 골라 주세요.', 3500); }
+    } catch { toast(L('이 폴더를 다시 열지 못했습니다. 폴더 열기로 다시 골라 주세요.', "Couldn't reopen this folder. Pick it again with Open folder."), 3500); }
   }
 
   /* ---------- 폴더 읽기 · 다시 읽기 ---------- */
   const isTauri = () => !!(window.__TAURI__ && window.__TAURI__.core);
   const tinvoke = (cmd, args) => window.__TAURI__.core.invoke(cmd, args);
+  // PC 프로그램: 파일 선택 창 제목 · 오류 문구도 화면 언어로
+  if (isTauri()) tinvoke('set_lang', { lang: LANG }).catch(() => {});
   // 여러 폴더(작업 공간): 모든 경로는 "폴더이름/안쪽/경로" 처럼 맨 앞이 그 폴더의 이름(key)
   const rootOf = (path) => state.roots.find((r) => path === r.key || path.startsWith(r.key + '/')) || null;
   const relOf = (path) => { const r = rootOf(path); return !r || path === r.key ? '' : path.slice(r.key.length + 1); };
@@ -2658,8 +2679,8 @@ body.zen .zen-exit:hover { opacity: 1; }
     setSideTab('files');
     saveWorkspace();
     toast(state.roots.length > 1
-      ? `'${root.name}' 폴더를 더했습니다 (마크다운 ${scan.files.length}개) · 지금 폴더 ${state.roots.length}개`
-      : (scan.files.length ? `마크다운 파일 ${scan.files.length}개를 찾았습니다` : '이 폴더에는 마크다운 파일이 없습니다'), 3200);
+      ? L(`'${root.name}' 폴더를 더했습니다 (마크다운 ${scan.files.length}개) · 지금 폴더 ${state.roots.length}개`, `Added folder '${root.name}' (${scan.files.length} markdown file${scan.files.length === 1 ? '' : 's'}) · ${state.roots.length} folders open`)
+      : (scan.files.length ? L(`마크다운 파일 ${scan.files.length}개를 찾았습니다`, `Found ${scan.files.length} markdown file${scan.files.length === 1 ? '' : 's'}`) : L('이 폴더에는 마크다운 파일이 없습니다', 'No markdown files in this folder')), 3200);
     const mine = scan.files;
     const first = mine.find((e) => /\/readme\.md$/i.test(e.path) && e.path.split('/').length === 2) ||
       mine.find((e) => e.path.split('/').length === 2) || mine[0];
@@ -2672,14 +2693,14 @@ body.zen .zen-exit:hover { opacity: 1; }
     for (const r of state.roots) {
       if (await sameFolder(r, root)) {
         side.collapsed.delete(r.key); saveCollapsed(); renderFileList();
-        if (!quiet) toast(`'${r.name}' 폴더는 이미 열려 있습니다`);
+        if (!quiet) toast(L(`'${r.name}' 폴더는 이미 열려 있습니다`, `Folder '${r.name}' is already open`));
         return;
       }
     }
-    if (!quiet) toast('폴더를 읽는 중…', 8000);
+    if (!quiet) toast(L('폴더를 읽는 중…', 'Reading folder…'), 8000);
     root.key = uniqueKey(root.name);
     let scan;
-    try { scan = await scanFolder(root); } catch (e) { toast('폴더를 읽지 못했습니다: ' + (e.message || e), 4000); return; }
+    try { scan = await scanFolder(root); } catch (e) { toast(L('폴더를 읽지 못했습니다: ', "Couldn't read the folder: ") + (e.message || e), 4000); return; }
     rememberFolder(root);
     await addRoot(root, scan);
   }
@@ -2689,7 +2710,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (!root) return;
     const inside = (p) => p === key || p.startsWith(key + '/');
     const curInside = state.current && !state.current.loose && inside(state.current.path);
-    if (curInside && state.dirty && !confirm('저장하지 않은 변경 사항이 있습니다. 버리고 폴더를 닫을까요?')) return;
+    if (curInside && state.dirty && !confirm(L('저장하지 않은 변경 사항이 있습니다. 버리고 폴더를 닫을까요?', 'You have unsaved changes. Discard them and close the folder?'))) return;
     state.roots = state.roots.filter((r) => r !== root);
     state.files = state.files.filter((f) => f.loose || !inside(f.path));
     for (const k of [...state.assets.keys()]) if (inside(k)) { const u = state.assetUrls.get(k); if (u) URL.revokeObjectURL(u); state.assets.delete(k); state.assetUrls.delete(k); }
@@ -2704,7 +2725,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       if (next) await openEntry(next); else { state.current = null; showHome(); }
     }
     renderFileList();
-    toast(`'${root.name}' 폴더를 닫았습니다 (파일은 그대로 있습니다)`);
+    toast(L(`'${root.name}' 폴더를 닫았습니다 (파일은 그대로 있습니다)`, `Closed folder '${root.name}' (files are untouched)`));
   }
   // PC 프로그램: 다음에 켤 때 같은 폴더들을 다시 열도록 기억
   function saveWorkspace() {
@@ -2734,7 +2755,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     state.dirs = new Set([...state.dirs].filter((d) => !inside(d)).concat([...scan.dirs]));
     for (const d of [...state.extraDirs]) if (inside(d) && !scan.dirs.has(d)) state.extraDirs.delete(d);
     if (state.current && !state.current.loose && inside(state.current.path) && !state.files.includes(state.current)) {
-      toast('보고 있던 파일이 폴더에서 사라졌습니다', 3500);
+      toast(L('보고 있던 파일이 폴더에서 사라졌습니다', 'The file you were viewing is gone from the folder'), 3500);
     }
     return true;
   }
@@ -2747,7 +2768,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     try { for (const r of targets) { try { if (await refreshRoot(r)) changed = true; } catch {} } }
     finally { refreshing = false; }
     if (changed) renderFileList();
-    if (!quiet) toast(changed ? '폴더를 다시 읽었습니다' : '바뀐 것이 없습니다');
+    if (!quiet) toast(changed ? L('폴더를 다시 읽었습니다', 'Folder reloaded') : L('바뀐 것이 없습니다', 'Nothing changed'));
     return changed;
   }
   $('#sRefresh').onclick = () => refreshFolder();
@@ -2779,19 +2800,19 @@ body.zen .zen-exit:hover { opacity: 1; }
     const items = [];
     const add = (id, label, icon, opts = {}) => items.push({ id, label, icon, ...opts });
     if (kind === 'empty') {
-      add('addRoot', state.roots.length ? '폴더 더하기' : '폴더 열기', 'newDir');
-      if (state.roots.length > 1) add('collapseAll', '모든 폴더 접기', 'open');
+      add('addRoot', state.roots.length ? L('폴더 더하기', 'Add folder') : L('폴더 열기', 'Open folder'), 'newDir');
+      if (state.roots.length > 1) add('collapseAll', L('모든 폴더 접기', 'Collapse all folders'), 'open');
     }
-    if (kind === 'file') add('open', '열기', 'open');
+    if (kind === 'file') add('open', L('열기', 'Open'), 'open');
     if (canWrite && !isLoose) {
-      add('newFile', '새 문서', 'newFile');
-      add('newDir', '새 폴더', 'newDir');
-      if (kind !== 'empty' && !isRootRow) { add('sep'); add('rename', '이름 바꾸기', 'rename', { kbd: 'F2' }); }
+      add('newFile', L('새 문서', 'New document'), 'newFile');
+      add('newDir', L('새 폴더', 'New folder'), 'newDir');
+      if (kind !== 'empty' && !isRootRow) { add('sep'); add('rename', L('이름 바꾸기', 'Rename'), 'rename', { kbd: 'F2' }); }
     }
-    if (isRootRow && canWrite) add('refresh', '다시 읽기', 'open');
-    if (kind !== 'empty') add('copy', '경로 복사', 'copy');
-    if (canWrite && !isLoose && kind !== 'empty' && !isRootRow) { add('sep'); add('delete', isTauri() ? '휴지통으로 보내기' : '삭제', 'del', { danger: true, kbd: 'Del' }); }
-    if (isRootRow) { add('sep'); add('closeRoot', '이 폴더 닫기 (파일은 그대로)', 'del'); }
+    if (isRootRow && canWrite) add('refresh', L('다시 읽기', 'Reload'), 'open');
+    if (kind !== 'empty') add('copy', L('경로 복사', 'Copy path'), 'copy');
+    if (canWrite && !isLoose && kind !== 'empty' && !isRootRow) { add('sep'); add('delete', isTauri() ? L('휴지통으로 보내기', 'Move to Trash') : L('삭제', 'Delete'), 'del', { danger: true, kbd: 'Del' }); }
+    if (isRootRow) { add('sep'); add('closeRoot', L('이 폴더 닫기 (파일은 그대로)', 'Close this folder (files stay)'), 'del'); }
     m.innerHTML = '';
     for (const it of items) {
       if (it.id === 'sep') { m.append(document.createElement('hr')); continue; }
@@ -2805,7 +2826,7 @@ body.zen .zen-exit:hover { opacity: 1; }
         else if (it.id === 'newDir') fsNewFolder(dirForNew);
         else if (it.id === 'rename') fsRename(kind, path);
         else if (it.id === 'delete') fsDelete(kind, path);
-        else if (it.id === 'copy') { const full = root && root.kind === 'tauri' ? absPath(path) : path; copyText(full).then(() => toast('경로를 복사했습니다: ' + full)); }
+        else if (it.id === 'copy') { const full = root && root.kind === 'tauri' ? absPath(path) : path; copyText(full).then(() => toast(L('경로를 복사했습니다: ', 'Path copied: ') + full)); }
         else if (it.id === 'addRoot') pickFolder();
         else if (it.id === 'collapseAll') { state.roots.forEach((r) => side.collapsed.add(r.key)); saveCollapsed(); renderFileList(); }
         else if (it.id === 'refresh') refreshFolder({ only: root.key });
@@ -2816,7 +2837,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (!canWrite && root && !isLoose) {
       const note = document.createElement('div');
       note.className = 'ctx-note';
-      note.textContent = '새로 만들기 · 이름 바꾸기 · 삭제는 PC 프로그램이나 Chrome · Edge에서 폴더 열기로 연 폴더에서만 됩니다.';
+      note.textContent = L('새로 만들기 · 이름 바꾸기 · 삭제는 PC 프로그램이나 Chrome · Edge에서 폴더 열기로 연 폴더에서만 됩니다.', 'Create, rename and delete work only in the PC app, or in Chrome · Edge for folders opened with Open folder.');
       m.append(note);
     }
     if (!m.childElementCount) return;
@@ -2837,13 +2858,13 @@ body.zen .zen-exit:hover { opacity: 1; }
     const v = prompt(title, def);
     if (v == null) return null;
     const name = v.trim();
-    if (!name || name === '.' || name === '..' || BAD_NAME.test(name)) { toast('이름에 \\ / : * ? " < > | 는 쓸 수 없습니다', 3500); return null; }
+    if (!name || name === '.' || name === '..' || BAD_NAME.test(name)) { toast(L('이름에 \\ / : * ? " < > | 는 쓸 수 없습니다', 'Names can\'t contain \\ / : * ? " < > |'), 3500); return null; }
     return name;
   }
   async function ensureWrite(root) {
     if (root.kind !== 'handle') return true;
     const p = await root.handle.requestPermission({ mode: 'readwrite' });
-    if (p !== 'granted') { toast('폴더를 고칠 권한을 받지 못했습니다'); return false; }
+    if (p !== 'granted') { toast(L('폴더를 고칠 권한을 받지 못했습니다', "Didn't get permission to change the folder")); return false; }
     return true;
   }
   async function dirHandleFor(path) {
@@ -2861,7 +2882,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   function openDirInTree(dir) { let p = dir, ch = false; while (p) { if (side.collapsed.delete(p)) ch = true; p = parentOf(p); } if (ch) saveCollapsed(); }
 
   async function fsNewFile(dir) {
-    let name = askName('새 문서 이름', '새 문서.md');
+    let name = askName(L('새 문서 이름', 'New document name'), L('새 문서.md', 'Untitled.md'));
     if (!name) return;
     if (!/\.[A-Za-z0-9]+$/.test(name)) name += '.md';
     const rel = joinRel(dir, name);
@@ -2870,50 +2891,50 @@ body.zen .zen-exit:hover { opacity: 1; }
     const text = `# ${name.replace(MD_EXT, '')}\n\n`;
     try {
       if (!(await ensureWrite(root))) return;
-      if (await exists(dir, name)) { toast('같은 이름이 이미 있습니다'); return; }
+      if (await exists(dir, name)) { toast(L('같은 이름이 이미 있습니다', 'That name is already taken')); return; }
       if (root.kind === 'tauri') await tinvoke('create_file', { path: absPath(rel), text });
       else {
         const fh = await (await dirHandleFor(dir)).getFileHandle(name, { create: true });
         const w = await fh.createWritable(); await w.write(text); await w.close();
       }
-    } catch (e) { toast('새 문서를 만들지 못했습니다: ' + (e.message || e), 4000); return; }
+    } catch (e) { toast(L('새 문서를 만들지 못했습니다: ', "Couldn't create the document: ") + (e.message || e), 4000); return; }
     openDirInTree(dir);
     await refreshFolder({ quiet: true, only: root.key });
     const entry = state.files.find((f) => f.path === rel);
     if (entry && await openEntry(entry)) setEditing(true);
-    toast('새 문서를 만들었습니다: ' + rel);
+    toast(L('새 문서를 만들었습니다: ', 'Created document: ') + rel);
   }
   async function fsNewFolder(dir) {
-    const name = askName('새 폴더 이름', '새 폴더');
+    const name = askName(L('새 폴더 이름', 'New folder name'), L('새 폴더', 'New folder'));
     if (!name) return;
     const rel = joinRel(dir, name);
     const root = rootOf(dir);
     try {
       if (!(await ensureWrite(root))) return;
-      if (await exists(dir, name)) { toast('같은 이름이 이미 있습니다'); return; }
+      if (await exists(dir, name)) { toast(L('같은 이름이 이미 있습니다', 'That name is already taken')); return; }
       if (root.kind === 'tauri') await tinvoke('create_dir', { path: absPath(rel) });
       else await (await dirHandleFor(dir)).getDirectoryHandle(name, { create: true });
-    } catch (e) { toast('새 폴더를 만들지 못했습니다: ' + (e.message || e), 4000); return; }
+    } catch (e) { toast(L('새 폴더를 만들지 못했습니다: ', "Couldn't create the folder: ") + (e.message || e), 4000); return; }
     state.extraDirs.add(rel);
     openDirInTree(rel);
     await refreshFolder({ quiet: true, only: root.key });
     state.extraDirs.add(rel);
     renderFileList();
-    toast('새 폴더를 만들었습니다: ' + rel);
+    toast(L('새 폴더를 만들었습니다: ', 'Created folder: ') + rel);
   }
   const under = (p, base) => p === base || p.startsWith(base + '/');
   async function fsRename(kind, path) {
     const root = path && rootOf(path);
     if (!writable(root) || path === root.key) return; // 맨 위 폴더 이름은 바꾸지 않음
     const oldName = baseName(path);
-    if (state.dirty && state.current && under(state.current.path, path)) { toast('먼저 지금 문서를 저장해 주세요'); return; }
-    const name = askName(kind === 'dir' ? '새 폴더 이름' : '새 파일 이름', oldName);
+    if (state.dirty && state.current && under(state.current.path, path)) { toast(L('먼저 지금 문서를 저장해 주세요', 'Save the current document first')); return; }
+    const name = askName(kind === 'dir' ? L('새 폴더 이름', 'New folder name') : L('새 파일 이름', 'New file name'), oldName);
     if (!name || name === oldName) return;
     const dir = parentOf(path), rel = joinRel(dir, name);
     const curPath = state.current && !state.current.loose ? state.current.path : null;
     try {
       if (!(await ensureWrite(root))) return;
-      if (name.toLowerCase() !== oldName.toLowerCase() && await exists(dir, name)) { toast('같은 이름이 이미 있습니다'); return; }
+      if (name.toLowerCase() !== oldName.toLowerCase() && await exists(dir, name)) { toast(L('같은 이름이 이미 있습니다', 'That name is already taken')); return; }
       if (root.kind === 'tauri') await tinvoke('rename_path', { from: absPath(path), to: absPath(rel) });
       else if (kind === 'file') {
         const entry = state.files.find((f) => f.path === path);
@@ -2928,10 +2949,10 @@ body.zen .zen-exit:hover { opacity: 1; }
         }
       } else {
         const dh = await dirHandleFor(path);
-        if (!dh.move) { toast('이 브라우저에서는 폴더 이름을 바꿀 수 없습니다. PC 프로그램을 써 주세요.', 4000); return; }
+        if (!dh.move) { toast(L('이 브라우저에서는 폴더 이름을 바꿀 수 없습니다. PC 프로그램을 써 주세요.', "This browser can't rename folders. Please use the PC app."), 4000); return; }
         await dh.move(name);
       }
-    } catch (e) { toast('이름을 바꾸지 못했습니다: ' + (e.message || e), 4000); return; }
+    } catch (e) { toast(L('이름을 바꾸지 못했습니다: ', "Couldn't rename: ") + (e.message || e), 4000); return; }
     // 접힘 상태와 보고 있던 파일 경로를 새 이름으로 옮김
     const moveP = (p) => (under(p, path) ? rel + p.slice(path.length) : p);
     side.collapsed = new Set([...side.collapsed].map(moveP)); saveCollapsed();
@@ -2943,23 +2964,23 @@ body.zen .zen-exit:hover { opacity: 1; }
       if (now) { state.current = now; updateTitle(); updateMeta(source()); }
     }
     renderFileList();
-    toast('이름을 바꿨습니다: ' + rel);
+    toast(L('이름을 바꿨습니다: ', 'Renamed: ') + rel);
   }
   async function fsDelete(kind, path) {
     const root = path && rootOf(path);
     if (!writable(root) || path === root.key) return; // 맨 위 폴더는 '닫기'로만
     const name = baseName(path);
     const n = kind === 'dir' ? state.files.filter((f) => !f.loose && under(f.path, path)).length : 0;
-    const what = kind === 'dir' ? `'${name}' 폴더${n ? `(마크다운 파일 ${n}개 포함)` : ''}` : `'${name}'`;
+    const what = kind === 'dir' ? L(`'${name}' 폴더${n ? `(마크다운 파일 ${n}개 포함)` : ''}`, `the folder '${name}'${n ? ` (${n} markdown file${n === 1 ? '' : 's'})` : ''}`) : `'${name}'`;
     const msg = isTauri()
-      ? `${what}를 휴지통으로 보낼까요?\n휴지통에서 되살릴 수 있습니다.`
-      : `${what}를 지울까요?\n\n주의: 브라우저에서 지운 파일은 휴지통으로 가지 않고 완전히 지워집니다. 되살릴 수 없습니다.`;
+      ? L(`${what}를 휴지통으로 보낼까요?\n휴지통에서 되살릴 수 있습니다.`, `Move ${what} to the Trash?\nYou can restore it from the Trash.`)
+      : L(`${what}를 지울까요?\n\n주의: 브라우저에서 지운 파일은 휴지통으로 가지 않고 완전히 지워집니다. 되살릴 수 없습니다.`, `Delete ${what}?\n\nWarning: files deleted in the browser don't go to the Trash. They can't be restored.`);
     if (!confirm(msg)) return;
     try {
       if (!(await ensureWrite(root))) return;
       if (root.kind === 'tauri') await tinvoke('delete_path', { path: absPath(path) });
       else await (await dirHandleFor(parentOf(path))).removeEntry(name, { recursive: kind === 'dir' });
-    } catch (e) { toast('지우지 못했습니다: ' + (e.message || e), 4000); return; }
+    } catch (e) { toast(L('지우지 못했습니다: ', "Couldn't delete: ") + (e.message || e), 4000); return; }
     const wasCurrent = state.current && !state.current.loose && under(state.current.path, path);
     for (const d of [...state.extraDirs]) if (under(d, path)) state.extraDirs.delete(d);
     state.files = state.files.filter((f) => f.loose || !under(f.path, path));
@@ -2970,7 +2991,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     }
     await refreshFolder({ quiet: true, only: root.key });
     renderFileList();
-    toast(isTauri() ? '휴지통으로 보냈습니다: ' + name : '지웠습니다: ' + name);
+    toast(isTauri() ? L('휴지통으로 보냈습니다: ', 'Moved to Trash: ') + name : L('지웠습니다: ', 'Deleted: ') + name);
   }
 
   /* ---------- 사이드바 폭 조절 · 접기 ---------- */
@@ -3018,12 +3039,12 @@ body.zen .zen-exit:hover { opacity: 1; }
     return null;
   }
   async function addFiles(entries, replace) {
-    if (!entries.length) { toast('마크다운 파일(.md)을 찾지 못했습니다'); return; }
+    if (!entries.length) { toast(L('마크다운 파일(.md)을 찾지 못했습니다', 'No markdown (.md) files found')); return; }
     if (!replace && state.roots.length) {
       const kept = [];
       let hit = null;
       for (const e of entries) { const w = await inWorkspace(e); if (w) hit = hit || w; else kept.push(e); }
-      if (hit && !kept.length) { toast('열어 둔 폴더 안의 파일이라 그 폴더에서 엽니다'); openEntry(hit); return; }
+      if (hit && !kept.length) { toast(L('열어 둔 폴더 안의 파일이라 그 폴더에서 엽니다', 'This file is in an open folder, so it opens there')); openEntry(hit); return; }
       entries = kept.length ? kept : entries;
     }
     if (replace) { state.files = []; state.hist = []; state.histPos = -1; }
@@ -3038,7 +3059,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   }
 
   async function openEntry(entry, { fromHistory = false } = {}) {
-    if (state.dirty && entry !== state.current && !confirm('저장하지 않은 변경 사항이 있습니다. 버리고 다른 파일을 열까요?')) return false;
+    if (state.dirty && entry !== state.current && !confirm(L('저장하지 않은 변경 사항이 있습니다. 버리고 다른 파일을 열까요?', 'You have unsaved changes. Discard them and open another file?'))) return false;
     if (entry.text == null) {
       try {
         if (entry.tauriPath && !entry.file && !entry.handle) {
@@ -3051,13 +3072,13 @@ body.zen .zen-exit:hover { opacity: 1; }
           entry.lastModified = f.lastModified;
         }
       } catch {
-        toast('파일을 읽지 못했습니다');
+        toast(L('파일을 읽지 못했습니다', "Couldn't read the file"));
         return false;
       }
     }
     state.current = entry;
     state.dirty = false;
-    if (!entry.history) entry.history = [{ t: Date.now(), text: entry.text, label: '열었을 때', saved: true }];
+    if (!entry.history) entry.history = [{ t: Date.now(), text: entry.text, label: L('열었을 때', 'Opened'), saved: true }];
     el.editor.value = entry.text;
     el.welcome.hidden = true;
     el.workspace.hidden = false;
@@ -3106,15 +3127,15 @@ body.zen .zen-exit:hover { opacity: 1; }
     box.hidden = !list.length;
     if (!list.length) return;
     const h = document.createElement('h2');
-    h.textContent = '최근 문서';
+    h.textContent = L('최근 문서', 'Recent documents');
     box.append(h);
     for (const r of list) {
       const b = document.createElement('button');
       const d = new Date(r.time);
       b.innerHTML = '<span></span><span></span>';
       b.firstChild.textContent = r.name;
-      b.lastChild.textContent = `${d.getMonth() + 1}월 ${d.getDate()}일 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-      b.title = '마지막으로 열었을 때 저장해 둔 내용을 보여줍니다';
+      b.lastChild.textContent = (LANG === 'en' ? d.toLocaleDateString('en', { month: 'short', day: 'numeric' }) : `${d.getMonth() + 1}월 ${d.getDate()}일`) + ` ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      b.title = L('마지막으로 열었을 때 저장해 둔 내용을 보여줍니다', 'Shows the content saved when you last opened it');
       b.onclick = () => {
         let entry = state.files.find((f) => f.path === r.name);
         if (!entry && r.tauriPath && window.__TAURI__) { openTauriPaths([r.tauriPath]); return; }
@@ -3140,7 +3161,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       try {
         const handles = await showOpenFilePicker({
           multiple: true,
-          types: [{ description: '마크다운', accept: { 'text/plain': ['.md', '.markdown', '.mdown', '.mkd', '.txt'] } }],
+          types: [{ description: L('마크다운', 'Markdown'), accept: { 'text/plain': ['.md', '.markdown', '.mdown', '.mkd', '.txt'] } }],
         });
         addFiles(handles.map((h) => ({ name: h.name, path: h.name, handle: h, text: null })), false);
         return;
@@ -3162,7 +3183,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       try {
         const path = await tinvoke('pick_folder');
         if (path) await openFolder({ kind: 'tauri', path, name: path.split(/[\\/]/).filter(Boolean).pop() || path });
-      } catch (e) { toast('폴더 선택 창을 열지 못했습니다: ' + e, 4000); }
+      } catch (e) { toast(L('폴더 선택 창을 열지 못했습니다: ', "Couldn't open the folder picker: ") + e, 4000); }
       return;
     }
     if (window.showDirectoryPicker) {
@@ -3204,13 +3225,14 @@ body.zen .zen-exit:hover { opacity: 1; }
       ? parentOf(state.current.path) : (state.roots.find(writable) || {}).key;
     if (target) { fsNewFile(target); return; }
     let n = 1;
-    while (state.files.some((f) => f.path === (n === 1 ? '새 문서.md' : `새 문서 ${n}.md`))) n++;
-    const name = n === 1 ? '새 문서.md' : `새 문서 ${n}.md`;
+    const base = L('새 문서', 'Untitled');
+    while (state.files.some((f) => f.path === (n === 1 ? base + '.md' : `${base} ${n}.md`))) n++;
+    const name = n === 1 ? base + '.md' : `${base} ${n}.md`;
     const entry = { name, path: name, text: '', loose: true, isNew: true };
     state.files.push(entry);
     openEntry(entry).then((ok) => {
       if (!ok) return;
-      el.editor.value = '# 새 문서\n\n여기에 내용을 쓰세요.\n';
+      el.editor.value = L('# 새 문서\n\n여기에 내용을 쓰세요.\n', '# Untitled\n\nStart writing here.\n');
       markDirty();
       setEditing(true);
     });
@@ -3239,8 +3261,8 @@ body.zen .zen-exit:hover { opacity: 1; }
       else if (ASSET_EXT.test(f.name)) state.assets.set(f.name, { file: f });
     });
     if (entries.length) addFiles(entries, false);
-    else if (files.length && state.current) { toast('그림 파일을 받았습니다. 문서에서 이 이름으로 쓰면 보입니다'); render(true); }
-    else if (files.length) toast('마크다운 파일(.md)만 열 수 있습니다');
+    else if (files.length && state.current) { toast(L('그림 파일을 받았습니다. 문서에서 이 이름으로 쓰면 보입니다', 'Image received. Use its file name in the document to show it')); render(true); }
+    else if (files.length) toast(L('마크다운 파일(.md)만 열 수 있습니다', 'Only markdown (.md) files can be opened'));
   });
 
   /* =========================================================
@@ -3250,7 +3272,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     state.editing = on;
     el.workspace.classList.toggle('editing', on);
     el.btnEdit.classList.toggle('active', on);
-    el.btnEdit.querySelector('.label').textContent = on ? '보기만' : '편집';
+    el.btnEdit.querySelector('.label').textContent = on ? L('보기만', 'View only') : L('편집', 'Edit');
     $('#viewSeg').hidden = !on;
     applyViewMode();
     updateTitle();
@@ -3365,11 +3387,11 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (ln !== curLineEl) { curLineEl?.classList.remove('cur'); ln?.classList.add('cur'); curLineEl = ln; }
     // 상태 줄
     const plain = v.replace(/data:[\w/+.-]+;base64,[A-Za-z0-9+/=]+/g, '');
-    $('#stChars').textContent = `${plain.replace(/\s/g, '').length.toLocaleString()}자`;
-    $('#stWords').textContent = `${(plain.match(/\S+/g) || []).length.toLocaleString()}단어`;
-    $('#stPos').textContent = `줄 ${line + 1}, 칸 ${col}` + (ta.selectionEnd > p ? ` (${ta.selectionEnd - p}자 선택)` : '');
+    $('#stChars').textContent = L(`${plain.replace(/\s/g, '').length.toLocaleString()}자`, `${plain.replace(/\s/g, '').length.toLocaleString()} chars`);
+    $('#stWords').textContent = L(`${(plain.match(/\S+/g) || []).length.toLocaleString()}단어`, `${(plain.match(/\S+/g) || []).length.toLocaleString()} words`);
+    $('#stPos').textContent = L(`줄 ${line + 1}, 칸 ${col}`, `Ln ${line + 1}, Col ${col}`) + (ta.selectionEnd > p ? L(` (${ta.selectionEnd - p}자 선택)`, ` (${ta.selectionEnd - p} selected)`) : '');
     const st = $('#stSaved');
-    st.textContent = state.dirty ? '저장 안 됨' : '저장됨';
+    st.textContent = state.dirty ? L('저장 안 됨', 'Unsaved') : L('저장됨', 'Saved');
     st.classList.toggle('dirty', state.dirty);
     // 미리보기에서 지금 고치는 블록
     let best = null, bestLine = -1;
@@ -3434,7 +3456,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       ta.dispatchEvent(new Event('input'));
     }
   }
-  function wrapSelection(before, after = before, placeholder = '텍스트') {
+  function wrapSelection(before, after = before, placeholder = L('텍스트', 'text')) {
     const ta = el.editor;
     const s = ta.selectionStart, e = ta.selectionEnd;
     const sel = ta.value.slice(s, e);
@@ -3472,12 +3494,12 @@ body.zen .zen-exit:hover { opacity: 1; }
     italic: () => wrapSelection('*'),
     strike: () => wrapSelection('~~'),
     mark: () => wrapSelection('=='),
-    code: () => wrapSelection('`', '`', '코드'),
+    code: () => wrapSelection('`', '`', L('코드', 'code')),
     h1: () => setLinePrefix('h1'), h2: () => setLinePrefix('h2'), h3: () => setLinePrefix('h3'),
     ul: () => setLinePrefix('ul'), ol: () => setLinePrefix('ol'), task: () => setLinePrefix('task'), quote: () => setLinePrefix('quote'),
     codeblock() {
       const ta = el.editor, s = ta.selectionStart, e = ta.selectionEnd;
-      const sel = ta.value.slice(s, e) || '코드';
+      const sel = ta.value.slice(s, e) || L('코드', 'code');
       const lead = s > 0 && ta.value[s - 1] !== '\n' ? '\n' : '';
       insertText(`${lead}\`\`\`\n${sel}\n\`\`\`\n`, s, e);
       const start = s + lead.length + 4;
@@ -3485,7 +3507,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     },
     callout() {
       const ta = el.editor, s = ta.selectionStart, e = ta.selectionEnd;
-      const sel = ta.value.slice(s, e) || '내용을 쓰세요';
+      const sel = ta.value.slice(s, e) || L('내용을 쓰세요', 'Write here');
       const lead = s > 0 && ta.value[s - 1] !== '\n' ? '\n\n' : '';
       const body = sel.split('\n').map((l) => '> ' + l).join('\n');
       insertText(`${lead}> [!NOTE]\n${body}\n`, s, e);
@@ -3495,23 +3517,23 @@ body.zen .zen-exit:hover { opacity: 1; }
     link() {
       const ta = el.editor, s = ta.selectionStart, e = ta.selectionEnd;
       const sel = ta.value.slice(s, e);
-      if (/^https?:\/\/\S+$/.test(sel)) { insertText(`[링크](${sel})`, s, e); ta.setSelectionRange(s + 1, s + 3); return; }
-      const label = sel || '링크';
+      if (/^https?:\/\/\S+$/.test(sel)) { const lt = L('링크', 'link'); insertText(`[${lt}](${sel})`, s, e); ta.setSelectionRange(s + 1, s + 1 + lt.length); return; }
+      const label = sel || L('링크', 'link');
       insertText(`[${label}](https://)`, s, e);
       const u = s + label.length + 3;
       ta.setSelectionRange(u, u + 8);
     },
     image() {
       const ta = el.editor, s = ta.selectionStart, e = ta.selectionEnd;
-      const alt = ta.value.slice(s, e) || '설명';
-      insertText(`![${alt}](그림.png)`, s, e);
+      const alt = ta.value.slice(s, e) || L('설명', 'description');
+      insertText(`![${alt}](${L('그림.png', 'image.png')})`, s, e);
       const u = s + alt.length + 4;
       ta.setSelectionRange(u, u + 6);
     },
     table() {
       const ta = el.editor, s = ta.selectionStart;
       const lead = s > 0 && ta.value[s - 1] !== '\n' ? '\n\n' : '';
-      insertText(`${lead}| 항목 | 내용 |\n| --- | --- |\n| 가 | 나 |\n| 다 | 라 |\n`, s, ta.selectionEnd);
+      insertText(lead + L('| 항목 | 내용 |\n| --- | --- |\n| 가 | 나 |\n| 다 | 라 |\n', '| Item | Description |\n| --- | --- |\n| A | B |\n| C | D |\n'), s, ta.selectionEnd);
       ta.setSelectionRange(s + lead.length + 2, s + lead.length + 4);
     },
     hr() {
@@ -3633,7 +3655,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     }
     const st = $('#stChanges');
     st.hidden = !changeCount;
-    st.textContent = `바뀐 줄 ${changeCount}개 · 보기`;
+    st.textContent = L(`바뀐 줄 ${changeCount}개 · 보기`, `${changeCount} changed line${changeCount === 1 ? '' : 's'} · View`);
   }
 
   // 3) 되돌리기 기록: 입력이 1초 멈출 때마다 그 시점을 저장 (문서마다 최대 100개)
@@ -3647,11 +3669,11 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (e.history.length > 100) e.history.splice(1, e.history.length - 100);
   }
   let snapTimer;
-  function scheduleSnapshot() { clearTimeout(snapTimer); snapTimer = setTimeout(() => snapshot('고침'), 1000); }
+  function scheduleSnapshot() { clearTimeout(snapTimer); snapTimer = setTimeout(() => snapshot(L('고침', 'Edit')), 1000); }
 
   // 편집창 내용을 통째로 바꾸되 Ctrl+Z 로도 돌아갈 수 있게
   function replaceAll(text, label) {
-    snapshot('되돌리기 전');
+    snapshot(L('되돌리기 전', 'Before undo'));
     const ta = el.editor, keep = ta.scrollTop;
     ta.focus();
     ta.select();
@@ -3665,7 +3687,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   function diffHtml(oldText, newText, { revert } = {}) {
     const a = oldText.split('\n'), b = newText.split('\n');
     const hunks = hunksOf(lineDiff(a, b));
-    if (!hunks.length) return '<p class="chg-empty">바뀐 내용이 없습니다.</p>';
+    if (!hunks.length) return '<p class="chg-empty">' + L('바뀐 내용이 없습니다.', 'No changes.') + '</p>';
     const ctx = 2;
     return hunks.map((h, k) => {
       const rows = [];
@@ -3674,9 +3696,9 @@ body.zen .zen-exit:hover { opacity: 1; }
       for (let j = h.bStart; j < h.bEnd; j++) rows.push(['add', j + 1, b[j]]);
       for (let j = h.bEnd; j < Math.min(b.length, h.bEnd + ctx); j++) rows.push(['eq', j + 1, b[j]]);
       const sign = { eq: ' ', del: '−', add: '+' };
-      const what = (h.aEnd - h.aStart ? `${h.aEnd - h.aStart}줄 지움` : '') + (h.aEnd - h.aStart && h.bEnd - h.bStart ? ' · ' : '') + (h.bEnd - h.bStart ? `${h.bEnd - h.bStart}줄 ${h.aEnd - h.aStart ? '새로 씀' : '더함'}` : '');
-      return `<div class="hunk"><div class="hunk-head"><span>${h.bStart + 1}번째 줄 근처 · ${what}</span>` +
-        (revert ? `<button class="btn" data-hunk="${k}">이 부분 되돌리기</button>` : '') + '</div>' +
+      const what = (h.aEnd - h.aStart ? L(`${h.aEnd - h.aStart}줄 지움`, `${h.aEnd - h.aStart} line${h.aEnd - h.aStart === 1 ? '' : 's'} removed`) : '') + (h.aEnd - h.aStart && h.bEnd - h.bStart ? ' · ' : '') + (h.bEnd - h.bStart ? (h.aEnd - h.aStart ? L(`${h.bEnd - h.bStart}줄 새로 씀`, `${h.bEnd - h.bStart} line${h.bEnd - h.bStart === 1 ? '' : 's'} rewritten`) : L(`${h.bEnd - h.bStart}줄 더함`, `${h.bEnd - h.bStart} line${h.bEnd - h.bStart === 1 ? '' : 's'} added`)) : '');
+      return `<div class="hunk"><div class="hunk-head"><span>${L(`${h.bStart + 1}번째 줄 근처`, `Near line ${h.bStart + 1}`)} · ${what}</span>` +
+        (revert ? `<button class="btn" data-hunk="${k}">${L('이 부분 되돌리기', 'Revert this part')}</button>` : '') + '</div>' +
         rows.map(([t, no, tx]) => `<div class="dl ${t}"><span class="no">${no}</span><span class="sg">${sign[t]}</span><span class="tx">${escapeHtml(tx) || ' '}</span></div>`).join('') + '</div>';
     }).join('');
   }
@@ -3686,39 +3708,39 @@ body.zen .zen-exit:hover { opacity: 1; }
     document.querySelectorAll('#chgTabs button').forEach((b) => b.classList.toggle('on', b.dataset.v === chg.tab));
     const cur = el.editor.value;
     if (chg.tab === 'diff') {
-      body.innerHTML = '<p class="chg-help">마지막으로 저장한 내용과 지금 내용을 비교합니다. <span class="chg-del">− 빨강</span>은 저장한 뒤 지운 줄, <span class="chg-add">+ 초록</span>은 새로 쓴 줄입니다. 왼쪽 숫자는 지금 문서의 줄 번호입니다.</p>' +
+      body.innerHTML = '<p class="chg-help">' + L('마지막으로 저장한 내용과 지금 내용을 비교합니다. <span class="chg-del">− 빨강</span>은 저장한 뒤 지운 줄, <span class="chg-add">+ 초록</span>은 새로 쓴 줄입니다. 왼쪽 숫자는 지금 문서의 줄 번호입니다.', 'Compares the last saved version with what you have now. <span class="chg-del">− Red</span> lines were removed since saving, <span class="chg-add">+ green</span> lines are new. Numbers on the left are line numbers in the current document.') + '</p>' +
         diffHtml(savedText(), cur, { revert: true });
-      foot.innerHTML = state.dirty ? '<button class="btn" id="chgRevertAll">저장한 상태로 모두 되돌리기</button><span style="flex:1"></span><button class="btn primary" id="chgSave">저장</button>' : '<span class="chg-help" style="margin:0">저장한 뒤로 바뀐 것이 없습니다.</span>';
+      foot.innerHTML = state.dirty ? '<button class="btn" id="chgRevertAll">' + L('저장한 상태로 모두 되돌리기', 'Revert everything to saved') + '</button><span style="flex:1"></span><button class="btn primary" id="chgSave">' + L('저장', 'Save') + '</button>' : '<span class="chg-help" style="margin:0">' + L('저장한 뒤로 바뀐 것이 없습니다.', 'Nothing has changed since saving.') + '</span>';
       body.querySelectorAll('[data-hunk]').forEach((btn) => (btn.onclick = () => {
         const a = savedText().split('\n'), b = el.editor.value.split('\n');
         const h = hunksOf(lineDiff(a, b))[+btn.dataset.hunk];
         const next = b.slice(0, h.bStart).concat(a.slice(h.aStart, h.aEnd), b.slice(h.bEnd)).join('\n');
-        replaceAll(next, '부분 되돌리기');
-        toast('그 부분을 저장한 상태로 되돌렸습니다 (Ctrl+Z 로 취소)');
+        replaceAll(next, L('부분 되돌리기', 'Partial revert'));
+        toast(L('그 부분을 저장한 상태로 되돌렸습니다 (Ctrl+Z 로 취소)', 'Reverted that part to the saved version (Ctrl+Z to undo)'));
         renderChanges();
       }));
       const ra = $('#chgRevertAll');
-      if (ra) ra.onclick = () => { if (confirm('저장한 뒤 고친 내용을 모두 되돌릴까요? (Ctrl+Z 로 다시 살릴 수 있습니다)')) { replaceAll(savedText(), '모두 되돌리기'); toast('저장한 상태로 되돌렸습니다'); renderChanges(); } };
+      if (ra) ra.onclick = () => { if (confirm(L('저장한 뒤 고친 내용을 모두 되돌릴까요? (Ctrl+Z 로 다시 살릴 수 있습니다)', 'Revert all edits since the last save? (Ctrl+Z brings them back)'))) { replaceAll(savedText(), L('모두 되돌리기', 'Revert all')); toast(L('저장한 상태로 되돌렸습니다', 'Reverted to the saved version')); renderChanges(); } };
       const sv = $('#chgSave');
       if (sv) sv.onclick = async () => { await save({ skipConfirm: true }); renderChanges(); };
       return;
     }
     // 되돌리기 기록
-    snapshot('지금');
+    snapshot(L('지금', 'Now'));
     const hist = (state.current.history || []).slice().reverse();
     if (chg.pick < 0 || chg.pick >= hist.length) chg.pick = Math.min(1, hist.length - 1);
     const sel = hist[chg.pick];
-    body.innerHTML = '<p class="chg-help">고친 내용이 1초마다 기록됩니다. 시점을 누르면 <b>그때로 돌아갈 때 무엇이 바뀌는지</b> 아래에 보여줍니다.</p>' +
+    body.innerHTML = '<p class="chg-help">' + L('고친 내용이 1초마다 기록됩니다. 시점을 누르면 <b>그때로 돌아갈 때 무엇이 바뀌는지</b> 아래에 보여줍니다.', 'Edits are recorded every second. Pick a point to see <b>what would change if you went back to it</b>.') + '</p>' +
       '<div class="hist-list">' + hist.map((h, i) => {
-        const tags = [i === 0 ? '<span class="tag now">지금</span>' : '', h.saved ? '<span class="tag saved">저장됨</span>' : ''].join('');
+        const tags = [i === 0 ? '<span class="tag now">' + L('지금', 'Now') + '</span>' : '', h.saved ? '<span class="tag saved">' + L('저장됨', 'Saved') + '</span>' : ''].join('');
         const lines = h.text.split('\n').length;
-        return `<button class="hist-item${i === chg.pick ? ' on' : ''}" data-i="${i}"><span class="ht">${fmtTime(h.t)}</span><span class="hl">${escapeHtml(h.label)}</span>${tags}<span class="hn">${lines}줄</span></button>`;
+        return `<button class="hist-item${i === chg.pick ? ' on' : ''}" data-i="${i}"><span class="ht">${fmtTime(h.t)}</span><span class="hl">${escapeHtml(h.label)}</span>${tags}<span class="hn">${L(`${lines}줄`, `${lines} line${lines === 1 ? '' : 's'}`)}</span></button>`;
       }).join('') + '</div>' +
-      (sel && chg.pick > 0 ? `<div class="hist-preview"><div class="hist-cap">${fmtTime(sel.t)} 로 돌아가면 지금 문서가 이렇게 바뀝니다</div>${diffHtml(cur, sel.text)}</div>` : '<p class="chg-help">위에서 돌아갈 시점을 고르세요.</p>');
-    foot.innerHTML = sel && chg.pick > 0 ? `<span class="chg-help" style="margin:0">돌아간 뒤에도 Ctrl+Z 로 취소할 수 있습니다.</span><span style="flex:1"></span><button class="btn primary" id="chgRestore">${fmtTime(sel.t)} 로 되돌리기</button>` : '';
+      (sel && chg.pick > 0 ? `<div class="hist-preview"><div class="hist-cap">${L(`${fmtTime(sel.t)} 로 돌아가면 지금 문서가 이렇게 바뀝니다`, `Going back to ${fmtTime(sel.t)} changes the document like this`)}</div>${diffHtml(cur, sel.text)}</div>` : '<p class="chg-help">' + L('위에서 돌아갈 시점을 고르세요.', 'Pick a point above to go back to.') + '</p>');
+    foot.innerHTML = sel && chg.pick > 0 ? `<span class="chg-help" style="margin:0">${L('돌아간 뒤에도 Ctrl+Z 로 취소할 수 있습니다.', 'You can still undo with Ctrl+Z afterwards.')}</span><span style="flex:1"></span><button class="btn primary" id="chgRestore">${L(`${fmtTime(sel.t)} 로 되돌리기`, `Go back to ${fmtTime(sel.t)}`)}</button>` : '';
     body.querySelectorAll('.hist-item').forEach((b) => (b.onclick = () => { chg.pick = +b.dataset.i; renderChanges(); }));
     const rs = $('#chgRestore');
-    if (rs) rs.onclick = () => { replaceAll(sel.text, fmtTime(sel.t) + ' 로 되돌림'); chg.pick = 1; toast(fmtTime(sel.t) + ' 시점으로 되돌렸습니다 (Ctrl+Z 로 취소)'); renderChanges(); };
+    if (rs) rs.onclick = () => { replaceAll(sel.text, L(fmtTime(sel.t) + ' 로 되돌림', 'Back to ' + fmtTime(sel.t))); chg.pick = 1; toast(L(fmtTime(sel.t) + ' 시점으로 되돌렸습니다 (Ctrl+Z 로 취소)', 'Went back to ' + fmtTime(sel.t) + ' (Ctrl+Z to undo)')); renderChanges(); };
   }
   // 밖에서(Claude 등) 바뀐 곳을 몇 초 동안 빛나게
   function flashExternal(oldText, newText) {
@@ -3741,17 +3763,17 @@ body.zen .zen-exit:hover { opacity: 1; }
     $('#chgTabs').hidden = true;
     const title = $('#chgTitle');
     title.hidden = false;
-    title.textContent = `${who} 바꾼 내용`;
-    $('#chgBody').innerHTML = `<p class="chg-help">${escapeHtml(state.current.path)} 이(가) 바깥에서 고쳐졌습니다. <span class="chg-del">− 지운 줄</span> · <span class="chg-add">+ 새로 쓴 줄</span></p>` + diffHtml(oldText, newText);
-    $('#chgFoot').innerHTML = '<button class="btn" id="extRevert">이 변경 되돌리기</button><span style="flex:1"></span><button class="btn primary" id="extKeep">그대로 두기</button>';
+    title.textContent = who === 'claude' ? L('Claude가 바꾼 내용', 'Changes by Claude') : L('밖에서 바꾼 내용', 'Changes made outside');
+    $('#chgBody').innerHTML = `<p class="chg-help">${L(`${escapeHtml(state.current.path)} 이(가) 바깥에서 고쳐졌습니다.`, `${escapeHtml(state.current.path)} was changed outside markcont.`)} <span class="chg-del">${L('− 지운 줄', '− removed')}</span> · <span class="chg-add">${L('+ 새로 쓴 줄', '+ added')}</span></p>` + diffHtml(oldText, newText);
+    $('#chgFoot').innerHTML = '<button class="btn" id="extRevert">' + L('이 변경 되돌리기', 'Revert this change') + '</button><span style="flex:1"></span><button class="btn primary" id="extKeep">' + L('그대로 두기', 'Keep') + '</button>';
     $('#changesModal').hidden = false;
     $('#extKeep').onclick = closeChanges;
     $('#extRevert').onclick = async () => {
-      if (el.editor.value !== newText) { toast('그 뒤로 문서가 또 바뀌어서 되돌릴 수 없습니다. 되돌리기 기록을 써 주세요.', 4000); return; }
-      replaceAll(oldText, `${who} 고치기 전으로 되돌림`);
+      if (el.editor.value !== newText) { toast(L('그 뒤로 문서가 또 바뀌어서 되돌릴 수 없습니다. 되돌리기 기록을 써 주세요.', 'The document changed again since then, so this can\'t be reverted. Use the undo history instead.'), 4000); return; }
+      replaceAll(oldText, who === 'claude' ? L('Claude가 고치기 전으로 되돌림', 'Reverted Claude\'s edit') : L('밖에서 고치기 전으로 되돌림', 'Reverted outside change'));
       closeChanges();
       await save({ skipConfirm: true });
-      toast('바깥에서 바뀌기 전으로 되돌려 저장했습니다');
+      toast(L('바깥에서 바뀌기 전으로 되돌려 저장했습니다', 'Reverted the outside change and saved'));
     };
   }
   // PC 프로그램: Claude(MCP)가 최근에 고친 파일 (경로 → 시각)
@@ -3769,16 +3791,16 @@ body.zen .zen-exit:hover { opacity: 1; }
       confirmResolve = resolve;
       const cur = state.current;
       const where = mode === 'over'
-        ? (canOverwrite(cur) ? `<b>${escapeHtml(cur.tauriPath || cur.path)}</b> 에 저장하면 아래처럼 바뀝니다.` : '원래 위치를 몰라서 <b>새 파일</b>로 저장하게 됩니다.')
-        : '지금 내용을 <b>새 파일</b>로 저장합니다. 원래 파일은 그대로입니다. 마지막 저장 뒤 바뀐 곳:';
+        ? (canOverwrite(cur) ? L(`<b>${escapeHtml(cur.tauriPath || cur.path)}</b> 에 저장하면 아래처럼 바뀝니다.`, `Saving to <b>${escapeHtml(cur.tauriPath || cur.path)}</b> changes it like this.`) : L('원래 위치를 몰라서 <b>새 파일</b>로 저장하게 됩니다.', 'The original location is unknown, so this will be saved as a <b>new file</b>.'))
+        : L('지금 내용을 <b>새 파일</b>로 저장합니다. 원래 파일은 그대로입니다. 마지막 저장 뒤 바뀐 곳:', 'Saves the current content as a <b>new file</b>. The original stays as it is. Changes since the last save:');
       $('#chgTabs').hidden = true;
       $('#chgTitle').hidden = false;
-      $('#chgBody').innerHTML = `<p class="chg-help">${where} <span class="chg-del">− 지운 줄</span> · <span class="chg-add">+ 새로 쓴 줄</span></p>` + diffHtml(savedText(), el.editor.value);
+      $('#chgBody').innerHTML = `<p class="chg-help">${where} <span class="chg-del">${L('− 지운 줄', '− removed')}</span> · <span class="chg-add">${L('+ 새로 쓴 줄', '+ added')}</span></p>` + diffHtml(savedText(), el.editor.value);
       $('#chgFoot').innerHTML =
-        '<label class="check-row" style="font-size:12.5px;margin-right:auto"><input type="checkbox" id="chgNoAsk"><span>다음부터 묻지 않기</span></label>' +
-        '<button class="btn" data-r="cancel">취소</button>' +
-        (mode === 'over' ? '<button class="btn" data-r="saveAs">새 파일로 저장…</button>' : '') +
-        `<button class="btn primary" data-r="save">${mode === 'over' ? '저장' : '저장 위치 고르기…'}</button>`;
+        '<label class="check-row" style="font-size:12.5px;margin-right:auto"><input type="checkbox" id="chgNoAsk"><span>' + L('다음부터 묻지 않기', "Don't ask again") + '</span></label>' +
+        '<button class="btn" data-r="cancel">' + L('취소', 'Cancel') + '</button>' +
+        (mode === 'over' ? '<button class="btn" data-r="saveAs">' + L('새 파일로 저장…', 'Save as new file…') + '</button>' : '') +
+        `<button class="btn primary" data-r="save">${mode === 'over' ? L('저장', 'Save') : L('저장 위치 고르기…', 'Choose where to save…')}</button>`;
       $('#chgFoot').querySelectorAll('[data-r]').forEach((b) => (b.onclick = () => finishConfirm(b.dataset.r)));
       $('#changesModal').hidden = false;
       $('#chgFoot [data-r="save"]').focus();
@@ -3788,7 +3810,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (result !== 'cancel' && $('#chgNoAsk') && $('#chgNoAsk').checked) {
       settings.confirmSave = false;
       applySettings();
-      setTimeout(() => toast('저장 전 확인을 껐습니다. 보기 설정(Aa)에서 다시 켤 수 있어요.', 3500), 1200);
+      setTimeout(() => toast(L('저장 전 확인을 껐습니다. 보기 설정(Aa)에서 다시 켤 수 있어요.', 'Review before saving is off. You can turn it back on in View settings (Aa).'), 3500), 1200);
     }
     $('#changesModal').hidden = true;
     $('#chgTitle').hidden = true;
@@ -3809,7 +3831,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     $('#changesModal').hidden = false;
     renderChanges();
   }
-  function closeChanges() { if (confirmResolve) { finishConfirm('cancel'); return; } $('#changesModal').hidden = true; $('#chgTitle').hidden = true; $('#chgTitle').textContent = '저장 전에 바뀐 내용 확인'; $('#chgTabs').hidden = false; el.editor.focus({ preventScroll: true }); }
+  function closeChanges() { if (confirmResolve) { finishConfirm('cancel'); return; } $('#changesModal').hidden = true; $('#chgTitle').hidden = true; $('#chgTitle').textContent = L('저장 전에 바뀐 내용 확인', 'Review changes before saving'); $('#chgTabs').hidden = false; el.editor.focus({ preventScroll: true }); }
   $('#chgTabs').onclick = (e) => { const v = e.target.closest('button')?.dataset.v; if (v) { chg.tab = v; chg.pick = -1; renderChanges(); } };
   $('#chgClose').onclick = closeChanges;
   $('#changesModal').addEventListener('click', (e) => { if (e.target.id === 'changesModal') closeChanges(); });
@@ -3921,7 +3943,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   /* ---------- 새 파일로 저장 ---------- */
   const canOverwrite = (e) => !!(e && !e.builtin && ((e.tauriPath && window.__TAURI__) || (e.handle && e.handle.createWritable)));
   function suggestName(e) {
-    const n = (e && e.name) || '새 문서.md';
+    const n = (e && e.name) || L('새 문서.md', 'Untitled.md');
     return MD_EXT.test(n) ? n : n + '.md';
   }
   async function saveAs({ reason, skipConfirm = false } = {}) {
@@ -3944,25 +3966,25 @@ body.zen .zen-exit:hover { opacity: 1; }
       } else if (window.showSaveFilePicker) {
         const fh = await window.showSaveFilePicker({
           suggestedName: suggestName(cur),
-          types: [{ description: '마크다운', accept: { 'text/markdown': ['.md', '.markdown', '.txt'] } }],
+          types: [{ description: L('마크다운', 'Markdown'), accept: { 'text/markdown': ['.md', '.markdown', '.txt'] } }],
         });
         const w = await fh.createWritable(); await w.write(text); await w.close();
         await adoptSaved({ handle: fh, name: fh.name, lastModified: (await fh.getFile()).lastModified }, text);
       } else {
         // 파일 위치를 고를 수 없는 브라우저(Safari · Firefox): 이름만 정해 다운로드
-        let name = prompt('저장할 파일 이름 (다운로드 폴더에 저장됩니다)', suggestName(cur));
+        let name = prompt(L('저장할 파일 이름 (다운로드 폴더에 저장됩니다)', 'File name (saved to your Downloads folder)'), suggestName(cur));
         if (!name) return;
         name = name.trim();
         if (!MD_EXT.test(name)) name += '.md';
         download(name, text, 'text/markdown;charset=utf-8');
         cur.text = text; state.dirty = false;
-        snapshot('다운로드로 저장', { saved: true });
+        snapshot(L('다운로드로 저장', 'Saved to Downloads'), { saved: true });
         updateTitle(); applyChangeMarks();
-        toast('다운로드 폴더에 저장했습니다: ' + name);
+        toast(L('다운로드 폴더에 저장했습니다: ', 'Saved to Downloads: ') + name);
       }
     } catch (e) {
       if (e && e.name === 'AbortError') return;
-      toast('저장하지 못했습니다: ' + ((e && e.message) || e), 4000);
+      toast(L('저장하지 못했습니다: ', "Couldn't save: ") + ((e && e.message) || e), 4000);
     }
   }
   // 새로 저장한 파일을 지금 문서로 삼음 (열린 폴더 안이면 그 트리의 파일로)
@@ -3994,10 +4016,10 @@ body.zen .zen-exit:hover { opacity: 1; }
     state.current = entry;
     state.dirty = false;
     if (state.hist[state.histPos] !== entry) { state.hist = state.hist.slice(0, state.histPos + 1); state.hist.push(entry); state.histPos = state.hist.length - 1; updateNav(); }
-    snapshot('새 파일로 저장', { saved: true });
+    snapshot(L('새 파일로 저장', 'Saved as new file'), { saved: true });
     if (root) openDirInTree(parentOf(path));
     updateTitle(); updateMeta(source()); applyChangeMarks(); renderFileList(); remember(entry);
-    toast(`새 파일로 저장했습니다: ${entry.path}` + (old && old !== entry && (old.handle || old.tauriPath) ? ' (원래 파일은 그대로)' : ''), 3500);
+    toast(L('새 파일로 저장했습니다: ', 'Saved as new file: ') + entry.path + (old && old !== entry && (old.handle || old.tauriPath) ? L(' (원래 파일은 그대로)', ' (original untouched)') : ''), 3500);
   }
 
   async function save({ quiet = false, skipConfirm = false } = {}) {
@@ -4014,9 +4036,9 @@ body.zen .zen-exit:hover { opacity: 1; }
       try {
         cur.lastModified = await tauriInvoke('save_file', { path: cur.tauriPath, text });
         saved = true;
-        toast(quiet ? '체크 표시를 파일에 저장했습니다' : '원래 파일에 저장했습니다');
+        toast(quiet ? L('체크 표시를 파일에 저장했습니다', 'Checkbox saved to the file') : L('원래 파일에 저장했습니다', 'Saved to the original file'));
       } catch (e) {
-        toast('저장하지 못했습니다: ' + e, 4000);
+        toast(L('저장하지 못했습니다: ', "Couldn't save: ") + e, 4000);
         return;
       }
     } else if (cur.handle?.createWritable) {
@@ -4026,18 +4048,18 @@ body.zen .zen-exit:hover { opacity: 1; }
         await w.close();
         saved = true;
         try { cur.lastModified = (await cur.handle.getFile()).lastModified; } catch {}
-        toast(quiet ? '체크 표시를 파일에 저장했습니다' : '원래 파일에 저장했습니다');
+        toast(quiet ? L('체크 표시를 파일에 저장했습니다', 'Checkbox saved to the file') : L('원래 파일에 저장했습니다', 'Saved to the original file'));
       } catch (e) {
-        if (e.name === 'AbortError' || e.name === 'NotAllowedError') { if (!quiet) toast('저장 권한이 없어 저장하지 않았습니다'); return; }
+        if (e.name === 'AbortError' || e.name === 'NotAllowedError') { if (!quiet) toast(L('저장 권한이 없어 저장하지 않았습니다', 'Not saved: no permission to write')); return; }
       }
     }
     if (!saved) {
       if (quiet) return;
-      return saveAs({ reason: '원래 파일 위치를 알 수 없어서 새 파일로 저장합니다', skipConfirm: skipConfirm || settings.confirmSave });
+      return saveAs({ reason: L('원래 파일 위치를 알 수 없어서 새 파일로 저장합니다', 'The original location is unknown, so saving as a new file'), skipConfirm: skipConfirm || settings.confirmSave });
     }
     cur.text = text;
     state.dirty = false;
-    snapshot('저장', { saved: true });
+    snapshot(L('저장', 'Saved'), { saved: true });
     applyChangeMarks();
     updateTitle();
     remember(cur);
@@ -4060,20 +4082,20 @@ body.zen .zen-exit:hover { opacity: 1; }
           cur.lastModified = f.lastModified;
           if (text !== cur.text) {
             const oldText = cur.text;
-            const who = recentMcpWrite(cur) ? 'Claude가' : '밖에서';
-            snapshot('밖에서 바뀌기 전');
+            const who = recentMcpWrite(cur) ? 'claude' : 'ext';
+            snapshot(L('밖에서 바뀌기 전', 'Before outside change'));
             cur.text = text;
             const keep = el.editor.scrollTop;
             el.editor.value = text;
             el.editor.scrollTop = keep;
             render(true);
-            snapshot(who === 'Claude가' ? 'Claude가 고침' : '밖에서 고침', { saved: true });
+            snapshot(who === 'claude' ? L('Claude가 고침', 'Edited by Claude') : L('밖에서 고침', 'Edited outside'), { saved: true });
             flashExternal(oldText, text);
-            toast(`${who} 이 문서를 고쳤습니다`, 7000, { label: '바뀐 내용 보기', onClick: () => showExternalDiff(oldText, text, who) });
+            toast(who === 'claude' ? L('Claude가 이 문서를 고쳤습니다', 'Claude edited this document') : L('밖에서 이 문서를 고쳤습니다', 'This document was changed outside markcont'), 7000, { label: L('바뀐 내용 보기', 'View changes'), onClick: () => showExternalDiff(oldText, text, who) });
           }
         } else if (warnedChange !== f.lastModified) {
           warnedChange = f.lastModified;
-          toast('파일이 밖에서 바뀌었습니다. 지금 저장하면 그 변경을 덮어씁니다', 4000);
+          toast(L('파일이 밖에서 바뀌었습니다. 지금 저장하면 그 변경을 덮어씁니다', 'The file changed outside markcont. Saving now will overwrite that change'), 4000);
         }
       }
     } catch {}
@@ -4125,7 +4147,7 @@ ${clone.innerHTML}
 </body>
 </html>`;
     download(state.current.name.replace(MD_EXT, '') + '.html', out, 'text/html;charset=utf-8');
-    toast('HTML 파일을 다운로드 폴더에 저장했습니다');
+    toast(L('HTML 파일을 다운로드 폴더에 저장했습니다', 'Saved the HTML file to Downloads'));
   }
 
   /* =========================================================
@@ -4161,7 +4183,7 @@ ${clone.innerHTML}
     if (on && !state.current) return;
     document.body.classList.toggle('zen', on);
     closeMenus();
-    if (on) toast('집중 모드: Esc를 누르면 끝납니다');
+    if (on) toast(L('집중 모드: Esc를 누르면 끝납니다', 'Focus mode: press Esc to exit'));
     lineTops = null;
   }
 
@@ -4181,8 +4203,8 @@ ${clone.innerHTML}
     e.stopPropagation();
     const cur = state.current;
     $('#saveOverWhere').textContent = !cur ? '' : canOverwrite(cur)
-      ? (cur.tauriPath || cur.path) + ' 에 덮어씁니다'
-      : '원래 위치를 몰라서 새 파일로 저장하게 됩니다';
+      ? L((cur.tauriPath || cur.path) + ' 에 덮어씁니다', 'Overwrites ' + (cur.tauriPath || cur.path))
+      : L('원래 위치를 몰라서 새 파일로 저장하게 됩니다', 'Original location unknown, so it will be saved as a new file');
     toggleMenu('#saveMenu');
   };
   $('#mSaveOver').onclick = () => { closeMenus(); save(); };
@@ -4225,7 +4247,7 @@ ${clone.innerHTML}
   applySettings();
   // 버전 표시 (새 버전을 낼 때 package.json · tauri.conf.json 과 함께 올리세요)
   const APP_VERSION = '1.0.7';
-  $('#appVersion').textContent = `markcont v${APP_VERSION} · ${window.__TAURI__ ? 'PC 프로그램' : '웹 앱'}`;
+  $('#appVersion').textContent = `markcont v${APP_VERSION} · ${window.__TAURI__ ? L('PC 프로그램', 'PC app') : L('웹 앱', 'web app')}`;
   setSideTab(side.tab);
   renderFileList();
 
@@ -4234,15 +4256,15 @@ ${clone.innerHTML}
      ========================================================= */
   // 파일 이름은 영어(PC 프로그램 내부 서버가 한글 경로를 못 찾는 경우가 있음), 화면에는 한글 이름으로
   const BUILTIN = {
-    guide: { file: 'guide.md', name: '사용-안내서.md' },
-    rules: { file: 'writing-rules.md', name: '마크다운-작성-규칙.md' },
-    features: { file: 'features.md', name: '기능-예제.md' },
-    licenses: { file: 'licenses.md', name: '오픈소스-라이선스.md' },
+    guide: { file: L('guide.md', 'guide.en.md'), name: L('사용-안내서.md', 'User-Guide.md') },
+    rules: { file: L('writing-rules.md', 'writing-rules.en.md'), name: L('마크다운-작성-규칙.md', 'Markdown-Writing-Rules.md') },
+    features: { file: L('features.md', 'features.en.md'), name: L('기능-예제.md', 'Feature-Examples.md') },
+    licenses: { file: L('licenses.md', 'licenses.en.md'), name: L('오픈소스-라이선스.md', 'Open-Source-Licenses.md') },
   };
   async function openBuiltinDoc(key) {
     closeMenus();
     const doc = BUILTIN[key];
-    const path = 'markcont 안내/' + doc.name;
+    const path = L('markcont 안내/', 'markcont docs/') + doc.name;
     let entry = state.files.find((f) => f.loose && f.path === path);
     if (!entry) {
       const ctrl = new AbortController();
@@ -4253,7 +4275,7 @@ ${clone.innerHTML}
         entry = { name: doc.name, path, text: await res.text(), loose: true, builtin: true };
         state.files.push(entry);
       } catch {
-        toast('안내 문서를 열지 못했습니다.', 3000);
+        toast(L('안내 문서를 열지 못했습니다.', "Couldn't open the built-in document."), 3000);
         return false;
       } finally { clearTimeout(timer); }
     }
@@ -4270,28 +4292,28 @@ ${clone.innerHTML}
      처음 사용 안내 (튜토리얼): 처음 한 번 자동으로, ⋯ 메뉴에서 다시 보기
      ========================================================= */
   const TOUR = [
-    { center: true, emoji: '👋', title: 'markcont에 오신 것을 환영합니다',
-      text: '마크다운 파일을 <b>보기 좋게 보고, 바로 고치는</b> 뷰어입니다.<br>주요 기능을 1분 만에 둘러볼게요.', next: '둘러보기 시작' },
-    { target: '#btnOpen', mobile: '#btnMore', title: '파일 열기',
-      text: '<b>파일 열기</b>(Ctrl+O)로 .md 파일을 엽니다.<br>파일을 창 위에 <b>끌어다 놓아도</b> 열려요.',
-      mobileText: '<b>⋯</b> 메뉴의 <b>파일 열기</b>로 .md 파일을 엽니다.' },
-    { target: '#btnFolder', title: '폴더 통째로 열기',
-      text: '폴더를 열면 왼쪽에 <b>폴더 트리</b>가 나옵니다.<br>md 파일이 있는 폴더만 골라서 보여줘요.' },
-    { target: '#sidebar', mobile: '#btnSidebar', title: '사이드바',
-      text: '<b>파일 · 목차</b> 탭을 오가며 씁니다.<br>파일이나 폴더를 <b>오른쪽 클릭</b>하면 새 문서, 새 폴더, 이름 바꾸기, 삭제를 할 수 있어요.',
-      mobileText: '<b>☰</b> 단추로 사이드바를 열어 <b>파일 트리와 목차</b>를 봅니다.<br>줄 끝 <b>⋯</b> 단추로 새 문서 · 이름 바꾸기 · 삭제를 해요.' },
-    { target: '#btnEdit', mobile: '#fabEdit', needDoc: true, title: '실시간 편집',
-      text: '<b>편집</b>(Ctrl+E)을 누르면 왼쪽에 원본, 오른쪽에 결과가 나란히 나옵니다.<br>입력하는 즉시 결과가 바뀌어요.',
-      mobileText: '<b>연필</b> 단추를 누르면 원본을 고칠 수 있고, 결과가 바로 바뀝니다.' },
-    { target: '#btnSettings', title: '보기 설정',
-      text: '<b>Aa</b>에서 글자 크기, 고딕 · 명조, 본문 폭, 알림 상자 모양, 코드 줄 번호를 바꿉니다.' },
-    { target: '#btnMore', title: '더 많은 기능',
-      text: '<b>⋯</b> 메뉴에 문서에서 찾기, 집중 모드, HTML · PDF 저장, 그리고 <b>사용 안내서</b>와 <b>작성 규칙</b>이 있어요.',
-      mobileText: '<b>⋯</b> 메뉴에 파일 · 폴더 열기, 보기 설정, 찾기, 집중 모드, PDF 저장, <b>사용 안내서</b>가 있어요.' },
-    { target: '#btnTheme', title: '밝게 · 어둡게', text: '눈이 편한 쪽으로 테마를 바꿉니다.' },
-    { center: true, emoji: '🎉', title: '준비 끝!',
-      text: '지금 열린 문서는 <b>사용 안내서</b>예요. 천천히 읽어 보세요.<br>이 안내는 <b>⋯ → 처음 사용 안내 다시 보기</b>로 언제든 다시 볼 수 있습니다.',
-      next: '시작하기', alt: '내 파일 열기' },
+    { center: true, emoji: '👋', title: L('markcont에 오신 것을 환영합니다', 'Welcome to markcont'),
+      text: L('마크다운 파일을 <b>보기 좋게 보고, 바로 고치는</b> 뷰어입니다.<br>주요 기능을 1분 만에 둘러볼게요.', 'A viewer that lets you <b>read markdown beautifully and edit it on the spot</b>.<br>Let\'s tour the main features in a minute.'), next: L('둘러보기 시작', 'Start the tour') },
+    { target: '#btnOpen', mobile: '#btnMore', title: L('파일 열기', 'Open file'),
+      text: L('<b>파일 열기</b>(Ctrl+O)로 .md 파일을 엽니다.<br>파일을 창 위에 <b>끌어다 놓아도</b> 열려요.', 'Open a .md file with <b>Open file</b> (Ctrl+O).<br>You can also <b>drag and drop</b> a file onto the window.'),
+      mobileText: L('<b>⋯</b> 메뉴의 <b>파일 열기</b>로 .md 파일을 엽니다.', 'Open a .md file with <b>Open file</b> in the <b>⋯</b> menu.') },
+    { target: '#btnFolder', title: L('폴더 통째로 열기', 'Open a whole folder'),
+      text: L('폴더를 열면 왼쪽에 <b>폴더 트리</b>가 나옵니다.<br>md 파일이 있는 폴더만 골라서 보여줘요.', 'Opening a folder shows a <b>folder tree</b> on the left.<br>Only folders that contain md files are shown.') },
+    { target: '#sidebar', mobile: '#btnSidebar', title: L('사이드바', 'Sidebar'),
+      text: L('<b>파일 · 목차</b> 탭을 오가며 씁니다.<br>파일이나 폴더를 <b>오른쪽 클릭</b>하면 새 문서, 새 폴더, 이름 바꾸기, 삭제를 할 수 있어요.', 'Switch between the <b>Files · Contents</b> tabs.<br><b>Right-click</b> a file or folder to create, rename or delete.'),
+      mobileText: L('<b>☰</b> 단추로 사이드바를 열어 <b>파일 트리와 목차</b>를 봅니다.<br>줄 끝 <b>⋯</b> 단추로 새 문서 · 이름 바꾸기 · 삭제를 해요.', 'Open the sidebar with <b>☰</b> to see the <b>file tree and contents</b>.<br>Use the <b>⋯</b> button on a row to create, rename or delete.') },
+    { target: '#btnEdit', mobile: '#fabEdit', needDoc: true, title: L('실시간 편집', 'Live editing'),
+      text: L('<b>편집</b>(Ctrl+E)을 누르면 왼쪽에 원본, 오른쪽에 결과가 나란히 나옵니다.<br>입력하는 즉시 결과가 바뀌어요.', 'Press <b>Edit</b> (Ctrl+E) to see the source on the left and the result on the right.<br>The result updates as you type.'),
+      mobileText: L('<b>연필</b> 단추를 누르면 원본을 고칠 수 있고, 결과가 바로 바뀝니다.', 'Tap the <b>pencil</b> button to edit the source; the result updates right away.') },
+    { target: '#btnSettings', title: L('보기 설정', 'View settings'),
+      text: L('<b>Aa</b>에서 글자 크기, 고딕 · 명조, 본문 폭, 알림 상자 모양, 코드 줄 번호를 바꿉니다.', 'In <b>Aa</b> you can change text size, sans · serif font, width, callout style, code line numbers and language.') },
+    { target: '#btnMore', title: L('더 많은 기능', 'More features'),
+      text: L('<b>⋯</b> 메뉴에 문서에서 찾기, 집중 모드, HTML · PDF 저장, 그리고 <b>사용 안내서</b>와 <b>작성 규칙</b>이 있어요.', 'The <b>⋯</b> menu has find in document, focus mode, HTML · PDF export, the <b>User guide</b> and the <b>Writing rules</b>.'),
+      mobileText: L('<b>⋯</b> 메뉴에 파일 · 폴더 열기, 보기 설정, 찾기, 집중 모드, PDF 저장, <b>사용 안내서</b>가 있어요.', 'The <b>⋯</b> menu has open file · folder, view settings, find, focus mode, PDF export and the <b>User guide</b>.') },
+    { target: '#btnTheme', title: L('밝게 · 어둡게', 'Light · Dark'), text: L('눈이 편한 쪽으로 테마를 바꿉니다.', 'Switch to whichever theme is easier on your eyes.') },
+    { center: true, emoji: '🎉', title: L('준비 끝!', 'All set!'),
+      text: L('지금 열린 문서는 <b>사용 안내서</b>예요. 천천히 읽어 보세요.<br>이 안내는 <b>⋯ → 처음 사용 안내 다시 보기</b>로 언제든 다시 볼 수 있습니다.', 'The open document is the <b>User guide</b>. Take your time reading it.<br>You can replay this tour anytime from <b>⋯ → Replay the tour</b>.'),
+      next: L('시작하기', 'Get started'), alt: L('내 파일 열기', 'Open my file') },
   ];
   const tour = { i: 0, steps: [], on: false };
   const isNarrow = () => window.innerWidth <= 900;
@@ -4315,7 +4337,7 @@ ${clone.innerHTML}
     hasDoc = hasDoc || !!state.current;
     tour.steps = TOUR.filter((s) => (s.center || tourTarget(s)) && (!s.needDoc || hasDoc));
     if (!hasDoc) tour.steps[tour.steps.length - 1] = { ...TOUR[TOUR.length - 1],
-      text: '<b>파일 열기</b>나 <b>폴더 열기</b>로 내 문서를 열어 보세요.<br>이 안내는 <b>⋯ → 처음 사용 안내 다시 보기</b>로 언제든 다시 볼 수 있습니다.' };
+      text: L('<b>파일 열기</b>나 <b>폴더 열기</b>로 내 문서를 열어 보세요.<br>이 안내는 <b>⋯ → 처음 사용 안내 다시 보기</b>로 언제든 다시 볼 수 있습니다.', 'Open your own documents with <b>Open file</b> or <b>Open folder</b>.<br>You can replay this tour anytime from <b>⋯ → Replay the tour</b>.') };
     tour.i = 0;
     tour.on = true;
     $('#tour').hidden = false;
@@ -4337,8 +4359,8 @@ ${clone.innerHTML}
     $('#tourDots').innerHTML = tour.steps.map((_, i) => `<span class="${i === tour.i ? 'on' : ''}"></span>`).join('');
     const last = tour.i === tour.steps.length - 1;
     $('#tourPrev').hidden = tour.i === 0 || last;
-    $('#tourNext').textContent = s.next || (tour.i === tour.steps.length - 2 ? '마치기' : '다음');
-    $('#tourSkip').textContent = last && s.alt ? s.alt : '건너뛰기';
+    $('#tourNext').textContent = s.next || (tour.i === tour.steps.length - 2 ? L('마치기', 'Finish') : L('다음', 'Next'));
+    $('#tourSkip').textContent = last && s.alt ? s.alt : L('건너뛰기', 'Skip');
     $('#tourSkip').hidden = false;
     card.classList.toggle('center', !!s.center);
     card.style.left = card.style.top = '';
@@ -4398,7 +4420,7 @@ ${clone.innerHTML}
         const f = await tauriInvoke('read_file', { path: p });
         entries.push({ name: f.name, path: f.name, text: f.text, tauriPath: f.path, lastModified: f.modified });
         if (entries.filter((x) => x.path === f.name).length > 1 || state.files.some((x) => x.loose && x.path === f.name && x.tauriPath !== f.path)) entries[entries.length - 1].path = f.name + ' (' + f.path.replace(/[\\/][^\\/]*$/, '').split(/[\\/]/).pop() + ')';
-      } catch (e) { toast('파일을 열지 못했습니다: ' + e, 4000); }
+      } catch (e) { toast(L('파일을 열지 못했습니다: ', "Couldn't open the file: ") + e, 4000); }
     }
     if (entries.length) addFiles(entries, false);
   }
@@ -4416,7 +4438,7 @@ ${clone.innerHTML}
       try {
         const paths = await tauriInvoke('pick_files');
         if (paths && paths.length) openTauriPaths(paths);
-      } catch (e) { toast('파일 선택 창을 열지 못했습니다: ' + e, 4000); }
+      } catch (e) { toast(L('파일 선택 창을 열지 못했습니다: ', "Couldn't open the file picker: ") + e, 4000); }
     };
     $('#btnOpen').onclick = $('#wOpen').onclick = pickInApp;
     $('#mOpen').onclick = () => { closeMenus(); pickInApp(); };
@@ -4435,7 +4457,7 @@ ${clone.innerHTML}
     let reloading = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (!hadController || reloading) return;
-      if (state.dirty) { toast('새 버전이 준비됐습니다. 저장한 뒤 새로고침하면 적용됩니다.', 5000); return; }
+      if (state.dirty) { toast(L('새 버전이 준비됐습니다. 저장한 뒤 새로고침하면 적용됩니다.', 'A new version is ready. Save, then reload to apply it.'), 5000); return; }
       reloading = true;
       location.reload();
     });
@@ -4474,6 +4496,7 @@ ${clone.innerHTML}
         roots: state.roots.filter((r) => r.kind === 'tauri').map((r) => ({ name: r.key, path: r.path })),
         current: currentAbsPath(),
         selection: currentSelection().slice(0, 8000) || null,
+        lang: LANG,
       };
       const key = JSON.stringify(payload);
       if (key === mcpLastSent) return;
@@ -4499,7 +4522,7 @@ ${clone.innerHTML}
     const last = list[list.length - 1];
     const pill = $('#mcpPill');
     pill.hidden = false;
-    pill.textContent = `🔌 Claude가 ${fileLabel(last.path)} ${last.tool === 'write' ? '고침' : '읽음'}`;
+    pill.textContent = last.tool === 'write' ? L(`🔌 Claude가 ${fileLabel(last.path)} 고침`, `🔌 Claude edited ${fileLabel(last.path)}`) : L(`🔌 Claude가 ${fileLabel(last.path)} 읽음`, `🔌 Claude read ${fileLabel(last.path)}`);
     clearTimeout(pollMcp.hideTimer);
     pollMcp.hideTimer = setTimeout(() => { pill.hidden = true; }, 15000);
     if (wrote) refreshFolder({ quiet: true });
@@ -4511,18 +4534,26 @@ ${clone.innerHTML}
   async function openMcp() {
     closeMenus();
     const body = $('#mcpBody');
-    const legal = '<p class="mcp-legal">Claude는 Anthropic의 상표입니다. markcont는 Anthropic과 관계없는 독립 오픈소스 프로그램입니다.</p>';
-    const privacy = `<div class="mcp-section"><h4>🔒 연결하기 전에 알아 두세요</h4><ul>
+    const legal = '<p class="mcp-legal">' + L('Claude는 Anthropic의 상표입니다. markcont는 Anthropic과 관계없는 독립 오픈소스 프로그램입니다.', 'Claude is a trademark of Anthropic. markcont is an independent open-source program not affiliated with Anthropic.') + '</p>';
+    const privacy = L(`<div class="mcp-section"><h4>🔒 연결하기 전에 알아 두세요</h4><ul>
       <li>연결하면 Claude가 <b>markcont에서 열어 둔 폴더의 마크다운 파일</b>을 읽고 고칠 수 있습니다.</li>
       <li>Claude가 읽은 문서 내용은 <b>Anthropic으로 보내져 처리</b>됩니다 (Anthropic의 이용 약관 · 개인정보 처리방침이 적용됩니다). markcont가 따로 문서를 어디로 보내지는 않습니다.</li>
       <li>Claude는 <b>열어 둔 폴더 안의 마크다운 · 텍스트 파일만</b> 다룰 수 있고, 파일 삭제 · 이름 바꾸기 · 명령 실행은 할 수 없습니다.</li>
       <li>Claude 앱은 도구를 쓰기 전에 허락을 묻습니다. 고친 곳은 markcont에서 <b>바로 보이고 되돌릴 수 있습니다</b>.</li>
       <li>내 구독(Claude Pro · Max 등)으로 <b>Claude 앱에서</b> 대화합니다. markcont는 구독이나 API 키를 쓰지 않습니다.</li>
-      <li>⚠️ <b>남이 보낸 문서는 조심하세요.</b> 문서 안에 숨겨진 지시문을 AI가 따를 수 있습니다. 믿을 수 없는 문서가 든 폴더는 연결한 채로 AI에게 맡기지 마세요.</li></ul></div>`;
+      <li>⚠️ <b>남이 보낸 문서는 조심하세요.</b> 문서 안에 숨겨진 지시문을 AI가 따를 수 있습니다. 믿을 수 없는 문서가 든 폴더는 연결한 채로 AI에게 맡기지 마세요.</li></ul></div>`,
+      `<div class="mcp-section"><h4>🔒 Before you connect</h4><ul>
+      <li>Once connected, Claude can read and edit <b>the markdown files in folders you opened in markcont</b>.</li>
+      <li>Document content Claude reads is <b>sent to Anthropic for processing</b> (Anthropic's terms and privacy policy apply). markcont itself doesn't send your documents anywhere.</li>
+      <li>Claude can only work with <b>markdown and text files inside the folders you opened</b>. It can't delete or rename files or run commands.</li>
+      <li>The Claude app asks for permission before using a tool. Edits show up in markcont <b>right away and can be reverted</b>.</li>
+      <li>You chat <b>in the Claude app</b> with your own subscription (Claude Pro, Max, etc.). markcont doesn't use any subscription or API key.</li>
+      <li>⚠️ <b>Be careful with documents from others.</b> The AI may follow instructions hidden inside a document. Don't hand a folder with untrusted documents to the AI while connected.</li></ul></div>`);
     if (!isTauri()) {
-      body.innerHTML = privacy.replace('연결하기 전에 알아 두세요', 'Claude와 연결이란?') +
-        '<div class="mcp-section"><h4>💻 PC 프로그램에서만 됩니다</h4><p>Claude Desktop · Claude Code가 markcont에 연결하려면 내 컴퓨터에 설치된 markcont가 필요합니다. 웹 앱(브라우저)에서는 쓸 수 없습니다.</p>' +
-        '<p><a href="https://github.com/RyuSeoJin/markcont/releases/latest" target="_blank" rel="noopener">PC 프로그램 내려받기 →</a></p></div>' + legal;
+      body.innerHTML = privacy.replace(L('연결하기 전에 알아 두세요', 'Before you connect'), L('Claude와 연결이란?', 'What is connecting to Claude?')) +
+        L('<div class="mcp-section"><h4>💻 PC 프로그램에서만 됩니다</h4><p>Claude Desktop · Claude Code가 markcont에 연결하려면 내 컴퓨터에 설치된 markcont가 필요합니다. 웹 앱(브라우저)에서는 쓸 수 없습니다.</p>',
+          '<div class="mcp-section"><h4>💻 PC app only</h4><p>For Claude Desktop or Claude Code to connect, markcont must be installed on your computer. It isn\'t available in the web app (browser).</p>') +
+        '<p><a href="https://github.com/RyuSeoJin/markcont/releases/latest" target="_blank" rel="noopener">' + L('PC 프로그램 내려받기 →', 'Download the PC app →') + '</a></p></div>' + legal;
       $('#mcpModal').hidden = false;
       return;
     }
@@ -4533,28 +4564,28 @@ ${clone.innerHTML}
     const json = JSON.stringify({ mcpServers: { markcont: { command: exe, args: ['--mcp'] } } }, null, 2);
     const folders = state.roots.filter((r) => r.kind === 'tauri').map((r) => escapeHtml(r.key));
     body.innerHTML = privacy +
-      `<div class="mcp-section"><h4>📁 Claude가 다룰 수 있는 폴더</h4><p>${folders.length ? folders.join(' · ') : '아직 없습니다. <b>폴더 열기</b>로 폴더를 먼저 여세요.'}</p></div>` +
-      `<div class="mcp-section"><h4>Claude Desktop <span class="mcp-badge ${info.added ? 'ok' : 'no'}">${info.added ? '연결됨' : '연결 안 됨'}</span></h4>
-        <p>단추를 누르면 Claude Desktop 설정에 markcont를 더합니다 (기존 설정은 <code>.bak</code> 으로 백업, 다른 항목은 그대로).</p>
-        <button class="btn primary" id="mcpAdd">${info.added ? '다시 연결하기' : 'Claude Desktop에 연결'}</button>
-        <p style="margin-top:8px">연결한 뒤 <b>Claude Desktop을 완전히 종료했다가 다시 여세요</b>. 대화창의 도구 목록에 markcont가 보이면 됩니다.</p></div>` +
-      `<div class="mcp-section"><h4>Claude Code</h4><p>터미널에서 한 번 실행하세요.</p>
-        <div class="mcp-code"><code id="mcpCc"></code><button class="btn" id="mcpCopyCc">복사</button></div></div>` +
-      `<div class="mcp-section"><h4>직접 설정하기</h4><p>다른 MCP 프로그램이나 직접 설정할 때 쓰는 내용입니다.</p>
-        <div class="mcp-code"><code id="mcpJson"></code><button class="btn" id="mcpCopyJson">복사</button></div></div>` +
-      `<div class="mcp-section"><h4>💬 이렇게 요청해 보세요</h4><ul><li>"markcont에서 보고 있는 문서를 작성 규칙에 맞게 다듬어 줘"</li><li>"회의록 폴더의 문서들을 한 장으로 요약해서 새 문서로 만들어 줘"</li><li>"선택한 부분을 표로 바꿔 줘"</li></ul></div>` + legal;
+      `<div class="mcp-section"><h4>📁 ${L('Claude가 다룰 수 있는 폴더', 'Folders Claude can work with')}</h4><p>${folders.length ? folders.join(' · ') : L('아직 없습니다. <b>폴더 열기</b>로 폴더를 먼저 여세요.', 'None yet. Open a folder with <b>Open folder</b> first.')}</p></div>` +
+      `<div class="mcp-section"><h4>Claude Desktop <span class="mcp-badge ${info.added ? 'ok' : 'no'}">${info.added ? L('연결됨', 'Connected') : L('연결 안 됨', 'Not connected')}</span></h4>
+        <p>${L('단추를 누르면 Claude Desktop 설정에 markcont를 더합니다 (기존 설정은 <code>.bak</code> 으로 백업, 다른 항목은 그대로).', "This button adds markcont to Claude Desktop's settings (the old settings are backed up as <code>.bak</code>; other entries are left alone).")}</p>
+        <button class="btn primary" id="mcpAdd">${info.added ? L('다시 연결하기', 'Reconnect') : L('Claude Desktop에 연결', 'Connect to Claude Desktop')}</button>
+        <p style="margin-top:8px">${L('연결한 뒤 <b>Claude Desktop을 완전히 종료했다가 다시 여세요</b>. 대화창의 도구 목록에 markcont가 보이면 됩니다.', "After connecting, <b>quit Claude Desktop completely and open it again</b>. You're done when markcont appears in the chat's tool list.")}</p></div>` +
+      `<div class="mcp-section"><h4>Claude Code</h4><p>${L('터미널에서 한 번 실행하세요.', 'Run this once in a terminal.')}</p>
+        <div class="mcp-code"><code id="mcpCc"></code><button class="btn" id="mcpCopyCc">${L('복사', 'Copy')}</button></div></div>` +
+      `<div class="mcp-section"><h4>${L('직접 설정하기', 'Manual setup')}</h4><p>${L('다른 MCP 프로그램이나 직접 설정할 때 쓰는 내용입니다.', 'Use this for other MCP clients or manual setup.')}</p>
+        <div class="mcp-code"><code id="mcpJson"></code><button class="btn" id="mcpCopyJson">${L('복사', 'Copy')}</button></div></div>` +
+      `<div class="mcp-section"><h4>💬 ${L('이렇게 요청해 보세요', 'Try asking')}</h4><ul>${L('<li>"markcont에서 보고 있는 문서를 작성 규칙에 맞게 다듬어 줘"</li><li>"회의록 폴더의 문서들을 한 장으로 요약해서 새 문서로 만들어 줘"</li><li>"선택한 부분을 표로 바꿔 줘"</li>', `<li>"Polish the document I'm viewing in markcont to follow the writing rules"</li><li>"Summarize the documents in the meeting-notes folder into one new document"</li><li>"Turn the selected part into a table"</li>`)}</ul></div>` + legal;
     $('#mcpCc').textContent = ccCmd;
     $('#mcpJson').textContent = json;
-    $('#mcpCopyCc').onclick = () => copyText(ccCmd).then(() => toast('명령을 복사했습니다'));
-    $('#mcpCopyJson').onclick = () => copyText(json).then(() => toast('설정 내용을 복사했습니다'));
+    $('#mcpCopyCc').onclick = () => copyText(ccCmd).then(() => toast(L('명령을 복사했습니다', 'Command copied')));
+    $('#mcpCopyJson').onclick = () => copyText(json).then(() => toast(L('설정 내용을 복사했습니다', 'Settings copied')));
     $('#mcpAdd').onclick = async () => {
       try {
         const path = await tinvoke('mcp_add_claude_desktop');
-        toast('Claude Desktop 설정에 더했습니다. Claude Desktop을 다시 열어 주세요.', 5000);
+        toast(L('Claude Desktop 설정에 더했습니다. Claude Desktop을 다시 열어 주세요.', 'Added to Claude Desktop settings. Please reopen Claude Desktop.'), 5000);
         syncMcpState();
         openMcp();
         void path;
-      } catch (e) { toast('연결하지 못했습니다: ' + e, 5000); }
+      } catch (e) { toast(L('연결하지 못했습니다: ', "Couldn't connect: ") + e, 5000); }
     };
     syncMcpState();
     $('#mcpModal').hidden = false;

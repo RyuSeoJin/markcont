@@ -74,8 +74,8 @@ fn startup_file() -> Option<String> {
 #[tauri::command]
 fn pick_files() -> Vec<String> {
     rfd::FileDialog::new()
-        .set_title("마크다운 파일 열기")
-        .add_filter("마크다운", &["md", "markdown", "mdown", "mkd", "txt"])
+        .set_title(mcp::tr("마크다운 파일 열기", "Open markdown file"))
+        .add_filter(mcp::tr("마크다운", "Markdown"), &["md", "markdown", "mdown", "mkd", "txt"])
         .pick_files()
         .unwrap_or_default()
         .into_iter()
@@ -110,8 +110,8 @@ fn reveal_in_folder(path: String) -> Result<(), String> {
 #[tauri::command]
 fn pick_save_path(default_name: String, start_dir: Option<String>) -> Option<String> {
     let mut dialog = rfd::FileDialog::new()
-        .set_title("새 파일로 저장")
-        .add_filter("마크다운", &["md", "markdown", "txt"])
+        .set_title(mcp::tr("새 파일로 저장", "Save as new file"))
+        .add_filter(mcp::tr("마크다운", "Markdown"), &["md", "markdown", "txt"])
         .set_file_name(&default_name);
     if let Some(dir) = start_dir {
         dialog = dialog.set_directory(dir);
@@ -122,7 +122,7 @@ fn pick_save_path(default_name: String, start_dir: Option<String>) -> Option<Str
 #[tauri::command]
 fn pick_folder() -> Option<String> {
     rfd::FileDialog::new()
-        .set_title("폴더 열기")
+        .set_title(mcp::tr("폴더 열기", "Open folder"))
         .pick_folder()
         .map(|p| p.to_string_lossy().into_owned())
 }
@@ -147,7 +147,7 @@ const ASSET_EXT: &[&str] = &[
 fn list_dir(root: String) -> Result<FolderListing, String> {
     let base = PathBuf::from(&root);
     if !base.is_dir() {
-        return Err("폴더를 찾을 수 없습니다".into());
+        return Err(mcp::tr("폴더를 찾을 수 없습니다", "Folder not found").into());
     }
     let mut out = FolderListing {
         name: base.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| root.clone()),
@@ -203,7 +203,7 @@ fn create_file(path: String, text: String) -> Result<u64, String> {
         .write(true)
         .create_new(true)
         .open(&p)
-        .map_err(|e| if e.kind() == std::io::ErrorKind::AlreadyExists { "같은 이름의 파일이 이미 있습니다".to_string() } else { e.to_string() })?;
+        .map_err(|e| if e.kind() == std::io::ErrorKind::AlreadyExists { mcp::tr("같은 이름의 파일이 이미 있습니다", "A file with that name already exists").to_string() } else { e.to_string() })?;
     f.write_all(text.as_bytes()).map_err(|e| e.to_string())?;
     Ok(modified_ms(&p))
 }
@@ -212,7 +212,7 @@ fn create_file(path: String, text: String) -> Result<u64, String> {
 fn create_dir(path: String) -> Result<(), String> {
     let p = PathBuf::from(&path);
     if p.exists() {
-        return Err("같은 이름이 이미 있습니다".into());
+        return Err(mcp::tr("같은 이름이 이미 있습니다", "That name is already taken").into());
     }
     fs::create_dir(&p).map_err(|e| e.to_string())
 }
@@ -221,7 +221,7 @@ fn create_dir(path: String) -> Result<(), String> {
 fn rename_path(from: String, to: String) -> Result<(), String> {
     let target = PathBuf::from(&to);
     if target.exists() {
-        return Err("같은 이름이 이미 있습니다".into());
+        return Err(mcp::tr("같은 이름이 이미 있습니다", "That name is already taken").into());
     }
     fs::rename(&from, &target).map_err(|e| e.to_string())
 }
@@ -234,8 +234,13 @@ fn delete_path(path: String) -> Result<(), String> {
 
 // ---------- Claude 연결 (MCP) : 화면에서 쓰는 명령 ----------
 #[tauri::command]
-fn set_mcp_state(roots: Vec<mcp::McpRoot>, current: Option<String>, selection: Option<String>) -> Result<(), String> {
-    mcp::write_state(&mcp::McpState { roots, current, selection })
+fn set_mcp_state(roots: Vec<mcp::McpRoot>, current: Option<String>, selection: Option<String>, lang: Option<String>) -> Result<(), String> {
+    mcp::write_state(&mcp::McpState { roots, current, selection, lang })
+}
+/// 화면 언어를 알려줌 (파일 선택 창 제목 · 오류 문구에 씀)
+#[tauri::command]
+fn set_lang(lang: String) {
+    mcp::set_en(lang == "en");
 }
 #[tauri::command]
 fn mcp_setup_info() -> serde_json::Value {
@@ -258,6 +263,7 @@ fn main() {
     }
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
+            set_lang,
             read_file,
             save_file,
             file_modified,

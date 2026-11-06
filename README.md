@@ -1,3 +1,5 @@
+[**한국어**](README.md) | [English](README.en.md)
+
 <div align="center">
 
 <img src="app/icons/icon-192.png" width="84" alt="markcont 아이콘">
@@ -115,6 +117,7 @@ install.ps1 / .sh   한 줄 설치 스크립트
 - **웹 앱**: `main` 브랜치에 올리면 자동으로 GitHub Pages에 공개됩니다.
 - **PC 프로그램**: `v1.0.0` 같은 태그를 올리면 설치 파일이 만들어져 Releases에 올라갑니다.
   새 버전을 낼 때는 `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `package.json` 의 버전, `app/sw.js` 의 `VERSION`, `app/index.html` 의 `APP_VERSION` 을 같이 올리세요.
+  화면 문구는 한국어 · 영어 두 가지입니다. 코드 안 문구는 `L('한국어', 'English')`, `index.html` 에 그대로 적힌 문구는 `app/i18n.js` 의 표, 안내 문서는 `app/docs/*.en.md` 에 있습니다.
 - 내 PC에서 직접 빌드하려면 [Node.js](https://nodejs.org)와 [Rust](https://rustup.rs)를 설치한 뒤 `npm install`, `npm run icons`, `npm run build`.
 
 ## 📄 라이선스

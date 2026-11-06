@@ -12,7 +12,21 @@ use serde_json::{json, Value};
 use std::fs;
 use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+// 화면 언어 (한국어 · English). 화면은 set_lang 명령으로, MCP 서버는 mcp-state.json 의 lang 으로 정합니다.
+static EN: AtomicBool = AtomicBool::new(false);
+pub fn set_en(on: bool) {
+    EN.store(on, Ordering::Relaxed);
+}
+pub fn is_en() -> bool {
+    EN.load(Ordering::Relaxed)
+}
+/// 한국어 · 영어 문구 중 지금 언어에 맞는 것
+pub fn tr(ko: &'static str, en: &'static str) -> &'static str {
+    if is_en() { en } else { ko }
+}
 
 const MD_EXT: &[&str] = &["md", "markdown", "mdown", "mkd", "txt"];
 
@@ -54,6 +68,8 @@ pub struct McpState {
     pub current: Option<String>,
     #[serde(default)]
     pub selection: Option<String>,
+    #[serde(default)]
+    pub lang: Option<String>,
 }
 
 fn now_ms() -> u64 {
@@ -87,7 +103,7 @@ fn decode(bytes: Vec<u8>) -> String {
 /// "폴더이름/안쪽/파일.md" 또는 절대 경로 → 열어 둔 폴더 안의 실제 경로 (밖이면 오류)
 fn resolve(st: &McpState, input: &str) -> Result<PathBuf, String> {
     if st.roots.is_empty() {
-        return Err("markcont에 열려 있는 폴더가 없습니다. markcont에서 '폴더 열기'로 폴더를 먼저 여세요.".into());
+        return Err(tr("markcont에 열려 있는 폴더가 없습니다. markcont에서 '폴더 열기'로 폴더를 먼저 여세요.", "No folder is open in markcont. Open a folder with 'Open folder' in markcont first.").into());
     }
     let raw = PathBuf::from(input);
     let candidate = if raw.is_absolute() {
@@ -103,14 +119,14 @@ fn resolve(st: &McpState, input: &str) -> Result<PathBuf, String> {
             None if st.roots.len() == 1 => PathBuf::from(&st.roots[0].path).join(&norm),
             None => {
                 let names: Vec<String> = st.roots.iter().map(|r| r.name.clone()).collect();
-                return Err(format!("경로는 열린 폴더 이름으로 시작해야 합니다: {}", names.join(", ")));
+                return Err((if is_en() { format!("The path must start with an open folder name: {}", names.join(", ")) } else { format!("경로는 열린 폴더 이름으로 시작해야 합니다: {}", names.join(", ")) }));
             }
         }
     };
     // 아직 없는 파일도 다룰 수 있게, 부모 폴더 기준으로 실제 위치를 확인
-    let file_name = candidate.file_name().ok_or("파일 이름이 없습니다")?.to_os_string();
-    let parent = candidate.parent().ok_or("폴더가 없습니다")?;
-    let canon_parent = parent.canonicalize().map_err(|_| format!("폴더가 없습니다: {}", parent.display()))?;
+    let file_name = candidate.file_name().ok_or(tr("파일 이름이 없습니다", "No file name"))?.to_os_string();
+    let parent = candidate.parent().ok_or(tr("폴더가 없습니다", "No folder"))?;
+    let canon_parent = parent.canonicalize().map_err(|_| (if is_en() { format!("Folder not found: {}", parent.display()) } else { format!("폴더가 없습니다: {}", parent.display()) }))?;
     let full = canon_parent.join(file_name);
     for r in &st.roots {
         if let Ok(rc) = PathBuf::from(&r.path).canonicalize() {
@@ -119,7 +135,7 @@ fn resolve(st: &McpState, input: &str) -> Result<PathBuf, String> {
             }
         }
     }
-    Err("markcont에서 열어 둔 폴더 밖의 파일은 다룰 수 없습니다.".into())
+    Err(tr("markcont에서 열어 둔 폴더 밖의 파일은 다룰 수 없습니다.", "Files outside the folders open in markcont can't be used.").into())
 }
 /// 실제 경로 → "폴더이름/안쪽/파일.md"
 fn display(st: &McpState, path: &Path) -> String {
@@ -162,26 +178,26 @@ fn root_dirs(st: &McpState, folder: Option<&str>) -> Result<Vec<PathBuf>, String
         .filter_map(|r| PathBuf::from(&r.path).canonicalize().ok())
         .collect();
     if list.is_empty() {
-        return Err("열린 폴더가 없거나, 그런 이름의 폴더가 없습니다.".into());
+        return Err(tr("열린 폴더가 없거나, 그런 이름의 폴더가 없습니다.", "No folder is open, or there is no folder with that name.").into());
     }
     Ok(list)
 }
 
 fn tools() -> Value {
     json!([
-        { "name": "list_folders", "description": "markcont에서 지금 열어 둔 폴더 목록을 보여줍니다. 다른 도구의 경로는 이 폴더 이름으로 시작합니다.",
+        { "name": "list_folders", "description": tr("markcont에서 지금 열어 둔 폴더 목록을 보여줍니다. 다른 도구의 경로는 이 폴더 이름으로 시작합니다.", "Lists the folders currently open in markcont. Paths for the other tools start with one of these folder names."),
           "inputSchema": { "type": "object", "properties": {} } },
-        { "name": "list_files", "description": "열어 둔 폴더 안의 마크다운 파일 목록 (\"폴더이름/안쪽/파일.md\" 형식).",
-          "inputSchema": { "type": "object", "properties": { "folder": { "type": "string", "description": "폴더 이름 (비우면 모든 폴더)" } } } },
-        { "name": "get_current_document", "description": "사용자가 markcont에서 지금 보고 있는 문서의 경로와 내용, 선택한 부분을 가져옵니다. '이 문서', '지금 문서' 같은 요청에 먼저 쓰세요.",
+        { "name": "list_files", "description": tr("열어 둔 폴더 안의 마크다운 파일 목록 (\"폴더이름/안쪽/파일.md\" 형식).", "Lists markdown files in the open folders (as \"folder/sub/file.md\")."),
+          "inputSchema": { "type": "object", "properties": { "folder": { "type": "string", "description": tr("폴더 이름 (비우면 모든 폴더)", "Folder name (empty for all folders)") } } } },
+        { "name": "get_current_document", "description": tr("사용자가 markcont에서 지금 보고 있는 문서의 경로와 내용, 선택한 부분을 가져옵니다. '이 문서', '지금 문서' 같은 요청에 먼저 쓰세요.", "Gets the path, content and selected text of the document the user is viewing in markcont. Use it first for requests like 'this document'."),
           "inputSchema": { "type": "object", "properties": {} } },
-        { "name": "read_file", "description": "마크다운 파일 내용을 읽습니다.",
+        { "name": "read_file", "description": tr("마크다운 파일 내용을 읽습니다.", "Reads a markdown file."),
           "inputSchema": { "type": "object", "properties": { "path": { "type": "string" } }, "required": ["path"] } },
-        { "name": "search", "description": "열어 둔 폴더의 마크다운 파일에서 글자를 찾습니다 (대소문자 무시). 최대 100줄.",
+        { "name": "search", "description": tr("열어 둔 폴더의 마크다운 파일에서 글자를 찾습니다 (대소문자 무시). 최대 100줄.", "Searches text in markdown files of the open folders (case-insensitive). Up to 100 lines."),
           "inputSchema": { "type": "object", "properties": { "query": { "type": "string" }, "folder": { "type": "string" } }, "required": ["query"] } },
-        { "name": "edit_file", "description": "파일 안의 old_text 를 new_text 로 바꿉니다. old_text 는 파일에 정확히 한 번만 있어야 합니다. 작은 수정에 쓰세요. 사용자는 markcont 화면에서 바뀐 곳을 바로 보고 되돌릴 수 있습니다.",
+        { "name": "edit_file", "description": tr("파일 안의 old_text 를 new_text 로 바꿉니다. old_text 는 파일에 정확히 한 번만 있어야 합니다. 작은 수정에 쓰세요. 사용자는 markcont 화면에서 바뀐 곳을 바로 보고 되돌릴 수 있습니다.", "Replaces old_text with new_text in a file. old_text must appear exactly once. Use it for small edits. The user sees the change in markcont right away and can revert it."),
           "inputSchema": { "type": "object", "properties": { "path": { "type": "string" }, "old_text": { "type": "string" }, "new_text": { "type": "string" } }, "required": ["path", "old_text", "new_text"] } },
-        { "name": "write_file", "description": "마크다운 파일 전체를 새 내용으로 씁니다 (없으면 새로 만듦). 큰 수정이나 새 문서에 쓰세요.",
+        { "name": "write_file", "description": tr("마크다운 파일 전체를 새 내용으로 씁니다 (없으면 새로 만듦). 큰 수정이나 새 문서에 쓰세요.", "Writes a whole markdown file with new content (creates it if missing). Use it for big edits or new documents."),
           "inputSchema": { "type": "object", "properties": { "path": { "type": "string" }, "content": { "type": "string" } }, "required": ["path", "content"] } }
     ])
 }
@@ -192,7 +208,7 @@ fn run_tool(name: &str, args: &Value) -> Result<String, String> {
     match name {
         "list_folders" => {
             if st.roots.is_empty() {
-                return Ok("markcont에 열린 폴더가 없습니다. 사용자에게 markcont에서 '폴더 열기'로 폴더를 열어 달라고 요청하세요.".into());
+                return Ok(tr("markcont에 열린 폴더가 없습니다. 사용자에게 markcont에서 '폴더 열기'로 폴더를 열어 달라고 요청하세요.", "No folder is open in markcont. Ask the user to open a folder with 'Open folder' in markcont.").into());
             }
             Ok(st.roots.iter().map(|r| format!("- {}  ({})", r.name, r.path)).collect::<Vec<_>>().join("\n"))
         }
@@ -203,19 +219,19 @@ fn run_tool(name: &str, args: &Value) -> Result<String, String> {
                 walk_md(&d, 0, &mut files);
             }
             if files.is_empty() {
-                return Ok("마크다운 파일이 없습니다.".into());
+                return Ok(tr("마크다운 파일이 없습니다.", "No markdown files.").into());
             }
             Ok(files.iter().map(|p| display(&st, p)).collect::<Vec<_>>().join("\n"))
         }
         "get_current_document" => {
             let Some(cur) = st.current.clone() else {
-                return Ok("markcont에서 지금 열린 문서가 없습니다 (또는 열어 둔 폴더 밖의 문서입니다).".into());
+                return Ok(tr("markcont에서 지금 열린 문서가 없습니다 (또는 열어 둔 폴더 밖의 문서입니다).", "No document is open in markcont (or it is outside the open folders).").into());
             };
             let p = resolve(&st, &cur)?;
             let text = fs::read(&p).map(decode).map_err(|e| e.to_string())?;
-            let mut out = format!("경로: {}\n\n----- 내용 -----\n{}", display(&st, &p), text);
+            let mut out = (if is_en() { format!("Path: {}\n\n----- Content -----\n{}", display(&st, &p), text) } else { format!("경로: {}\n\n----- 내용 -----\n{}", display(&st, &p), text) });
             if let Some(sel) = st.selection.as_ref().filter(|s| !s.trim().is_empty()) {
-                out.push_str(&format!("\n----- 사용자가 선택한 부분 -----\n{sel}"));
+                out.push_str(&(if is_en() { format!("\n----- Selected by the user -----\n{sel}") } else { format!("\n----- 사용자가 선택한 부분 -----\n{sel}") }));
             }
             log_activity("read", &p);
             Ok(out)
@@ -223,16 +239,16 @@ fn run_tool(name: &str, args: &Value) -> Result<String, String> {
         "read_file" => {
             let p = resolve(&st, &arg("path"))?;
             if !is_md(&p) {
-                return Err("마크다운 · 텍스트 파일만 읽을 수 있습니다.".into());
+                return Err(tr("마크다운 · 텍스트 파일만 읽을 수 있습니다.", "Only markdown and text files can be read.").into());
             }
-            let text = fs::read(&p).map(decode).map_err(|e| format!("읽지 못했습니다: {e}"))?;
+            let text = fs::read(&p).map(decode).map_err(|e| (if is_en() { format!("Couldn't read: {e}") } else { format!("읽지 못했습니다: {e}") }))?;
             log_activity("read", &p);
             Ok(text)
         }
         "search" => {
             let q = arg("query").to_lowercase();
             if q.is_empty() {
-                return Err("찾을 글자를 넣으세요.".into());
+                return Err(tr("찾을 글자를 넣으세요.", "Enter text to search for.").into());
             }
             let mut files = vec![];
             for d in root_dirs(&st, Some(arg("folder").as_str()))? {
@@ -251,47 +267,50 @@ fn run_tool(name: &str, args: &Value) -> Result<String, String> {
                     }
                 }
             }
-            Ok(if hits.is_empty() { "찾은 곳이 없습니다.".into() } else { hits.join("\n") })
+            Ok(if hits.is_empty() { tr("찾은 곳이 없습니다.", "No matches.").into() } else { hits.join("\n") })
         }
         "edit_file" => {
             let p = resolve(&st, &arg("path"))?;
             if !is_md(&p) {
-                return Err("마크다운 · 텍스트 파일만 고칠 수 있습니다.".into());
+                return Err(tr("마크다운 · 텍스트 파일만 고칠 수 있습니다.", "Only markdown and text files can be edited.").into());
             }
             let old = arg("old_text");
             let new = arg("new_text");
             if old.is_empty() {
-                return Err("old_text 가 비어 있습니다.".into());
+                return Err(tr("old_text 가 비어 있습니다.", "old_text is empty.").into());
             }
-            let text = fs::read(&p).map(decode).map_err(|e| format!("읽지 못했습니다: {e}"))?;
+            let text = fs::read(&p).map(decode).map_err(|e| (if is_en() { format!("Couldn't read: {e}") } else { format!("읽지 못했습니다: {e}") }))?;
             let n = text.matches(&old).count();
             if n == 0 {
-                return Err("old_text 를 파일에서 찾지 못했습니다. read_file 로 지금 내용을 다시 확인하세요.".into());
+                return Err(tr("old_text 를 파일에서 찾지 못했습니다. read_file 로 지금 내용을 다시 확인하세요.", "old_text was not found in the file. Check the current content again with read_file.").into());
             }
             if n > 1 {
-                return Err(format!("old_text 가 {n}번 나옵니다. 앞뒤 글을 더 넣어 한 곳만 가리키게 하세요."));
+                return Err((if is_en() { format!("old_text appears {n} times. Include more surrounding text so it matches only one place.") } else { format!("old_text 가 {n}번 나옵니다. 앞뒤 글을 더 넣어 한 곳만 가리키게 하세요.") }));
             }
-            fs::write(&p, text.replacen(&old, &new, 1)).map_err(|e| format!("쓰지 못했습니다: {e}"))?;
+            fs::write(&p, text.replacen(&old, &new, 1)).map_err(|e| (if is_en() { format!("Couldn't write: {e}") } else { format!("쓰지 못했습니다: {e}") }))?;
             log_activity("write", &p);
-            Ok(format!("{} 을(를) 고쳤습니다.", display(&st, &p)))
+            Ok((if is_en() { format!("Edited {}.", display(&st, &p)) } else { format!("{} 을(를) 고쳤습니다.", display(&st, &p)) }))
         }
         "write_file" => {
             let p = resolve(&st, &arg("path"))?;
             if !is_md(&p) {
-                return Err("마크다운 · 텍스트 파일(.md 등)만 쓸 수 있습니다.".into());
+                return Err(tr("마크다운 · 텍스트 파일(.md 등)만 쓸 수 있습니다.", "Only markdown and text files (.md etc.) can be written.").into());
             }
             let existed = p.exists();
-            fs::write(&p, arg("content")).map_err(|e| format!("쓰지 못했습니다: {e}"))?;
+            fs::write(&p, arg("content")).map_err(|e| (if is_en() { format!("Couldn't write: {e}") } else { format!("쓰지 못했습니다: {e}") }))?;
             log_activity("write", &p);
-            Ok(format!("{} 을(를) {}.", display(&st, &p), if existed { "새 내용으로 썼습니다" } else { "새로 만들었습니다" }))
+            Ok(if is_en() { format!("{} {}.", if existed { "Rewrote" } else { "Created" }, display(&st, &p)) } else { format!("{} 을(를) {}.", display(&st, &p), if existed { "새 내용으로 썼습니다" } else { "새로 만들었습니다" }) })
         }
-        _ => Err(format!("모르는 도구입니다: {name}")),
+        _ => Err((if is_en() { format!("Unknown tool: {name}") } else { format!("모르는 도구입니다: {name}") })),
     }
 }
 
-const INSTRUCTIONS: &str = "markcont는 마크다운 뷰어입니다. 사용자가 markcont에서 열어 둔 폴더의 마크다운 파일을 읽고 고칠 수 있습니다. \
+const INSTRUCTIONS_KO: &str = "markcont는 마크다운 뷰어입니다. 사용자가 markcont에서 열어 둔 폴더의 마크다운 파일을 읽고 고칠 수 있습니다. \
 '이 문서'처럼 말하면 get_current_document 를 먼저 쓰세요. 작은 수정은 edit_file, 큰 수정은 write_file 을 쓰세요. \
 사용자는 markcont 화면에서 바뀐 곳을 바로 보고 되돌릴 수 있습니다. 고친 뒤에는 무엇을 바꿨는지 짧게 알려 주세요.";
+const INSTRUCTIONS_EN: &str = "markcont is a markdown viewer. You can read and edit markdown files in the folders the user opened in markcont. \
+When the user says 'this document', use get_current_document first. Use edit_file for small edits and write_file for big ones. \
+The user sees changes in markcont right away and can revert them. After editing, briefly tell the user what you changed.";
 
 /// MCP 서버 실행 (줄 단위 JSON-RPC 2.0)
 pub fn serve() {
@@ -303,6 +322,7 @@ pub fn serve() {
             continue;
         }
         let Ok(msg) = serde_json::from_str::<Value>(&line) else { continue };
+        set_en(load_state().lang.as_deref() == Some("en")); // 화면에서 고른 언어를 따름
         let id = msg.get("id").cloned();
         let method = msg.get("method").and_then(|m| m.as_str()).unwrap_or("").to_string();
         let params = msg.get("params").cloned().unwrap_or_else(|| json!({}));
@@ -313,7 +333,7 @@ pub fn serve() {
                     "protocolVersion": version,
                     "capabilities": { "tools": {} },
                     "serverInfo": { "name": "markcont", "version": env!("CARGO_PKG_VERSION") },
-                    "instructions": INSTRUCTIONS
+                    "instructions": tr(INSTRUCTIONS_KO, INSTRUCTIONS_EN)
                 })))
             }
             "ping" => Some(Ok(json!({}))),
@@ -329,7 +349,7 @@ pub fn serve() {
             m if m.starts_with("notifications/") => None,
             _ => {
                 if id.is_some() {
-                    Some(Err((-32601, format!("지원하지 않는 요청입니다: {method}"))))
+                    Some(Err((-32601, (if is_en() { format!("Unsupported request: {method}") } else { format!("지원하지 않는 요청입니다: {method}") }))))
                 } else {
                     None
                 }
@@ -397,17 +417,17 @@ pub fn add_to_claude_desktop() -> Result<String, String> {
         if text.trim().is_empty() {
             json!({})
         } else {
-            serde_json::from_str(&text).map_err(|_| "Claude Desktop 설정 파일 형식이 올바르지 않아 고치지 않았습니다. 직접 추가해 주세요.".to_string())?
+            serde_json::from_str(&text).map_err(|_| tr("Claude Desktop 설정 파일 형식이 올바르지 않아 고치지 않았습니다. 직접 추가해 주세요.", "Claude Desktop's settings file isn't valid, so it was left unchanged. Please add markcont manually.").to_string())?
         }
     } else {
         json!({})
     };
     if !root.is_object() {
-        return Err("Claude Desktop 설정 파일 형식이 예상과 달라 고치지 않았습니다.".into());
+        return Err(tr("Claude Desktop 설정 파일 형식이 예상과 달라 고치지 않았습니다.", "Claude Desktop's settings file has an unexpected format, so it was left unchanged.").into());
     }
     let servers = root.as_object_mut().unwrap().entry("mcpServers").or_insert_with(|| json!({}));
     if !servers.is_object() {
-        return Err("Claude Desktop 설정의 mcpServers 형식이 예상과 달라 고치지 않았습니다.".into());
+        return Err(tr("Claude Desktop 설정의 mcpServers 형식이 예상과 달라 고치지 않았습니다.", "mcpServers in Claude Desktop's settings has an unexpected format, so it was left unchanged.").into());
     }
     servers.as_object_mut().unwrap().insert(
         "markcont".into(),
