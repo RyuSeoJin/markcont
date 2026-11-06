@@ -578,6 +578,62 @@ body.zen .zen-exit {
 }
 body.zen .zen-exit:hover { opacity: 1; }
 
+
+/* 바뀐 줄 표시 (편집창) */
+.editor-hl .ln.ln-add::after, .editor-hl .ln.ln-mod::after {
+  content: ""; position: absolute; left: -10px; top: 2px; bottom: 2px; width: 3px; border-radius: 2px;
+}
+.editor-hl .ln.ln-add::after { background: var(--c-green); }
+.editor-hl .ln.ln-mod::after { background: var(--c-blue); }
+.editor-hl .ln.ln-del::after {
+  content: ""; position: absolute; left: -12px; top: -4px; border: 4px solid transparent; border-left: 6px solid var(--c-red);
+}
+.edit-status .st-changes {
+  border: 0; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-size: 12px;
+  font-weight: 600; padding: 1px 8px; border-radius: 999px; cursor: pointer;
+}
+/* 바뀐 내용 창 */
+.modal { position: fixed; inset: 0; z-index: 85; background: rgba(10, 12, 16, .45); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.modal-card {
+  width: min(860px, 100%); max-height: min(86vh, 900px); display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,.3);
+}
+.modal-head { display: flex; align-items: center; gap: 8px; padding: 12px 12px 10px 16px; border-bottom: 1px solid var(--border); }
+.modal-head .seg { width: min(360px, 100%); }
+.modal-head .btn { margin-left: auto; }
+.modal-body { overflow: auto; padding: 12px 16px; min-height: 120px; }
+.modal-foot { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--border); }
+.modal-foot:empty { display: none; }
+.chg-help { font-size: 13px; color: var(--muted); margin: 0 0 12px; line-height: 1.6; }
+.chg-empty { color: var(--muted); padding: 20px 0; text-align: center; }
+.chg-del { color: var(--c-red); font-weight: 600; }
+.chg-add { color: var(--c-green); font-weight: 600; }
+.hunk { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 12px; font-family: var(--mono); font-size: 12.5px; }
+.hunk-head { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; background: var(--surface-2); font-family: var(--font); font-size: 12.5px; color: var(--muted); }
+.hunk-head .btn { margin-left: auto; height: 28px; font-size: 12.5px; }
+.dl { display: flex; line-height: 1.65; }
+.dl .no { width: 44px; flex: none; text-align: right; padding-right: 8px; color: var(--muted); opacity: .7; user-select: none; }
+.dl .sg { width: 18px; flex: none; text-align: center; user-select: none; }
+.dl .tx { flex: 1; white-space: pre-wrap; word-break: break-word; padding-right: 10px; }
+.dl.del { background: color-mix(in srgb, var(--c-red) 13%, transparent); }
+.dl.del .sg { color: var(--c-red); }
+.dl.del .tx { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--c-red) 50%, transparent); }
+.dl.add { background: color-mix(in srgb, var(--c-green) 13%, transparent); }
+.dl.add .sg { color: var(--c-green); }
+.dl.eq { color: var(--muted); }
+.hist-list { display: flex; flex-direction: column; gap: 2px; max-height: 220px; overflow: auto; border: 1px solid var(--border); border-radius: 10px; padding: 4px; margin-bottom: 14px; }
+.hist-item { display: flex; align-items: center; gap: 10px; border: 0; background: none; text-align: left; padding: 7px 10px; border-radius: 7px; cursor: pointer; font-size: 13.5px; }
+.hist-item:hover { background: var(--surface-2); }
+.hist-item.on { background: var(--accent-soft); color: var(--accent); }
+.hist-item .ht { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+.hist-item.on .ht { color: var(--accent); }
+.hist-item .hl { flex: 1; }
+.hist-item .hn { font-size: 12px; color: var(--muted); }
+.hist-item .tag { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; }
+.hist-item .tag.now { background: var(--accent-soft); color: var(--accent); }
+.hist-item .tag.saved { background: color-mix(in srgb, var(--c-green) 15%, transparent); color: var(--c-green); }
+.hist-cap { font-size: 13px; font-weight: 600; margin: 0 0 8px; }
+
 /* 처음 사용 안내 (튜토리얼) */
 .tour { position: fixed; inset: 0; z-index: 90; }
 .tour-shade { position: absolute; inset: 0; background: rgba(10, 12, 16, .55); }
@@ -943,13 +999,15 @@ body.zen .zen-exit:hover { opacity: 1; }
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M10 4v16"/></svg>
           </button>
           <button data-cmd="hr" title="구분선">—</button>
+          <span class="tsep"></span>
+          <button id="btnChanges" type="button" title="바뀐 내용 · 되돌리기 기록 (Ctrl+Shift+H)" style="gap:4px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>기록</button>
         </div>
         <div class="editor-wrap">
           <div class="editor-hl" id="editorHl" aria-hidden="true"></div>
           <textarea class="editor" id="editor" spellcheck="false" placeholder="여기에 마크다운을 쓰세요"></textarea>
         </div>
         <div class="edit-status">
-          <span id="stChars"></span><span class="st-words" id="stWords"></span><span id="stPos"></span><span class="st-saved" id="stSaved"></span>
+          <span id="stChars"></span><span class="st-words" id="stWords"></span><span id="stPos"></span><button class="st-changes" id="stChanges" type="button" hidden></button><span class="st-saved" id="stSaved"></span>
         </div>
       </div>
       <div class="preview-pane" id="preview">
@@ -980,6 +1038,18 @@ body.zen .zen-exit:hover { opacity: 1; }
 
 <div class="drop-overlay" id="dropOverlay"><div>여기에 놓으면 열립니다</div></div>
 <div class="toast" id="toast" role="status"></div>
+
+<!-- 바뀐 내용 · 되돌리기 기록 -->
+<div class="modal" id="changesModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-label="바뀐 내용">
+    <div class="modal-head">
+      <div class="seg" id="chgTabs"><button data-v="diff">저장 후 바뀐 내용</button><button data-v="hist">되돌리기 기록</button></div>
+      <button class="btn icon ghost" id="chgClose" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body" id="chgBody"></div>
+    <div class="modal-foot" id="chgFoot"></div>
+  </div>
+</div>
 
 <!-- 처음 사용 안내 (튜토리얼) -->
 <div class="tour" id="tour" hidden>
@@ -2750,6 +2820,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     }
     state.current = entry;
     state.dirty = false;
+    if (!entry.history) entry.history = [{ t: Date.now(), text: entry.text, label: '열었을 때', saved: true }];
     el.editor.value = entry.text;
     el.welcome.hidden = true;
     el.workspace.hidden = false;
@@ -3027,6 +3098,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (paintedValue === el.editor.value && elHl.childElementCount) { syncHlScroll(); return; }
     paintedValue = el.editor.value;
     elHl.innerHTML = highlightMd(el.editor.value);
+    applyChangeMarks();
     curLineEl = null;
     syncHlWidth();
     syncHlScroll();
@@ -3102,6 +3174,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   let renderTimer;
   el.editor.addEventListener('input', () => {
     markDirty();
+    scheduleSnapshot();
     lineTops = null;
     paintEditor();
     clearTimeout(renderTimer);
@@ -3264,6 +3337,171 @@ body.zen .zen-exit:hover { opacity: 1; }
   });
 
   /* =========================================================
+     바뀐 내용 추적: 줄 표시, 저장 후 바뀐 내용, 되돌리기 기록
+     ========================================================= */
+  // 줄 단위 비교 (앞뒤 같은 부분을 빼고 가운데만 LCS)
+  function lineDiff(a, b) {
+    let s = 0;
+    while (s < a.length && s < b.length && a[s] === b[s]) s++;
+    let ea = a.length, eb = b.length;
+    while (ea > s && eb > s && a[ea - 1] === b[eb - 1]) { ea--; eb--; }
+    const A = a.slice(s, ea), B = b.slice(s, eb), n = A.length, m = B.length;
+    const ops = [];
+    for (let i = 0; i < s; i++) ops.push({ t: 'eq', a: i, b: i });
+    if (n * m > 4000000) {
+      for (let i = 0; i < n; i++) ops.push({ t: 'del', a: s + i });
+      for (let j = 0; j < m; j++) ops.push({ t: 'add', b: s + j });
+    } else {
+      const w = m + 1, L = new Uint32Array((n + 1) * w);
+      for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+        L[i * w + j] = A[i] === B[j] ? L[(i + 1) * w + j + 1] + 1 : Math.max(L[(i + 1) * w + j], L[i * w + j + 1]);
+      let i = 0, j = 0;
+      while (i < n || j < m) {
+        if (i < n && j < m && A[i] === B[j]) { ops.push({ t: 'eq', a: s + i, b: s + j }); i++; j++; }
+        else if (j < m && (i >= n || L[i * w + j + 1] >= L[(i + 1) * w + j])) { ops.push({ t: 'add', b: s + j }); j++; }
+        else { ops.push({ t: 'del', a: s + i }); i++; }
+      }
+    }
+    for (let k = 0; k < a.length - ea; k++) ops.push({ t: 'eq', a: ea + k, b: eb + k });
+    return ops;
+  }
+  // 바뀐 덩어리(hunk)로 묶기: { aStart, aEnd, bStart, bEnd }
+  function hunksOf(ops) {
+    const hunks = [];
+    let cur = null, ai = 0, bi = 0;
+    for (const o of ops) {
+      if (o.t === 'eq') { if (cur) { hunks.push(cur); cur = null; } ai = o.a + 1; bi = o.b + 1; continue; }
+      if (!cur) cur = { aStart: ai, aEnd: ai, bStart: bi, bEnd: bi };
+      if (o.t === 'del') { cur.aEnd = o.a + 1; ai = o.a + 1; } else { cur.bEnd = o.b + 1; bi = o.b + 1; }
+    }
+    if (cur) hunks.push(cur);
+    return hunks;
+  }
+  const savedText = () => (state.current ? state.current.text || '' : '');
+
+  // 1) 편집창 줄 번호 옆 색 막대: 초록 = 새 줄, 파랑 = 바뀐 줄, 빨강 ▸ = 여기서 줄이 지워짐
+  let changeCount = 0;
+  function applyChangeMarks() {
+    if (!state.editing || !state.current) return;
+    const lines = elHl.children;
+    for (const ln of lines) ln.classList.remove('ln-add', 'ln-mod', 'ln-del');
+    const hunks = hunksOf(lineDiff(savedText().split('\n'), el.editor.value.split('\n')));
+    changeCount = 0;
+    for (const h of hunks) {
+      const added = h.bEnd - h.bStart, removed = h.aEnd - h.aStart;
+      changeCount += Math.max(added, removed);
+      for (let j = h.bStart; j < h.bEnd; j++) lines[j]?.classList.add(removed ? 'ln-mod' : 'ln-add');
+      if (!added) (lines[h.bStart] || lines[lines.length - 1])?.classList.add('ln-del');
+    }
+    const st = $('#stChanges');
+    st.hidden = !changeCount;
+    st.textContent = `바뀐 줄 ${changeCount}개 · 보기`;
+  }
+
+  // 3) 되돌리기 기록: 입력이 1초 멈출 때마다 그 시점을 저장 (문서마다 최대 100개)
+  function snapshot(label, extra = {}) {
+    const e = state.current;
+    if (!e) return;
+    e.history = e.history || [];
+    const text = el.editor.value, last = e.history[e.history.length - 1];
+    if (last && last.text === text) { Object.assign(last, extra); if (extra.saved) last.label = label; return; }
+    e.history.push({ t: Date.now(), text, label, ...extra });
+    if (e.history.length > 100) e.history.splice(1, e.history.length - 100);
+  }
+  let snapTimer;
+  function scheduleSnapshot() { clearTimeout(snapTimer); snapTimer = setTimeout(() => snapshot('고침'), 1000); }
+
+  // 편집창 내용을 통째로 바꾸되 Ctrl+Z 로도 돌아갈 수 있게
+  function replaceAll(text, label) {
+    snapshot('되돌리기 전');
+    const ta = el.editor, keep = ta.scrollTop;
+    ta.focus();
+    ta.select();
+    if (!document.execCommand('insertText', false, text)) { ta.value = text; ta.dispatchEvent(new Event('input')); }
+    ta.scrollTop = keep;
+    snapshot(label);
+  }
+
+  // 2) 바뀐 내용 창
+  const chg = { tab: 'diff', pick: -1 };
+  function diffHtml(oldText, newText, { revert } = {}) {
+    const a = oldText.split('\n'), b = newText.split('\n');
+    const hunks = hunksOf(lineDiff(a, b));
+    if (!hunks.length) return '<p class="chg-empty">바뀐 내용이 없습니다.</p>';
+    const ctx = 2;
+    return hunks.map((h, k) => {
+      const rows = [];
+      for (let j = Math.max(0, h.bStart - ctx); j < h.bStart; j++) rows.push(['eq', j + 1, b[j]]);
+      for (let i = h.aStart; i < h.aEnd; i++) rows.push(['del', '', a[i]]);
+      for (let j = h.bStart; j < h.bEnd; j++) rows.push(['add', j + 1, b[j]]);
+      for (let j = h.bEnd; j < Math.min(b.length, h.bEnd + ctx); j++) rows.push(['eq', j + 1, b[j]]);
+      const sign = { eq: ' ', del: '−', add: '+' };
+      const what = (h.aEnd - h.aStart ? `${h.aEnd - h.aStart}줄 지움` : '') + (h.aEnd - h.aStart && h.bEnd - h.bStart ? ' · ' : '') + (h.bEnd - h.bStart ? `${h.bEnd - h.bStart}줄 ${h.aEnd - h.aStart ? '새로 씀' : '더함'}` : '');
+      return `<div class="hunk"><div class="hunk-head"><span>${h.bStart + 1}번째 줄 근처 · ${what}</span>` +
+        (revert ? `<button class="btn" data-hunk="${k}">이 부분 되돌리기</button>` : '') + '</div>' +
+        rows.map(([t, no, tx]) => `<div class="dl ${t}"><span class="no">${no}</span><span class="sg">${sign[t]}</span><span class="tx">${escapeHtml(tx) || ' '}</span></div>`).join('') + '</div>';
+    }).join('');
+  }
+  function fmtTime(t) { const d = new Date(t); return [d.getHours(), d.getMinutes(), d.getSeconds()].map((x) => String(x).padStart(2, '0')).join(':'); }
+  function renderChanges() {
+    const body = $('#chgBody'), foot = $('#chgFoot');
+    document.querySelectorAll('#chgTabs button').forEach((b) => b.classList.toggle('on', b.dataset.v === chg.tab));
+    const cur = el.editor.value;
+    if (chg.tab === 'diff') {
+      body.innerHTML = '<p class="chg-help">마지막으로 저장한 내용과 지금 내용을 비교합니다. <span class="chg-del">− 빨강</span>은 저장한 뒤 지운 줄, <span class="chg-add">+ 초록</span>은 새로 쓴 줄입니다. 왼쪽 숫자는 지금 문서의 줄 번호입니다.</p>' +
+        diffHtml(savedText(), cur, { revert: true });
+      foot.innerHTML = state.dirty ? '<button class="btn" id="chgRevertAll">저장한 상태로 모두 되돌리기</button><span style="flex:1"></span><button class="btn primary" id="chgSave">저장</button>' : '<span class="chg-help" style="margin:0">저장한 뒤로 바뀐 것이 없습니다.</span>';
+      body.querySelectorAll('[data-hunk]').forEach((btn) => (btn.onclick = () => {
+        const a = savedText().split('\n'), b = el.editor.value.split('\n');
+        const h = hunksOf(lineDiff(a, b))[+btn.dataset.hunk];
+        const next = b.slice(0, h.bStart).concat(a.slice(h.aStart, h.aEnd), b.slice(h.bEnd)).join('\n');
+        replaceAll(next, '부분 되돌리기');
+        toast('그 부분을 저장한 상태로 되돌렸습니다 (Ctrl+Z 로 취소)');
+        renderChanges();
+      }));
+      const ra = $('#chgRevertAll');
+      if (ra) ra.onclick = () => { if (confirm('저장한 뒤 고친 내용을 모두 되돌릴까요? (Ctrl+Z 로 다시 살릴 수 있습니다)')) { replaceAll(savedText(), '모두 되돌리기'); toast('저장한 상태로 되돌렸습니다'); renderChanges(); } };
+      const sv = $('#chgSave');
+      if (sv) sv.onclick = async () => { await save(); renderChanges(); };
+      return;
+    }
+    // 되돌리기 기록
+    snapshot('지금');
+    const hist = (state.current.history || []).slice().reverse();
+    if (chg.pick < 0 || chg.pick >= hist.length) chg.pick = Math.min(1, hist.length - 1);
+    const sel = hist[chg.pick];
+    body.innerHTML = '<p class="chg-help">고친 내용이 1초마다 기록됩니다. 시점을 누르면 <b>그때로 돌아갈 때 무엇이 바뀌는지</b> 아래에 보여줍니다.</p>' +
+      '<div class="hist-list">' + hist.map((h, i) => {
+        const tags = [i === 0 ? '<span class="tag now">지금</span>' : '', h.saved ? '<span class="tag saved">저장됨</span>' : ''].join('');
+        const lines = h.text.split('\n').length;
+        return `<button class="hist-item${i === chg.pick ? ' on' : ''}" data-i="${i}"><span class="ht">${fmtTime(h.t)}</span><span class="hl">${escapeHtml(h.label)}</span>${tags}<span class="hn">${lines}줄</span></button>`;
+      }).join('') + '</div>' +
+      (sel && chg.pick > 0 ? `<div class="hist-preview"><div class="hist-cap">${fmtTime(sel.t)} 로 돌아가면 지금 문서가 이렇게 바뀝니다</div>${diffHtml(cur, sel.text)}</div>` : '<p class="chg-help">위에서 돌아갈 시점을 고르세요.</p>');
+    foot.innerHTML = sel && chg.pick > 0 ? `<span class="chg-help" style="margin:0">돌아간 뒤에도 Ctrl+Z 로 취소할 수 있습니다.</span><span style="flex:1"></span><button class="btn primary" id="chgRestore">${fmtTime(sel.t)} 로 되돌리기</button>` : '';
+    body.querySelectorAll('.hist-item').forEach((b) => (b.onclick = () => { chg.pick = +b.dataset.i; renderChanges(); }));
+    const rs = $('#chgRestore');
+    if (rs) rs.onclick = () => { replaceAll(sel.text, fmtTime(sel.t) + ' 로 되돌림'); chg.pick = 1; toast(fmtTime(sel.t) + ' 시점으로 되돌렸습니다 (Ctrl+Z 로 취소)'); renderChanges(); };
+  }
+  function openChanges(tab) {
+    if (!state.current) return;
+    if (!state.editing) setEditing(true);
+    chg.tab = tab || (state.dirty ? 'diff' : 'hist');
+    chg.pick = -1;
+    $('#changesModal').hidden = false;
+    renderChanges();
+  }
+  function closeChanges() { $('#changesModal').hidden = true; el.editor.focus({ preventScroll: true }); }
+  $('#chgTabs').onclick = (e) => { const v = e.target.closest('button')?.dataset.v; if (v) { chg.tab = v; chg.pick = -1; renderChanges(); } };
+  $('#chgClose').onclick = closeChanges;
+  $('#changesModal').addEventListener('click', (e) => { if (e.target.id === 'changesModal') closeChanges(); });
+  $('#stChanges').onclick = () => openChanges('diff');
+  $('#btnChanges').onclick = () => openChanges();
+  window.addEventListener('keydown', (e) => {
+    if (!$('#changesModal').hidden && e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); closeChanges(); }
+    else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'h' && state.current) { e.preventDefault(); openChanges('hist'); }
+  }, true);
+
+  /* =========================================================
      편집창 ↔ 미리보기 스크롤 맞추기 (원본 줄 번호 기준)
      ========================================================= */
   const mirror = document.createElement('div');
@@ -3393,6 +3631,8 @@ body.zen .zen-exit:hover { opacity: 1; }
     }
     cur.text = text;
     state.dirty = false;
+    snapshot('저장', { saved: true });
+    applyChangeMarks();
     updateTitle();
     remember(cur);
   }
