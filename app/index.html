@@ -81,7 +81,10 @@
 .markdown-body li input[type="checkbox"] {
   width: 1.05em; height: 1.05em; margin: 0 .5em 0 0; vertical-align: -.15em; accent-color: var(--accent); cursor: pointer;
 }
-.markdown-body li.task-done > p:first-child, .markdown-body li.task-done:not(:has(> p)) { color: var(--muted); }
+/* 체크리스트 글자: 안 한 일은 본문 색 그대로, 끝낸 일은 회색 + 취소선 (아래 목록에는 번지지 않음) */
+.markdown-body .task-text { color: var(--text); text-decoration: none; transition: color .15s; }
+.markdown-body input.task:checked + .task-text { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--muted); }
+.markdown-body input.task:checked + .task-text a { color: inherit; }
 .markdown-body blockquote {
   margin-left: 0; padding: .6em 1.1em; color: var(--quote);
   border-left: 4px solid var(--border); background: var(--surface-2); border-radius: 0 8px 8px 0;
@@ -202,9 +205,6 @@
 .markdown-body details:not(.callout):not(.front-matter)[open] > summary { border-bottom: 1px solid var(--border); }
 .markdown-body details:not(.callout):not(.front-matter) > :not(summary) { margin-left: 1em; margin-right: 1em; }
 .markdown-body details:not(.callout):not(.front-matter) > :nth-child(2) { margin-top: .8em; }
-
-/* 체크 끝난 항목 */
-.markdown-body li.task-done > p:first-child, .markdown-body li.task-done:not(:has(> p)) { text-decoration: line-through; }
 
 /* 이모지 · 영문 알림 상자 (Markdot 풍) */
 .markdown-body .callout.soft { border: 1px solid color-mix(in srgb, var(--c) 28%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--c) 11%, var(--surface)); padding: .9em 1.1em; }
@@ -1725,6 +1725,12 @@ body.zen .zen-exit:hover { opacity: 1; }
       cb.className = 'task';
       cb.checked = m[1] !== ' ';
       holder.insertBefore(cb, tn);
+      // 체크박스 오른쪽 글자만 span 으로 묶음 (아래 목록 · 문단 같은 블록 앞에서 멈춤)
+      const label = document.createElement('span');
+      label.className = 'task-text';
+      const BLOCK = /^(UL|OL|P|DIV|PRE|TABLE|BLOCKQUOTE|DETAILS|H[1-6]|HR|DL|FIGURE)$/;
+      while (cb.nextSibling && !(cb.nextSibling.nodeType === 1 && BLOCK.test(cb.nextSibling.tagName))) label.append(cb.nextSibling);
+      cb.after(label);
       li.classList.add('task-item');
       li.classList.toggle('task-done', cb.checked);
     });
