@@ -802,6 +802,11 @@ body.zen .zen-exit:hover { opacity: 1; }
 .tour-card p b { color: var(--text); }
 .tour-card .tour-emoji { font-size: 40px; display: block; margin-bottom: 6px; }
 .tour-dots { display: flex; gap: 5px; margin-bottom: 14px; }
+.tour-lang { margin: -2px 0 16px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
+.tour-lang-label { display: block; font-size: 12.5px; font-weight: 700; color: var(--muted); margin-bottom: 7px; }
+.tour-lang .seg { background: var(--surface); }
+.tour-lang .seg button { padding: 8px 0; font-size: 14px; color: var(--text); }
+.tour-lang .seg button.on { color: var(--accent); }
 .tour-card.center .tour-dots { justify-content: center; }
 .tour-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--border); }
 .tour-dots span.on { background: var(--accent); width: 18px; border-radius: 4px; }
@@ -1275,6 +1280,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     <div class="tour-step" id="tourStep"></div>
     <h3 id="tourTitle"></h3>
     <p id="tourText"></p>
+    <div class="tour-lang" id="tourLang" hidden></div>
     <div class="tour-dots" id="tourDots"></div>
     <div class="tour-btns">
       <button class="btn ghost" id="tourSkip">건너뛰기</button>
@@ -4431,7 +4437,7 @@ ${clone.innerHTML}
      처음 사용 안내 (튜토리얼): 처음 한 번 자동으로, ⋯ 메뉴에서 다시 보기
      ========================================================= */
   const TOUR = [
-    { center: true, emoji: '👋', title: L('markcont에 오신 것을 환영합니다', 'Welcome to markcont'),
+    { center: true, emoji: '👋', lang: true, title: L('markcont에 오신 것을 환영합니다', 'Welcome to markcont'),
       text: L('마크다운 파일을 <b>보기 좋게 보고, 바로 고치는</b> 뷰어입니다.<br>주요 기능을 1분 만에 둘러볼게요.', 'A viewer that lets you <b>read markdown beautifully and edit it on the spot</b>.<br>Let\'s tour the main features in a minute.'), next: L('둘러보기 시작', 'Start the tour') },
     { target: '#btnOpen', mobile: '#btnMore', title: L('파일 열기', 'Open file'),
       text: L('<b>파일 열기</b>(Ctrl+O)로 .md 파일을 엽니다.<br>파일을 창 위에 <b>끌어다 놓아도</b> 열려요.', 'Open a .md file with <b>Open file</b> (Ctrl+O).<br>You can also <b>drag and drop</b> a file onto the window.'),
@@ -4495,6 +4501,10 @@ ${clone.innerHTML}
     $('#tourTitle').textContent = s.title;
     $('#tourText').innerHTML = (s.emoji ? `<span class="tour-emoji">${s.emoji}</span>` : '') + (narrowText || s.text);
     if (s.emoji) { $('#tourText').prepend($('#tourText').querySelector('.tour-emoji')); }
+    const tl = $('#tourLang');
+    tl.hidden = !s.lang;
+    if (s.lang) tl.innerHTML = '<span class="tour-lang-label">🌐 언어 · Language</span><div class="seg">' +
+      [['ko', '한국어'], ['en', 'English']].map(([v, t]) => `<button type="button" data-v="${v}" class="${v === LANG ? 'on' : ''}">${t}</button>`).join('') + '</div>';
     $('#tourDots').innerHTML = tour.steps.map((_, i) => `<span class="${i === tour.i ? 'on' : ''}"></span>`).join('');
     const last = tour.i === tour.steps.length - 1;
     $('#tourPrev').hidden = tour.i === 0 || last;
@@ -4529,6 +4539,15 @@ ${clone.innerHTML}
     tour.i = n;
     showTourStep();
   }
+  $('#tourLang').onclick = (e) => {
+    const v = e.target.closest('button')?.dataset.v;
+    if (!v || v === LANG) return;
+    if (state.dirty && !confirm(L('저장하지 않은 변경 사항이 있습니다. 버리고 언어를 바꿀까요?', 'You have unsaved changes. Discard them and switch language?'))) return;
+    store.set('mdv-lang', v);
+    try { sessionStorage.setItem('mdv-tour-resume', '1'); } catch {}
+    state.dirty = false;
+    location.reload();
+  };
   $('#tourNext').onclick = () => tourGo(1);
   $('#tourPrev').onclick = () => tourGo(-1);
   $('#tourSkip').onclick = () => {
@@ -4546,7 +4565,10 @@ ${clone.innerHTML}
   }, true);
   window.addEventListener('resize', () => { if (tour.on) showTourStep(); });
   $('#mTour').onclick = () => { closeMenus(); startTour(); };
-  if (!store.get('mdv-tour-done')) setTimeout(() => { if (!tour.on) startTour(); }, 800);
+  // 처음 실행이거나, 안내 중에 언어를 바꿔 다시 열렸으면 안내를 띄움
+  let tourResume = false;
+  try { tourResume = sessionStorage.getItem('mdv-tour-resume') === '1'; sessionStorage.removeItem('mdv-tour-resume'); } catch {}
+  if (tourResume || !store.get('mdv-tour-done')) setTimeout(() => { if (!tour.on) startTour(); }, tourResume ? 300 : 800);
 
   /* =========================================================
      PC 프로그램(Tauri)으로 실행했을 때: 더블클릭한 파일 열기, 원래 파일에 저장

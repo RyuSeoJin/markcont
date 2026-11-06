@@ -80,7 +80,7 @@ Builds a table of contents from the document's headings (`#`). The part you're r
 | Feature | Where | Description |
 |:---|:---|:---|
 | View settings | **Aa** button at the top | Text size, Sans · Serif, body width, callout style, code line numbers, review before saving |
-| Language | View settings (Aa) → Language | Switch between 한국어 and English |
+| Language | View settings (Aa) → Language, or the first screen of the tour | Switch between 한국어 and English |
 | Light · Dark | ☾ / ☀ button at the top | Dark mode |
 | Fold a heading | ⌄ button next to a heading | Folds the content under that heading |
 | Copy link | **#** button next to a heading | Copies a `[heading](#heading)` link |
