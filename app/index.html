@@ -1216,6 +1216,15 @@ body.zen .zen-exit:hover { opacity: 1; }
 (() => {
   translateStatic(document.body);
   if (LANG === 'en') document.getElementById('langHint').textContent = '언어';
+  // 앱에 들어 있는 안내 문서 (파일 이름은 영어: PC 프로그램 내부 서버가 한글 경로를 못 찾는 경우가 있음)
+  const BUILTIN = {
+    guide: { file: L('guide.md', 'guide.en.md'), name: L('사용-안내서.md', 'User-Guide.md'), title: L('사용 안내서', 'User guide') },
+    rules: { file: L('writing-rules.md', 'writing-rules.en.md'), name: L('마크다운-작성-규칙.md', 'Markdown-Writing-Rules.md'), title: L('마크다운 작성 규칙', 'Markdown writing rules') },
+    features: { file: L('features.md', 'features.en.md'), name: L('기능-예제.md', 'Feature-Examples.md'), title: L('기능 예제', 'Feature examples') },
+    licenses: { file: L('licenses.md', 'licenses.en.md'), name: L('오픈소스-라이선스.md', 'Open-Source-Licenses.md'), title: L('오픈소스 라이선스', 'Open-source licenses') },
+  };
+  const builtinPath = (key) => L('markcont 안내/', 'markcont docs/') + BUILTIN[key].name;
+  const isBuiltinPath = (p) => /^markcont (안내|docs)\//.test(p);
   const $ = (s) => document.querySelector(s);
   const MD_EXT = /\.(md|markdown|mdown|mkd|txt)$/i;
   const IMG_EXT = /\.(png|jpe?g|gif|svg|webp|bmp|avif)$/i;
@@ -2378,8 +2387,11 @@ body.zen .zen-exit:hover { opacity: 1; }
     const box = el.fileList;
     box.innerHTML = '';
     const hasRoot = state.roots.length > 0;
-    const loose = state.files.filter((f) => f.loose || !hasRoot);
-    const total = state.files.length;
+    // 안내 문서는 내 파일 · 폴더를 아무것도 열지 않았을 때만 목록에 보임
+    const mine = state.files.filter((f) => !f.builtin);
+    const showBuiltin = !hasRoot && !mine.length;
+    const loose = mine.filter((f) => f.loose || !hasRoot);
+    const total = mine.length;
     $('#fileCount').textContent = total ? total : '';
     $('#sideEmpty').hidden = total > 0 || hasRoot;
     $('#sideHead').hidden = !hasRoot && !total;
@@ -2426,6 +2438,21 @@ body.zen .zen-exit:hover { opacity: 1; }
       };
       walk(tree, 0);
     }
+    if (showBuiltin) {
+      const g = document.createElement('div');
+      g.className = 'tree-group';
+      g.textContent = L('markcont 안내 문서', 'markcont docs');
+      frag.append(g);
+      for (const key of Object.keys(BUILTIN)) {
+        const path = builtinPath(key);
+        const row = treeRow({ kind: 'file', name: BUILTIN[key].title, path, depth: 0, entry: state.files.find((f) => f.builtin && f.path === path) });
+        row.dataset.builtin = key;
+        row.classList.add('builtin');
+        row.querySelector('.more')?.remove();
+        row.title = L('앱에 들어 있는 안내 문서입니다. 내 파일이나 폴더를 열면 목록에서 사라집니다 (⋯ 메뉴에서 언제든 다시 열 수 있음).', 'A document that comes with the app. It leaves this list once you open your own file or folder (you can reopen it anytime from the ⋯ menu).');
+        frag.append(row);
+      }
+    }
     const looseShown = loose.filter(matches);
     if (looseShown.length) {
       if (hasRoot) {
@@ -2470,6 +2497,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       renderFileList();
       return;
     }
+    if (row.dataset.builtin) { openBuiltinDoc(row.dataset.builtin); closeSidebar(); return; }
     if (row._entry) { openEntry(row._entry); closeSidebar(); }
   });
   el.fileList.addEventListener('keydown', (e) => {
@@ -2480,12 +2508,14 @@ body.zen .zen-exit:hover { opacity: 1; }
       e.preventDefault();
       const rows = [...el.fileList.querySelectorAll('.tree-row')];
       rows[rows.indexOf(row) + (e.key === 'ArrowDown' ? 1 : -1)]?.focus();
+    } else if (row.dataset.builtin) { /* 안내 문서는 이름 바꾸기 · 지우기 없음 */
     } else if (e.key === 'F2') { e.preventDefault(); fsRename(row.dataset.kind, row.dataset.path); }
     else if (e.key === 'Delete') { e.preventDefault(); fsDelete(row.dataset.kind, row.dataset.path); }
   });
   el.fileList.addEventListener('contextmenu', (e) => {
     const row = e.target.closest('.tree-row');
     e.preventDefault();
+    if (row && row.dataset.builtin) return;
     openCtxMenu(row, { left: e.clientX, top: e.clientY, bottom: e.clientY });
   });
   let filterTimer;
@@ -2538,7 +2568,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       }
     }
     const rs = $('#recentFilesSide');
-    const files = store.json('mdv-recent', []);
+    const files = store.json('mdv-recent', []).filter((r) => !isBuiltinPath(r.name));
     rs.innerHTML = '';
     if (files.length) {
       rs.innerHTML = '<h3>' + L('최근 파일', 'Recent files') + '</h3>';
@@ -3115,13 +3145,14 @@ body.zen .zen-exit:hover { opacity: 1; }
 
   /* ---------- 최근 문서 ---------- */
   function remember(entry) {
-    let list = store.json('mdv-recent', []).filter((r) => r.name !== entry.path);
+    if (entry.builtin) return; // 안내 문서는 최근 문서에 남기지 않음
+    let list = store.json('mdv-recent', []).filter((r) => !isBuiltinPath(r.name)).filter((r) => r.name !== entry.path);
     if (entry.text.length < 300000) list.unshift({ name: entry.path, text: entry.text, time: Date.now(), tauriPath: entry.tauriPath || undefined });
     list = list.slice(0, 6);
     while (list.length && !store.set('mdv-recent', JSON.stringify(list))) list.pop();
   }
   function renderRecent() {
-    const list = store.json('mdv-recent', []);
+    const list = store.json('mdv-recent', []).filter((r) => !isBuiltinPath(r.name));
     const box = $('#recent');
     box.innerHTML = '';
     box.hidden = !list.length;
@@ -4255,16 +4286,10 @@ ${clone.innerHTML}
      앱에 들어 있는 문서: 사용 안내서, 작성 규칙
      ========================================================= */
   // 파일 이름은 영어(PC 프로그램 내부 서버가 한글 경로를 못 찾는 경우가 있음), 화면에는 한글 이름으로
-  const BUILTIN = {
-    guide: { file: L('guide.md', 'guide.en.md'), name: L('사용-안내서.md', 'User-Guide.md') },
-    rules: { file: L('writing-rules.md', 'writing-rules.en.md'), name: L('마크다운-작성-규칙.md', 'Markdown-Writing-Rules.md') },
-    features: { file: L('features.md', 'features.en.md'), name: L('기능-예제.md', 'Feature-Examples.md') },
-    licenses: { file: L('licenses.md', 'licenses.en.md'), name: L('오픈소스-라이선스.md', 'Open-Source-Licenses.md') },
-  };
   async function openBuiltinDoc(key) {
     closeMenus();
     const doc = BUILTIN[key];
-    const path = L('markcont 안내/', 'markcont docs/') + doc.name;
+    const path = builtinPath(key);
     let entry = state.files.find((f) => f.loose && f.path === path);
     if (!entry) {
       const ctrl = new AbortController();
