@@ -1,0 +1,70 @@
+# PC 프로그램 만들기
+# v1.0.0 처럼 v 로 시작하는 태그를 올리면 Windows · macOS · Linux 설치 파일을 만들어
+# GitHub Releases 에 올립니다. Actions 탭에서 직접 실행할 수도 있습니다.
+name: PC 프로그램 만들기
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            args: ''
+          - platform: macos-latest
+            args: '--target universal-apple-darwin'
+          - platform: ubuntu-22.04
+            args: ''
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux 빌드 준비
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libgtk-3-dev
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: 도구 설치
+        run: npm install
+
+      - name: 아이콘 만들기
+        run: npm run icons
+
+      - name: 설치 파일 만들고 Releases 에 올리기
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: 'markcont v__VERSION__'
+          releaseBody: |
+            ## 내려받기
+            - **Windows**: 이름이 `-setup.exe` 로 끝나는 파일을 받아 실행하세요.
+            - **macOS**: `.dmg` 를 받아 응용 프로그램 폴더로 옮기세요. 처음 열 때는 오른쪽 클릭 → 열기.
+            - **Linux**: `.AppImage` 또는 `.deb` 를 받으세요.
+
+            설치하면 `.md` 파일을 더블클릭해서 바로 열 수 있습니다.
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}

@@ -1,0 +1,8 @@
+node_modules/
+package-lock.json
+src-tauri/target/
+src-tauri/gen/
+# 아이콘은 빌드할 때 app/icons/icon-1024.png 에서 만듭니다
+src-tauri/icons/
+.DS_Store
+Thumbs.db
