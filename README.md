@@ -109,7 +109,7 @@ install.ps1 / .sh   한 줄 설치 스크립트
 
 - **웹 앱**: `main` 브랜치에 올리면 자동으로 GitHub Pages에 공개됩니다.
 - **PC 프로그램**: `v1.0.0` 같은 태그를 올리면 설치 파일이 만들어져 Releases에 올라갑니다.
-  새 버전을 낼 때는 `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `package.json` 의 버전과 `app/sw.js` 의 `VERSION` 을 같이 올리세요.
+  새 버전을 낼 때는 `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `package.json` 의 버전, `app/sw.js` 의 `VERSION`, `app/index.html` 의 `APP_VERSION` 을 같이 올리세요.
 - 내 PC에서 직접 빌드하려면 [Node.js](https://nodejs.org)와 [Rust](https://rustup.rs)를 설치한 뒤 `npm install`, `npm run icons`, `npm run build`.
 
 ## 📄 라이선스
