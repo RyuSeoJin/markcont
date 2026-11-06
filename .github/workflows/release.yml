@@ -54,9 +54,13 @@ jobs:
 
       - name: 오픈소스 라이선스 목록 만들기
         shell: bash
+        env:
+          PYTHONUTF8: '1'
+          PYTHONIOENCODING: utf-8
         run: |
           cargo fetch --manifest-path src-tauri/Cargo.toml
-          python3 scripts/gen_notices.py || python scripts/gen_notices.py
+          PY="$(command -v python3 || command -v python)"
+          "$PY" scripts/gen_notices.py
 
       - name: 설치 파일 만들고 Releases 에 올리기
         uses: tauri-apps/tauri-action@v0

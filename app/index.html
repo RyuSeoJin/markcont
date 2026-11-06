@@ -881,7 +881,7 @@ body.zen .zen-exit:hover { opacity: 1; }
         </div>
         <div class="set-row">
           <div class="set-label"><span>글꼴</span></div>
-          <div class="seg" id="fontSeg"><button data-v="sans">고딕</button><button data-v="serif">명조</button></div>
+          <div class="seg" id="fontSeg"><button data-v="sans">고딕</button><button data-v="serif" title="명조 글꼴은 Google Fonts에서 받습니다 (인터넷 필요)">명조 🌐</button></div>
         </div>
         <div class="set-row">
           <div class="set-label"><span>본문 폭</span></div>
@@ -4511,7 +4511,8 @@ ${clone.innerHTML}
       <li>Claude가 읽은 문서 내용은 <b>Anthropic으로 보내져 처리</b>됩니다 (Anthropic의 이용 약관 · 개인정보 처리방침이 적용됩니다). markcont가 따로 문서를 어디로 보내지는 않습니다.</li>
       <li>Claude는 <b>열어 둔 폴더 안의 마크다운 · 텍스트 파일만</b> 다룰 수 있고, 파일 삭제 · 이름 바꾸기 · 명령 실행은 할 수 없습니다.</li>
       <li>Claude 앱은 도구를 쓰기 전에 허락을 묻습니다. 고친 곳은 markcont에서 <b>바로 보이고 되돌릴 수 있습니다</b>.</li>
-      <li>내 구독(Claude Pro · Max 등)으로 <b>Claude 앱에서</b> 대화합니다. markcont는 구독이나 API 키를 쓰지 않습니다.</li></ul></div>`;
+      <li>내 구독(Claude Pro · Max 등)으로 <b>Claude 앱에서</b> 대화합니다. markcont는 구독이나 API 키를 쓰지 않습니다.</li>
+      <li>⚠️ <b>남이 보낸 문서는 조심하세요.</b> 문서 안에 숨겨진 지시문을 AI가 따를 수 있습니다. 믿을 수 없는 문서가 든 폴더는 연결한 채로 AI에게 맡기지 마세요.</li></ul></div>`;
     if (!isTauri()) {
       body.innerHTML = privacy.replace('연결하기 전에 알아 두세요', 'Claude와 연결이란?') +
         '<div class="mcp-section"><h4>💻 PC 프로그램에서만 됩니다</h4><p>Claude Desktop · Claude Code가 markcont에 연결하려면 내 컴퓨터에 설치된 markcont가 필요합니다. 웹 앱(브라우저)에서는 쓸 수 없습니다.</p>' +

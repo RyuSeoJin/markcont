@@ -1,0 +1,4 @@
+dagre-d3-es is distributed under the MIT License (license field in its package.json).
+The package does not ship a LICENSE file. Source: https://github.com/tbo47/dagre-es
+It is derived from dagre / dagre-d3 by Chris Pettitt, also MIT licensed:
+https://github.com/dagrejs/dagre/blob/master/LICENSE
