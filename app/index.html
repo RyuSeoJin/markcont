@@ -1308,6 +1308,14 @@ body.zen .zen-exit:hover { opacity: 1; }
     licenses: { file: L('licenses.md', 'licenses.en.md'), name: L('오픈소스-라이선스.md', 'Open-Source-Licenses.md'), title: L('오픈소스 라이선스', 'Open-source licenses') },
   };
   const builtinPath = (key) => L('markcont 안내/', 'markcont docs/') + BUILTIN[key].name;
+  // 링크가 앱에 들어 있는 안내 문서를 가리키는지 (한국어 · 영어 이름, guide.md 같은 파일 이름 모두)
+  const BUILTIN_NAMES = { guide: ['사용-안내서', 'user-guide', 'guide'], rules: ['마크다운-작성-규칙', 'markdown-writing-rules', 'writing-rules'], features: ['기능-예제', 'feature-examples', 'features'], licenses: ['오픈소스-라이선스', 'open-source-licenses', 'licenses'] };
+  function builtinKeyFor(ref) {
+    let d = ref;
+    try { d = decodeURIComponent(ref); } catch {}
+    const n = d.split('/').pop().replace(/\.(en\.)?md$/i, '').toLowerCase();
+    return Object.keys(BUILTIN_NAMES).find((k) => BUILTIN_NAMES[k].includes(n)) || null;
+  }
   const isBuiltinPath = (p) => /^markcont (안내|docs)\//.test(p);
   const $ = (s) => document.querySelector(s);
   const MD_EXT = /\.(md|markdown|mdown|mkd|txt)$/i;
@@ -1886,6 +1894,8 @@ body.zen .zen-exit:hover { opacity: 1; }
       if (!file) { a.href = '#' + slugify(heading); a.dataset.inDoc = '1'; return; }
       const entry = findEntry(base, file);
       if (entry) { a.dataset.path = entry.path; a.title = entry.path; return; }
+      const bk = builtinKeyFor(file);
+      if (bk) { a.dataset.path = ''; a.dataset.builtin = bk; a.title = BUILTIN[bk].title; return; }
       if (!heading) { a.replaceWith(document.createTextNode(raw)); return; }
       a.classList.add('missing');
       a.dataset.path = '';
@@ -1927,6 +1937,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       if (!MD_EXT.test(p)) return;
       const entry = findEntry(base, p);
       a.dataset.path = entry ? entry.path : '';
+      if (!entry && builtinKeyFor(p)) a.dataset.builtin = builtinKeyFor(p);
       if (hash) a.dataset.hash = hash;
     });
 
@@ -2069,7 +2080,7 @@ body.zen .zen-exit:hover { opacity: 1; }
 
     const a = t.closest('a');
     if (!a) return;
-    if (a.dataset.inDoc || (a.getAttribute('href') || '').startsWith('#') && !a.dataset.path) {
+    if (a.dataset.inDoc || (a.getAttribute('href') || '').startsWith('#') && !a.dataset.path && !a.dataset.builtin) {
       if (a.classList.contains('footnote-backref') || a.closest('.footnote-ref')) {
         e.preventDefault();
         scrollToId(decodeURIComponent(a.getAttribute('href').slice(1)));
@@ -2081,6 +2092,14 @@ body.zen .zen-exit:hover { opacity: 1; }
     }
     if ('path' in a.dataset) {
       e.preventDefault();
+      if (a.dataset.builtin) {
+        const ok = await openBuiltinDoc(a.dataset.builtin);
+        const h = a.dataset.hash || (a.dataset.heading ? slugify(a.dataset.heading) : '');
+        // 큰 문서는 그리는 동안 부드러운 스크롤이 끊기므로 바로 이동 (다 그려진 뒤 한 번 더)
+        const jump = () => { const t = document.getElementById(decodeURIComponent(h)) || document.getElementById(slugify(decodeURIComponent(h))); if (t) { unfoldTo(t); t.scrollIntoView({ block: 'start' }); } };
+        if (ok && h) [80, 700, 1500].forEach((ms) => setTimeout(jump, ms));
+        return;
+      }
       if (a.classList.contains('missing')) { toast(L('이 문서를 찾지 못했습니다. 폴더 열기로 열면 이동할 수 있어요.', "Couldn't find this document. Open its folder with Open folder to follow the link.")); return; }
       const entry = state.files.find((f) => f.path === a.dataset.path);
       if (!entry) { toast(L('이 파일은 열려 있지 않습니다. 폴더 열기로 폴더를 열면 링크로 이동할 수 있어요.', "This file isn't open. Open its folder with Open folder to follow the link."), 3200); return; }

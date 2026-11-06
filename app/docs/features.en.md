@@ -120,7 +120,7 @@ Review: 2d
 
 ## 8. Links
 
-- To another document: [Example document](sample.md), wikilink [[sample#표|the table in sample]]
+- To another document: [User guide](User-Guide.md), wikilink [[Markdown-Writing-Rules#7-2. Diagrams (markcont style)|the diagrams chapter of the writing rules]]
 - To a heading in this document: [[#3. Task lists]]
 - A YouTube link on its own line becomes a thumbnail:
 
