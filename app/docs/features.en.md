@@ -86,6 +86,38 @@ graph LR
   C -- No --> E[Export to PDF]
 ```
 
+markcont-style flowchart (user · system zones, yes = blue · no = red):
+
+```flow
+# F1 Working with a document
+F1-01 | user | action | Open file | → F1-02
+F1-02 | system | decision | Is it markdown? | yes → F1-03 / no → F1-04
+F1-03 | system | output | [Screen] View document | → F1-05
+F1-04 | system | output | [Notice] Can't open file | —
+F1-05 | user | action | Pick Edit | → F1-06
+F1-06 | user | input | Edit and save | → F1-03
+```
+
+Message order and timeline:
+
+```sequence
+participants: Me(user), markcont, Claude
+Me -> markcont: Open folder
+Claude -> markcont: Read document
+Claude -> markcont: Edit document
+markcont --> Me: Show changes
+```
+
+```timeline
+today hide
+section Prepare
+Gather material: 2026-11-02, 3d, done
+Write draft: 4d
+section Finish
+Review: 2d
+◆ Share: 2026-11-12
+```
+
 ## 8. Links
 
 - To another document: [Example document](sample.md), wikilink [[sample#표|the table in sample]]

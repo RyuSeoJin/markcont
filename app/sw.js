@@ -2,7 +2,7 @@
 // 새 버전을 올릴 때는 아래 VERSION 숫자를 올리세요.
 const VERSION = 'v1.0.7';
 // 웹 앱만 고쳐 다시 올릴 때는 BUILD 숫자를 올리세요 (PC 프로그램 버전과 따로)
-const BUILD = 3;
+const BUILD = 4;
 const CACHE = 'markcont-' + VERSION + '-' + BUILD;
 
 const APP_FILES = [
@@ -23,6 +23,7 @@ const APP_FILES = [
   './docs/features.en.md',
   './docs/licenses.en.md',
   './i18n.js',
+  './diagram.js',
   './vendor/highlight.min.js',
   './vendor/hljs-github-dark.min.css',
   './vendor/hljs-github.min.css',

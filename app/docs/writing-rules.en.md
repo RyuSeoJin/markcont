@@ -195,7 +195,195 @@ console.log("Hello");
 
 ---
 
-### 7-2. Diagrams (Mermaid)
+### 7-2. Diagrams (markcont style)
+
+Diagrams that markcont draws itself. Flowcharts follow the **rsj flowchart rules**: the user zone is on top and the system zone below, each shape has a fixed meaning, and the flow runs left to right. Lines are horizontal or vertical only, and a decision's **Yes is blue and No is red**.
+
+| Code block language | Kind | Use for |
+|:---|:---|:---|
+| `flow` | Flowchart | Service and feature flows, screen navigation, branches and loops |
+| `sequence` | Message order | Requests and responses between people, apps and servers |
+| `state` | State changes | Order, document and approval states |
+| `timeline` | Timeline | Project schedules, milestones |
+
+> [!NOTE]
+> These are markcont-only. GitHub and Obsidian show them as plain code blocks. If the diagram must render elsewhere too, use Mermaid (7-3).
+
+#### Flowchart: write it as a table
+
+Write each shape as **one table row**. You can paste an rsj node table as-is. The header row is optional; without it, columns are read as `code | zone | shape | text | goes to | rule`.
+
+| Column | How to write | Example |
+|:---|:---|:---|
+| Code | `section-number`. Shapes with the same prefix (`S1`) form one section | `S1-02` |
+| Zone | `user` or `system`. Leave empty to draw without zones | `system` |
+| Shape | A name from the shape table below | `decision` |
+| Text | Text inside the shape. Use `<br>` for a line break | `Signed in?` |
+| Goes to | `→ code`. Separate several branches with `/` | `yes → S1-03 / no → S1-04` |
+| Rule | Shown small next to a decision as "Rule: …" | `user.signedIn` |
+
+| Shape name | Looks like | Meaning |
+|:---|:---|:---|
+| `term` (start/end) | Pill | Start · end |
+| `action` | Rectangle | Action · processing |
+| `input` | Parallelogram | The user enters or picks something |
+| `output` | Parallelogram | A screen, window or notice appears |
+| `decision` | Diamond | One question. Branches are labeled "yes · no" |
+| `process` | Rectangle with side bars | Shared processing used by several flows |
+| `ref` | Circle | A point that returns to a given shape (put the code as text) |
+| `sub` (subroutine) | Purple border + ▸ | Opens a sub-flow (dashed section) |
+
+**Shapes where the user picks or enters something go in the user zone; decisions, processing and screens go in the system zone.** Draw user actions such as tapping, typing or closing as user-zone shapes rather than as line labels.
+
+#### Branching: split by a condition
+
+In a `decision` shape's "goes to", write `yes → code / no → code`. Yes becomes a blue line and No a red one, with the label at the line's **starting end**. Add a note after `·`.
+
+````markdown example
+```flow
+A-1 | | term | Order received | → A-2
+A-2 | | decision | In stock? | yes → A-3 / no → A-4 · request stock
+A-3 | | action | Pack | → A-5
+A-4 | | action | Wait for stock | when it arrives → A-3
+A-5 | | term | Ship | —
+```
+````
+
+#### Going back: repeat an earlier step
+
+Write **the code of an earlier shape** in "goes to". One column back is drawn as a line; **two or more columns back becomes a "↩ code" connector**, so long lines don't cut across the chart.
+
+````markdown example
+```flow
+| code | zone | shape | text | goes to |
+|---|---|---|---|---|
+| S1-01 | system | output | [Screen] Sign in | → S1-02 |
+| S1-02 | user | input | Enter account | → S1-03 |
+| S1-03 | system | decision | Account correct? | yes → S1-04 / no → S1-05 |
+| S1-04 | system | action | Save sign-in | — |
+| S1-05 | system | output | [Notice] Input error | retry → S1-02 |
+```
+````
+
+#### Grouping: split into sections
+
+Shapes whose codes share a prefix form **one section** inside a frame. Name a section with a `# code name` line. Links to another section are cut with a **"→ code" connector** instead of a long line, and a section opened by a `sub` shape is drawn with a **dashed frame** (sub-flow).
+
+````markdown example
+```flow
+# H1 Home
+# H2 Settings
+H1-01 | system | output | [Screen] Home | → H1-02
+H1-02 | user | action | Pick Settings | → H1-03
+H1-03 | system | sub | Open settings | → H2-01
+H2-01 | system | output | [Sheet] Settings | → H2-02
+H2-02 | user | action | Pick Sign out | → H2-03
+H2-03 | system | process | Clear sign-in | → S1-01
+```
+````
+
+#### Coloring
+
+Color shapes with a `color code1, code2: name` line. Colors are `blue` `green` `orange` `red` `purple` `gray`. You can also add a `color` column to the table.
+
+> [!IMPORTANT]
+> Line colors have fixed meanings (normal = black, yes = blue, no = red). Don't recolor lines to mean "normal" or "error"; write the details as text. Use shape colors **only to show status**, such as done or in progress.
+
+````markdown example
+```flow
+B-1 | | action | Plan | → B-2
+B-2 | | action | Build | → B-3
+B-3 | | action | Launch | —
+color B-1: green
+color B-2: orange
+```
+````
+
+#### Message order (with conditions and loops)
+
+| How to write | Meaning |
+|:---|:---|
+| `participants: User(user), App, Server` | Participants and their order (`(user)` draws a pill) |
+| `A -> B: text` | Request (solid) |
+| `B --> A: text` | Response (dashed) |
+| `alt text` ~ `else text` ~ `end` | Different flows by condition |
+| `loop text` ~ `end` · `opt text` ~ `end` | Loop · optional flow |
+| `note A, B: text` | Note |
+| `autonumber` | Number the messages |
+
+````markdown example
+```sequence
+participants: User(user), App, Server
+autonumber
+User -> App: Sign in
+App -> Server: Check password
+alt correct
+  Server --> App: OK
+  App --> User: Home screen
+else wrong
+  Server --> App: Failed
+  App --> User: Try again
+end
+```
+````
+
+#### State changes
+
+Write `state -> state: event`. `[*]` is the start or end point, `state: description` adds text inside the box, and `group name { … }` groups states. Arrows that go back loop underneath.
+
+````markdown example
+```state
+[*] -> Draft
+Draft -> Review: submit
+Review -> Draft: reject
+Review -> Done: approve
+Done -> [*]
+Draft: being written
+color Done: green
+```
+````
+
+#### Timeline
+
+Write `name: start date, duration`. Without a start date a task starts when the previous one ends; `after task` starts when that task ends.
+
+| How to write | Meaning |
+|:---|:---|
+| `section name` | Group (gets its own color) |
+| `5d` · `2w` · `1m` | Duration (1m = 30 days) |
+| `~ 2026-11-20` | End date |
+| `done` · `active` · `crit` | Faded · bold · red border |
+| `◆ name: date` | Milestone |
+| `today 2026-11-06` · `today hide` | Today line date · hide it |
+
+````markdown example
+```timeline
+title Launch plan
+today 2026-11-06
+section Planning
+Requirements: 2026-11-02, 5d, done
+Screen design: 3d, active
+section Build
+Build screens: after Requirements, 7d
+Testing: 3d, crit
+◆ Launch: 2026-11-20
+```
+````
+
+#### Diagram rules (markcont style)
+
+1. Flows run **left → right**. The main path stays straight; branches stack in new rows (up in the user zone, down in the system zone).
+2. A decision asks one question, and its branches are labeled **yes · no**.
+3. User actions (tap, type, close) are **user-zone shapes**; automatic processing and screens go in the system zone.
+4. Use connectors ("→ code" · "↩ code") to jump to another section or far back. A connector shows the target's code and text.
+5. Mark guessed shapes or links with "(guess)" at the end of the text.
+6. If something is written wrong, the diagram area shows **which line is wrong and why**.
+
+---
+
+### 7-3. Diagrams (Mermaid)
+
+Use these when the diagram must also render on GitHub or Obsidian.
 
 ````markdown
 ```mermaid
@@ -364,7 +552,7 @@ gantt
 
 ---
 
-### 7-3. Math (KaTeX)
+### 7-4. Math (KaTeX)
 
 | Where | How to write |
 |:---|:---|
@@ -414,7 +602,7 @@ Matrices work too: $\begin{pmatrix} 1 & 2 \\ 3 & 4 \end{pmatrix}$
 
 ---
 
-### 7-4. Chemical formulas (mhchem)
+### 7-5. Chemical formulas (mhchem)
 
 Use `\ce{ }` inside math to draw it by chemistry rules. Numbers automatically become subscripts.
 
@@ -500,7 +688,8 @@ Check **where it works** first, and if the document will be opened elsewhere too
 | Math | `$…$` · `$$…$$` | ✅ | ✅ | ✅ |
 | Math block | ```` ```math ```` | ✅ | ✅ | ❌ |
 | Chemical formula | `$\ce{H2O}$` | ✅ | ❌ | ❌ |
-| Diagram | ```` ```mermaid ```` | ✅ | ✅ | ✅ |
+| Diagram (Mermaid) | ```` ```mermaid ```` | ✅ | ✅ | ✅ |
+| Diagram (markcont style) | ```` ```flow ```` ```` ```sequence ```` ```` ```state ```` ```` ```timeline ```` | ✅ | ❌ shown as code | ❌ shown as code |
 | Wikilink | `[[document]]` · `[[document#heading\|alias]]` | ✅ | ❌ | ✅ |
 | Embed image (wiki style) | `![[picture.png]]` | ✅ | ❌ | ✅ |
 | Video · audio | `![description](video.mp4)` | ✅ | ❌ broken image | ✅ |
@@ -689,6 +878,6 @@ Write **bold** and add a ==highlight== too.
 2. Emphasis goes in callouts (NOTE · TIP · IMPORTANT · WARNING · CAUTION), up to two per section
 3. Tables for comparisons and settings, checklists for to-dos
 4. Language names on code blocks, `diff` for changes
-5. Flows in mermaid (`{ }` for branches, an arrow to an earlier box to go back, `subgraph` for groups), math with `$`, chemistry with `\ce{}`
+5. Flows as a ```` ```flow ```` table (user · system zones, yes = blue · no = red, sections for groups) or mermaid for GitHub, math with `$`, chemistry with `\ce{}`
 6. Side notes as footnotes (the explanation line can go anywhere; a missing one shows a red dotted line), Q&A in `<details>`
 7. Extended syntax (`==highlight==`, `[[wikilink]]`, `> [!TODO]-` …) may only work in markcont, so check **the table in section 9**

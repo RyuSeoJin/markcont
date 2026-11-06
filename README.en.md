@@ -63,7 +63,7 @@ curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh 
 - GitHub-style display, dark mode, text size · font · body width settings
 - 11 kinds of callouts `> [!NOTE]` (foldable), tables, task lists (click to check), footnotes, highlight `==text==`
 - Code highlighting · line numbers · copy · enlarge, `diff` coloring
-- Math `$E=mc^2$`, chemical formulas `$\ce{H2O}$`, Mermaid diagrams (branches · loops · groups)
+- Math `$E=mc^2$`, chemical formulas `$\ce{H2O}$`, diagrams: markcont style (rsj-rule flowcharts, message order, state changes, timelines) and Mermaid
 - Wikilinks `[[document#heading]]`, video · YouTube thumbnails
 - A workspace that opens several folders together, folder tree · file search · right-click menu, table of contents, heading folding, find in document, focus mode
 - Live editing: source with line numbers and syntax colors, a marker for where you're editing, scroll sync

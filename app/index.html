@@ -195,6 +195,89 @@
 
 /* 다이어그램 카드 */
 .markdown-body .mermaid { padding: 20px 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); overflow-x: auto; }
+/* markcont 다이어그램 (rsj 흐름도 규칙) */
+:root { --dg-line: #1e1e1e; --dg-yes: #2563eb; --dg-no: #dc2626; --dg-sec: #475569; --dg-node: #ffffff; --dg-stroke: #64748b; --dg-ret: #ea580c; --dg-sub: #7c3aed; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --dg-line: #d4d7dc; --dg-yes: #60a5fa; --dg-no: #f87171; --dg-sec: #94a3b8; --dg-node: #1f2328; --dg-stroke: #8b98a9; --dg-ret: #fb923c; --dg-sub: #a78bfa; } }
+:root[data-theme="dark"] { --dg-line: #d4d7dc; --dg-yes: #60a5fa; --dg-no: #f87171; --dg-sec: #94a3b8; --dg-node: #1f2328; --dg-stroke: #8b98a9; --dg-ret: #fb923c; --dg-sub: #a78bfa; }
+.markdown-body .dg { margin: 0 0 1.1em; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); overflow-x: auto; }
+.markdown-body .dg svg { display: block; margin: 0 auto; max-width: none; font-family: var(--font); }
+.markdown-body .dg.dg-error { white-space: pre-wrap; font-size: .88em; color: var(--c-red); background: color-mix(in srgb, var(--c-red) 7%, var(--surface)); border-color: color-mix(in srgb, var(--c-red) 35%, var(--border)); padding: 12px 14px; }
+.dg-svg text { font-size: 13px; fill: var(--text); dominant-baseline: central; text-anchor: middle; }
+.dg-svg .dg-lane.u { fill: color-mix(in srgb, var(--dg-yes) 5%, transparent); }
+.dg-svg .dg-lane.s { fill: color-mix(in srgb, var(--dg-stroke) 6%, transparent); }
+.dg-svg .dg-lane-line { stroke: var(--dg-stroke); stroke-width: 1; stroke-dasharray: 5 4; }
+.dg-svg .dg-lane-label { font-size: 12px; font-weight: 700; fill: var(--muted); letter-spacing: .08em; }
+.dg-svg .dg-sec { fill: none; stroke: var(--dg-sec); stroke-width: 2.2; }
+.dg-svg .dg-sec.sub { stroke-dasharray: 7 5; stroke-width: 1.8; }
+.dg-svg .dg-sec-label { font-size: 12px; font-weight: 700; fill: var(--dg-sec); text-anchor: start; }
+.dg-svg .dg-shape { fill: var(--dg-node); stroke: var(--dg-stroke); stroke-width: 1.4; }
+.dg-svg .dg-shape-line { stroke: var(--dg-stroke); stroke-width: 1.2; }
+.dg-svg .dg-node.term .dg-shape { stroke-width: 1.8; }
+.dg-svg .dg-node.decision .dg-shape { fill: color-mix(in srgb, var(--dg-yes) 4%, var(--dg-node)); }
+.dg-svg .dg-node.sub .dg-shape, .dg-svg .dg-node.sub .dg-shape-line { stroke: var(--dg-sub); }
+.dg-svg .dg-node.goto .dg-shape { fill: color-mix(in srgb, var(--dg-stroke) 12%, var(--dg-node)); }
+.dg-svg .dg-node.ret .dg-shape { fill: color-mix(in srgb, var(--dg-ret) 10%, var(--dg-node)); stroke: var(--dg-ret); stroke-dasharray: 4 3; }
+.dg-svg .dg-node.tinted .dg-shape { fill: color-mix(in srgb, var(--t) 15%, var(--dg-node)); stroke: var(--t); }
+.dg-svg .dg-code { font-size: 11.5px; font-weight: 700; }
+.dg-svg .dg-text.small { font-size: 12px; }
+.dg-svg .dg-text.strong { font-weight: 600; }
+.dg-svg .dg-text.muted { fill: var(--muted); }
+.dg-svg .dg-text.small.muted { font-size: 11.5px; }
+.dg-svg .dg-edge { fill: none; stroke: var(--dg-line); stroke-width: 1.5; }
+.dg-svg .dg-edge.yes { stroke: var(--dg-yes); }
+.dg-svg .dg-edge.no { stroke: var(--dg-no); }
+.dg-svg .dg-edge.reply { stroke-dasharray: 5 4; }
+.dg-svg .dg-arrow { fill: var(--dg-line); }
+.dg-svg .dg-arrow.yes { fill: var(--dg-yes); }
+.dg-svg .dg-arrow.no { fill: var(--dg-no); }
+.dg-svg .dg-arrow-open { fill: none; stroke: var(--dg-line); stroke-width: 1.5; }
+.dg-svg .dg-label rect { fill: var(--surface); stroke: var(--dg-stroke); stroke-width: 1; }
+.dg-svg .dg-label text { font-size: 11px; font-weight: 600; }
+.dg-svg .dg-label.yes rect { stroke: var(--dg-yes); }
+.dg-svg .dg-label.yes text { fill: var(--dg-yes); }
+.dg-svg .dg-label.no rect { stroke: var(--dg-no); }
+.dg-svg .dg-label.no text { fill: var(--dg-no); }
+.dg-svg .dg-judge { font-size: 10.5px; fill: var(--muted); text-anchor: start; }
+.dg-svg .dg-life { stroke: var(--dg-stroke); stroke-width: 1; stroke-dasharray: 4 4; }
+.dg-svg .dg-actor.user .dg-shape { fill: color-mix(in srgb, var(--dg-yes) 9%, var(--dg-node)); }
+.dg-svg .dg-msg { font-size: 12.5px; text-anchor: start; }
+.dg-svg .dg-axis.mid { text-anchor: middle; }
+.dg-svg .dg-num circle { fill: var(--dg-sec); }
+.dg-svg .dg-num text { font-size: 10px; font-weight: 700; fill: var(--surface); }
+.dg-svg .dg-note rect { fill: color-mix(in srgb, var(--c-amber) 12%, var(--surface)); stroke: color-mix(in srgb, var(--c-amber) 45%, transparent); }
+.dg-svg .dg-note-text { font-size: 12px; }
+.dg-svg .dg-block-frame { fill: none; stroke: var(--dg-sec); stroke-width: 1.4; }
+.dg-svg .dg-block-tab { fill: color-mix(in srgb, var(--dg-sec) 14%, var(--surface)); stroke: var(--dg-sec); stroke-width: 1.2; }
+.dg-svg .dg-block-name { font-size: 11.5px; font-weight: 700; text-anchor: start; }
+.dg-svg .dg-block-label { font-size: 11.5px; fill: var(--muted); text-anchor: start; }
+.dg-svg .dg-block-else { stroke: var(--dg-sec); stroke-width: 1.2; stroke-dasharray: 6 4; }
+.dg-svg .dg-start { fill: var(--dg-line); }
+.dg-svg .dg-end-ring { fill: none; stroke: var(--dg-line); stroke-width: 1.6; }
+.dg-svg .tint-blue { --t: var(--c-blue); }
+.dg-svg .tint-green { --t: var(--c-green); }
+.dg-svg .tint-amber { --t: var(--c-amber); }
+.dg-svg .tint-red { --t: var(--c-red); }
+.dg-svg .tint-purple { --t: var(--c-purple); }
+.dg-svg .tint-gray { --t: var(--muted); }
+.dg-svg .dg-title { font-size: 14px; font-weight: 700; text-anchor: start; }
+.dg-svg .dg-axis { font-size: 10.5px; fill: var(--muted); text-anchor: start; }
+.dg-svg .dg-axis.month { font-size: 11.5px; font-weight: 700; fill: var(--text); }
+.dg-svg .dg-grid { stroke: var(--border); stroke-width: 1; }
+.dg-svg .dg-grid.strong { stroke: var(--dg-stroke); stroke-opacity: .5; }
+.dg-svg .dg-weekend { fill: var(--surface-2); opacity: .7; }
+.dg-svg .dg-tl-sec { fill: color-mix(in srgb, var(--t) 9%, transparent); }
+.dg-svg .dg-tl-sec-label { font-size: 12.5px; font-weight: 700; text-anchor: start; }
+.dg-svg .dg-tl-name { text-anchor: start; }
+.dg-svg .dg-tl-name.done { fill: var(--muted); }
+.dg-svg .dg-bar rect { fill: color-mix(in srgb, var(--t) 45%, var(--surface)); stroke: var(--t); stroke-width: 1.2; }
+.dg-svg .dg-bar.done rect { fill: color-mix(in srgb, var(--t) 18%, var(--surface)); stroke-opacity: .55; }
+.dg-svg .dg-bar.active rect { stroke-width: 2.4; }
+.dg-svg .dg-bar.crit rect, .dg-svg .dg-ms.crit polygon { stroke: var(--dg-no); stroke-width: 2.2; }
+.dg-svg .dg-ms polygon { fill: var(--t); stroke: var(--t); }
+.dg-svg .dg-tl-dur { font-size: 11px; font-weight: 600; fill: var(--muted); text-anchor: start; }
+.dg-svg .dg-tl-dur.in { fill: var(--text); text-anchor: middle; }
+.dg-svg .dg-today { stroke: var(--dg-no); stroke-width: 1.4; stroke-dasharray: 4 3; }
+.dg-svg .dg-today-label { font-size: 10.5px; font-weight: 700; fill: var(--dg-no); }
 
 /* 자주 묻는 질문 (details) */
 .markdown-body details:not(.callout):not(.front-matter) { padding: 0; background: var(--surface); overflow: hidden; }
@@ -1212,6 +1295,7 @@ body.zen .zen-exit:hover { opacity: 1; }
 <script src="vendor/katex/katex.min.js"></script>
 <script src="vendor/katex/mhchem.min.js"></script>
 <script src="i18n.js"></script>
+<script src="diagram.js"></script>
 <script>
 (() => {
   translateStatic(document.body);
@@ -1876,6 +1960,17 @@ body.zen .zen-exit:hover { opacity: 1; }
       const lineAttr = pre.dataset.line || code.dataset.line || '';
       const langClass = [...code.classList].find((c) => c.startsWith('language-'));
       const lang = langClass ? langClass.slice(9) : '';
+      // markcont 다이어그램: ```flow · ```sequence · ```state · ```timeline (한글 이름도 됨)
+      const dgKind = window.MarkDiagram && MarkDiagram.kindOf(lang);
+      if (dgKind) {
+        const d = document.createElement('div');
+        d.className = 'dg';
+        if (lineAttr) d.dataset.line = lineAttr;
+        try { d.innerHTML = MarkDiagram.render(dgKind, code.textContent); }
+        catch (err) { d.classList.add('dg-error'); d.textContent = L('다이어그램을 그리지 못했습니다\n', "Couldn't draw the diagram\n") + err.message; }
+        pre.replaceWith(d);
+        return;
+      }
       // ```math 블록은 수식으로 (화학식 \ce{} 포함)
       if (/^(math|latex|tex|katex)$/i.test(lang)) {
         const d = document.createElement('div');
@@ -2048,7 +2143,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (!q) return;
     const lower = q.toLowerCase();
     const walker = document.createTreeWalker(el.doc, NodeFilter.SHOW_TEXT, {
-      acceptNode: (n) => (n.parentElement.closest('.h-tools, .code-head, .katex, .mermaid, script, style') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+      acceptNode: (n) => (n.parentElement.closest('.h-tools, .code-head, .katex, .mermaid, .dg, script, style') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
     });
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
