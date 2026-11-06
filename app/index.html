@@ -2541,9 +2541,9 @@ body.zen .zen-exit:hover { opacity: 1; }
     const box = el.fileList;
     box.innerHTML = '';
     const hasRoot = state.roots.length > 0;
-    // 안내 문서는 내 파일 · 폴더를 아무것도 열지 않았을 때만 목록에 보임
+    // 안내 문서는 늘 목록에 보임: 아무것도 안 열었을 때는 맨 위, 내 파일 · 폴더를 열면 맨 아래
     const mine = state.files.filter((f) => !f.builtin);
-    const showBuiltin = !hasRoot && !mine.length;
+    const builtinFirst = !hasRoot && !mine.length;
     const loose = mine.filter((f) => f.loose || !hasRoot);
     const total = mine.length;
     $('#fileCount').textContent = total ? total : '';
@@ -2592,21 +2592,25 @@ body.zen .zen-exit:hover { opacity: 1; }
       };
       walk(tree, 0);
     }
-    if (showBuiltin) {
+    const appendBuiltin = () => {
+      const keys = Object.keys(BUILTIN).filter((k) => !q || BUILTIN[k].title.toLowerCase().includes(q));
+      if (!keys.length) return;
       const g = document.createElement('div');
       g.className = 'tree-group';
       g.textContent = L('markcont 안내 문서', 'markcont docs');
       frag.append(g);
-      for (const key of Object.keys(BUILTIN)) {
+      for (const key of keys) {
+        shown++;
         const path = builtinPath(key);
         const row = treeRow({ kind: 'file', name: BUILTIN[key].title, path, depth: 0, entry: state.files.find((f) => f.builtin && f.path === path) });
         row.dataset.builtin = key;
         row.classList.add('builtin');
         row.querySelector('.more')?.remove();
-        row.title = L('앱에 들어 있는 안내 문서입니다. 내 파일이나 폴더를 열면 목록에서 사라집니다 (⋯ 메뉴에서 언제든 다시 열 수 있음).', 'A document that comes with the app. It leaves this list once you open your own file or folder (you can reopen it anytime from the ⋯ menu).');
+        row.title = L('앱에 들어 있는 안내 문서입니다. 고친 내용은 새 파일로 저장됩니다.', 'A document that comes with the app. Your edits are saved as a new file.');
         frag.append(row);
       }
-    }
+    };
+    if (builtinFirst) appendBuiltin();
     const looseShown = loose.filter(matches);
     if (looseShown.length) {
       if (hasRoot) {
@@ -2627,6 +2631,7 @@ body.zen .zen-exit:hover { opacity: 1; }
         shown++;
       }
     }
+    if (!builtinFirst) appendBuiltin();
     if (q && !shown) {
       const p = document.createElement('div');
       p.className = 'tree-empty';
