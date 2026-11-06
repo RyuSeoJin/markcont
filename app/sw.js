@@ -1,6 +1,6 @@
 // 오프라인에서도 열리도록 앱 파일을 저장해 두는 서비스 워커
 // 새 버전을 올릴 때는 아래 VERSION 숫자를 올리세요.
-const VERSION = 'v1.0.1';
+const VERSION = 'v1.0.2';
 const CACHE = 'markcont-' + VERSION;
 
 const APP_FILES = [
