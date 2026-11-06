@@ -6,7 +6,15 @@ version: 1.2
 # 📐 Rules for Good-Looking Markdown
 
 Follow these rules and your documents will be easy to take in at a glance in markcont.
-When you ask an AI to write a document, give it this file too and say **"Rewrite this following these rules."**
+When you ask an AI to write a document, give it this file too and use one of these prompts, **depending on where the document will be read**.
+
+| Read in | Tell the AI |
+|:---|:---|
+| markcont only | **"Rewrite this following these rules."** |
+| Anywhere (GitHub, VS Code, …) | **"Rewrite this following these rules, but don't use any syntax marked ❌ in the GitHub column of the section 9 table."** |
+
+> [!IMPORTANT]
+> Documents already written in markcont style are fine too. **▾ → Save for other viewers…** next to the Save button makes a **copy** with markcont-only syntax converted to standard syntax (the original stays as it is). If a document uses markcont-only syntax, **⚠ N spots look different in other viewers** appears at the top of the document.
 
 > [!TIP]
 > Sections 1–8 mostly look the same on GitHub and Obsidian too.
@@ -701,6 +709,9 @@ Check **where it works** first, and if the document will be opened elsewhere too
 | Source · result side by side | ```` ```markdown example ```` | ✅ | ❌ shown as code | ❌ shown as code |
 
 <sub>The GitHub and Obsidian columns show behavior with default settings as of November 2026. It may differ by version or plugins.</sub>
+
+> [!TIP]
+> Even if you use ❌ syntax, **▾ → Save for other viewers…** makes a standard copy. Highlight · inserted · deleted text become HTML tags, extra callouts become one of the 5 standard types + a title, foldable callouts become `<details>`, wikilinks become normal links, and markcont diagrams become **Mermaid**. Chemistry `\ce{}` can't be converted, so it's left as is and flagged.
 
 ### Callouts: 11 types and collapsing
 

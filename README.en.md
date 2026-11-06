@@ -68,6 +68,7 @@ curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh 
 - A workspace that opens several folders together, folder tree · file search · right-click menu, table of contents, heading folding, find in document, focus mode
 - Live editing: source with line numbers and syntax colors, a marker for where you're editing, scroll sync
 - Auto-reload of changed files, Save as HTML, Print · PDF
+- Save for other viewers: a copy with markcont-only syntax converted to standard markdown (diagrams to Mermaid), plus a marker for spots that look different
 - A first-run tour (tutorial) that walks you through the features
 - PC app: connect to Claude Desktop · Claude Code over MCP to edit documents in your open folders, with highlighting and undo for changes made from outside
 

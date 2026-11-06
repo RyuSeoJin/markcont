@@ -1,6 +1,6 @@
 ---
 title: markcont User guide
-version: 1.1.0
+version: 1.2.0
 ---
 
 # 📘 markcont User guide
@@ -139,6 +139,7 @@ Open the window with the **History** button in the editing toolbar (<kbd>Ctrl</k
 |:---|:---|
 | Save to original file | **Save** button or <kbd>Ctrl</kbd>+<kbd>S</kbd> |
 | Save as a new file | **▾ → Save as new file…** next to the Save button, or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> — the original file stays as it is, and from then on you edit the new file |
+| For other viewers | **▾ → Save for other viewers…** next to the Save button — a copy with markcont-only syntax converted to standard syntax (looks the same on GitHub · VS Code; the original stays as it is) |
 | As an HTML file | **⋯ → Save as HTML** — a single file that looks just like the screen |
 | As a PDF | In **⋯ → Print · Save as PDF**, choose "Save as PDF" |
 
@@ -146,6 +147,7 @@ Open the window with the **History** button in the editing toolbar (<kbd>Ctrl</k
 - Before saving, markcont **shows you what will change and asks once more** (Cancel · Save as new file · Save). To turn this off, turn off **Aa → Review changes before saving**, or check **Don't ask again** in the confirmation window.
 - Documents whose original location is unknown (the User guide, new documents, some dropped files) automatically open **Save as new file** when you save.
 - If you save a new file inside an open folder, it shows up in that folder tree right away.
+- If a document uses markcont-only syntax (`==highlight==`, `[!INFO]`, ```` ```flow ````, etc.), **⚠ N spots look different in other viewers** appears at the top of the document. Click it for the list of lines; click a line to jump there, or use **Convert this document** to convert everything at once.
 - If another program changes the file, markcont **reloads it automatically.** If you have unsaved changes, it won't overwrite them and lets you know instead.
 
 ---

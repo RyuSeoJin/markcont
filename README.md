@@ -68,6 +68,7 @@ curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh 
 - 여러 폴더를 함께 여는 작업 공간, 폴더 트리 · 파일 찾기 · 오른쪽 클릭 메뉴, 목차, 제목 접기, 문서 안 찾기, 집중 모드
 - 실시간 편집: 줄 번호와 문법 색이 있는 원본, 지금 고치는 곳 표시, 스크롤 맞춤
 - 바뀐 파일 자동 새로고침, HTML 파일로 저장, 인쇄 · PDF
+- 다른 뷰어용으로 저장: markcont 전용 문법을 표준 마크다운으로 바꾼 사본(다이어그램은 Mermaid로), 다르게 보이는 곳 표시
 - 처음 실행할 때 기능을 짚어 주는 안내(튜토리얼)
 - PC 프로그램: Claude Desktop · Claude Code와 MCP로 연결해 열어 둔 폴더의 문서를 고치기, 밖에서 바뀐 곳 강조 · 되돌리기
 

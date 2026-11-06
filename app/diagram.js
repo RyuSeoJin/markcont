@@ -466,7 +466,7 @@
   /* =====================================================================
      주고받는 순서 (sequence)
      ===================================================================== */
-  function renderSequence(src, uid) {
+  function renderSequence(src, uid, asMermaid) {
     const errs = [], parts = [], byName = new Map(), items = [], colors = [], stack = [];
     let number = false;
     const part = (name) => {
@@ -516,6 +516,7 @@
     if (!parts.length) errs.push({ msg: L('주고받는 내용이 없습니다', 'No messages') });
     if (errs.length) fail(errs);
     applyColors(colors, (n) => byName.get(n));
+    if (asMermaid) return seqMermaid(parts, items, number);
 
     // 범위: 묶음마다 안쪽에 나오는 참여자의 왼쪽 · 오른쪽 끝
     const open = [];
@@ -628,7 +629,7 @@
   /* =====================================================================
      상태 변화 (state)
      ===================================================================== */
-  function renderState(src, uid) {
+  function renderState(src, uid, asMermaid) {
     const errs = [], states = new Map(), edges = [], groups = [], colors = [];
     const gstack = [];
     const START = '\u0000start', END = '\u0000end';
@@ -664,6 +665,7 @@
     if (!states.size) errs.push({ msg: L('상태가 하나도 없습니다', 'No states') });
     if (errs.length) fail(errs);
     applyColors(colors, (n) => states.get(n));
+    if (asMermaid) return stateMermaid(states, edges, groups, START, END);
 
     const nodes = new Map();
     if (usesStart) nodes.set(START, { id: START, pseudo: 'start', w: 18, h: 18 });
@@ -797,7 +799,7 @@
   const DAY = 86400000;
   const parseDate = (s) => { const m = String(s).match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) : null; };
   const md = (t) => { const d = new Date(t); return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`; };
-  function renderTimeline(src, uid) {
+  function renderTimeline(src, uid, asMermaid) {
     const errs = [], sections = [], tasks = new Map(), colors = [];
     let title = '', today = null, showToday = true, cur = null, prevEnd = null;
     const now = new Date();
@@ -847,8 +849,7 @@
         if (end != null) days = Math.round((end - start) / DAY) + 1;
         if (days == null) days = t.milestone ? 0 : 1;
         if (t.milestone) days = 0;
-        t.start = start; t.days = days; t.end = start + Math.round(days * DAY / DAY) * DAY;
-        if (days % 1) t.end = start + days * DAY;
+        t.start = start; t.days = days; t.end = start + days * DAY;
         prevEnd = t.milestone ? start : t.end;
         if (!cur) { cur = { name: '', tasks: [] }; sections.push(cur); }
         cur.tasks.push(t);
@@ -860,6 +861,7 @@
     if (!tasks.size) errs.push({ msg: L('일정이 하나도 없습니다', 'No tasks') });
     if (errs.length) fail(errs);
     applyColors(colors, (n) => tasks.get(n) || sections.find((s) => s.name === n));
+    if (asMermaid) return timelineMermaid(title, sections, showToday);
     sections.forEach((s, i) => { if (!s.tint) s.tint = PALETTE[i % PALETTE.length]; });
     const all = [...tasks.values()];
     const t0 = Math.min(...all.map((t) => t.start)) - DAY;
@@ -928,6 +930,149 @@
     return svgWrap('dg-timeline', W, H, svg, title || L('일정표', 'Timeline'));
   }
 
+  /* =====================================================================
+     Mermaid 로 바꾸기 — 다른 뷰어(GitHub · Obsidian 등)에서도 그림이 그려지도록
+     ===================================================================== */
+  const MTINT = { blue: 'fill:#dbeafe,stroke:#2563eb', green: 'fill:#dcfce7,stroke:#16a34a', amber: 'fill:#fef3c7,stroke:#d97706',
+    red: 'fill:#fee2e2,stroke:#dc2626', purple: 'fill:#ede9fe,stroke:#7c3aed', gray: 'fill:#f1f5f9,stroke:#64748b' };
+  const mq = (s) => '"' + String(s).replace(/"/g, '#quot;') + '"';
+  const mtext = (s) => String(s).replace(/[#;]/g, (c) => (c === '#' ? '#35;' : '#59;'));
+  function tintLines(list, idOf) {
+    const by = {};
+    for (const x of list) if (x.tint) (by[x.tint] = by[x.tint] || []).push(idOf(x));
+    const out = [];
+    for (const [t, ids] of Object.entries(by)) out.push(`  classDef t_${t} ${MTINT[t]}`, `  class ${ids.join(',')} t_${t}`);
+    return out;
+  }
+
+  function flowMermaid(src) {
+    const errs = [];
+    const f = parseFlow(src, errs);
+    if (!f.nodes.size) errs.push({ msg: L('도형이 하나도 없습니다', 'No nodes') });
+    if (errs.length) fail(errs);
+    const { nodes, edges } = f;
+    const mids = new Map(), used = new Set();
+    for (const id of nodes.keys()) {
+      let m = 'n_' + id.replace(/[^A-Za-z0-9]/g, '_'), k = 2;
+      while (used.has(m)) m = 'n_' + id.replace(/[^A-Za-z0-9]/g, '_') + '_' + k++;
+      used.add(m); mids.set(id, m);
+    }
+    const hasZones = [...nodes.values()].some((n) => n.zone);
+    const secOf = (id) => (id.includes('-') ? id.slice(0, id.lastIndexOf('-')) : '');
+    const secs = [];
+    for (const n of nodes.values()) { n.sec = secOf(n.id); if (!secs.includes(n.sec)) secs.push(n.sec); }
+    const framed = (s) => !!s && (f.secNames.has(s) || secs.length > 1);
+    const label = (n) => {
+      const parts = [];
+      if (!f.hideCodes && n.type !== 'ref') parts.push('<b>' + (n.type === 'sub' ? '▸ ' : '') + n.id + '</b>');
+      if (n.text) parts.push(n.text);
+      if (n.type === 'decision' && n.judge) parts.push('<i>' + L('판정: ', 'Rule: ') + n.judge + '</i>');
+      return mq(parts.join('<br>') || n.id);
+    };
+    const shape = (n) => {
+      const l = label(n);
+      switch (n.type) {
+        case 'term': return `([${l}])`;
+        case 'decision': return `{${l}}`;
+        case 'input': case 'output': return `[/${l}/]`;
+        case 'process': case 'sub': return `[[${l}]]`;
+        case 'ref': return `((${l}))`;
+        default: return `[${l}]`;
+      }
+    };
+    const out = ['flowchart LR'];
+    if (hasZones) out.push('  %% ' + L('파란 상자 = 유저 구역, 회색 상자 = 시스템 구역 (markcont 흐름도에서 바꿈)', 'Blue boxes = user zone, gray boxes = system zone (converted from a markcont flowchart)'));
+    secs.forEach((sec, i) => {
+      const list = [...nodes.values()].filter((n) => n.sec === sec);
+      const fr = framed(sec);
+      if (fr) out.push(`  subgraph s${i + 1}[${mq(sec + (f.secNames.get(sec) ? ' · ' + f.secNames.get(sec) : ''))}]`);
+      for (const n of list) out.push(`${fr ? '    ' : '  '}${mids.get(n.id)}${shape(n)}`);
+      if (fr) out.push('  end');
+    });
+    const ext = new Map();
+    const styles = [];
+    let k = 0;
+    for (const e of edges) {
+      const a = mids.get(e.from);
+      let b = mids.get(e.to);
+      if (!b) {
+        b = ext.get(e.to);
+        if (!b) { b = 'x' + (ext.size + 1); ext.set(e.to, b); out.push(`  ${b}>${mq('→ ' + e.to + (f.secNames.get(e.to) ? ' ' + f.secNames.get(e.to) : ''))}]`); }
+      }
+      const from = nodes.get(e.from), to = nodes.get(e.to);
+      const dashed = from.type === 'sub' && to && to.sec !== from.sec;
+      out.push(`  ${a} ${dashed ? '-.->' : '-->'}${e.label ? '|' + mq(e.label) + '|' : ''} ${b}`);
+      if (e.kind === 'yes') styles.push(`  linkStyle ${k} stroke:#2563eb,color:#2563eb`);
+      if (e.kind === 'no') styles.push(`  linkStyle ${k} stroke:#dc2626,color:#dc2626`);
+      k++;
+    }
+    out.push(...styles);
+    if (hasZones) {
+      const us = [...nodes.values()].filter((n) => n.zone === 'u').map((n) => mids.get(n.id));
+      const ss = [...nodes.values()].filter((n) => n.zone !== 'u').map((n) => mids.get(n.id));
+      out.push('  classDef user fill:#eff6ff,stroke:#2563eb', '  classDef system fill:#f8fafc,stroke:#64748b');
+      if (us.length) out.push(`  class ${us.join(',')} user`);
+      if (ss.length) out.push(`  class ${ss.join(',')} system`);
+    }
+    out.push(...tintLines([...nodes.values()], (n) => mids.get(n.id)));
+    return out.join('\n');
+  }
+
+  function seqMermaid(parts, items, number) {
+    const pid = (p) => 'p' + (p.i + 1);
+    const out = ['sequenceDiagram'];
+    if (number) out.push('  autonumber');
+    for (const p of parts) out.push(`  ${p.kind === 'u' ? 'actor' : 'participant'} ${pid(p)} as ${mtext(p.name)}`);
+    let depth = 1;
+    for (const it of items) {
+      const ind = '  '.repeat(depth);
+      if (it.t === 'msg') out.push(`${ind}${pid(it.a)}${it.reply ? '-->>' : '->>'}${pid(it.b)}: ${mtext(it.text) || '…'}`);
+      else if (it.t === 'open') { out.push(`${ind}${it.kind} ${mtext(it.label)}`.trimEnd()); depth++; }
+      else if (it.t === 'else') out.push(`${'  '.repeat(depth - 1)}${it.block.kind === 'par' ? 'and' : 'else'} ${mtext(it.label)}`.trimEnd());
+      else if (it.t === 'close') { depth--; out.push(`${'  '.repeat(depth)}end`); }
+      else if (it.t === 'note') {
+        const ids = [...new Set(it.ps.map(pid))];
+        out.push(`${ind}Note over ${(ids.length > 2 ? [ids[0], ids[ids.length - 1]] : ids).join(',')}: ${mtext(it.text)}`);
+      }
+    }
+    return out.join('\n');
+  }
+
+  function stateMermaid(states, edges, groups, START, END) {
+    const sid = new Map();
+    let k = 0;
+    for (const s of states.values()) sid.set(s.id, 's' + ++k);
+    const q = (s) => String(s).replace(/"/g, "'");
+    const out = ['stateDiagram-v2'];
+    const inGroup = new Set();
+    groups.forEach((g, i) => {
+      out.push(`  state "${q(g.name)}" as g${i + 1} {`);
+      for (const m of g.members) { const s = states.get(m); if (!s) continue; out.push(`    state "${q(s.name)}" as ${sid.get(m)}`); inGroup.add(m); }
+      out.push('  }');
+    });
+    for (const s of states.values()) if (!inGroup.has(s.id)) out.push(`  state "${q(s.name)}" as ${sid.get(s.id)}`);
+    for (const e of edges) out.push(`  ${e.a === START ? '[*]' : sid.get(e.a)} --> ${e.b === END ? '[*]' : sid.get(e.b)}${e.label ? ' : ' + e.label : ''}`);
+    for (const s of states.values()) if (s.desc) out.push(`  note right of ${sid.get(s.id)} : ${s.desc}`);
+    out.push(...tintLines([...states.values()], (s) => sid.get(s.id)));
+    return out.join('\n');
+  }
+
+  function timelineMermaid(title, sections, showToday) {
+    const iso = (t) => new Date(t).toISOString().slice(0, 10);
+    const nm = (s) => String(s).replace(/[:#;]/g, ' ').trim();
+    const out = ['gantt', '  dateFormat YYYY-MM-DD'];
+    if (title) out.push('  title ' + nm(title));
+    if (!showToday) out.push('  todayMarker off');
+    for (const s of sections) {
+      if (s.name) out.push('  section ' + nm(s.name));
+      for (const t of s.tasks) {
+        const tags = [t.done && 'done', t.active && 'active', t.crit && 'crit', t.milestone && 'milestone'].filter(Boolean);
+        out.push(`  ${nm(t.name)} :${[...tags, iso(t.start), (t.milestone ? 0 : Math.max(1, Math.round(t.days))) + 'd'].join(', ')}`);
+      }
+    }
+    return out.join('\n');
+  }
+
   /* ===================================================================== */
   const KIND = {};
   [['flow', 'flow 흐름도'], ['sequence', 'sequence seq 주고받기 순서'], ['state', 'state 상태'], ['timeline', 'timeline schedule 일정표 일정']]
@@ -941,6 +1086,14 @@
       if (kind === 'sequence') return renderSequence(src, uid);
       if (kind === 'state') return renderState(src, uid);
       if (kind === 'timeline') return renderTimeline(src, uid);
+      throw new Error('unknown diagram kind');
+    },
+    // 다른 뷰어용: 같은 내용을 Mermaid 문법으로
+    toMermaid(kind, src) {
+      if (kind === 'flow') return flowMermaid(src);
+      if (kind === 'sequence') return renderSequence(src, 'm', true);
+      if (kind === 'state') return renderState(src, 'm', true);
+      if (kind === 'timeline') return renderTimeline(src, 'm', true);
       throw new Error('unknown diagram kind');
     },
   };
