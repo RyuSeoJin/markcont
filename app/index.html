@@ -549,6 +549,34 @@ body.zen .zen-exit {
 }
 body.zen .zen-exit:hover { opacity: 1; }
 
+/* 처음 사용 안내 (튜토리얼) */
+.tour { position: fixed; inset: 0; z-index: 90; }
+.tour-shade { position: absolute; inset: 0; background: rgba(10, 12, 16, .55); }
+.tour.has-spot .tour-shade { background: transparent; }
+.tour-spot {
+  position: absolute; border-radius: 12px; pointer-events: none; display: none;
+  box-shadow: 0 0 0 4px var(--accent), 0 0 0 9999px rgba(10, 12, 16, .55);
+  transition: left .25s, top .25s, width .25s, height .25s;
+}
+.tour.has-spot .tour-spot { display: block; }
+.tour-card {
+  position: absolute; width: min(360px, calc(100vw - 32px)); padding: 20px 20px 16px; border-radius: 16px;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border); box-shadow: 0 20px 50px rgba(0,0,0,.3);
+  transition: left .25s, top .25s;
+}
+.tour-card.center { transition: none; left: 50% !important; top: 50% !important; transform: translate(-50%, -50%); width: min(420px, calc(100vw - 32px)); text-align: center; }
+.tour-step { font-size: 12px; color: var(--accent); font-weight: 700; letter-spacing: .02em; margin-bottom: 6px; }
+.tour-card h3 { margin: 0 0 8px; font-size: 18px; letter-spacing: -.01em; }
+.tour-card p { margin: 0 0 14px; font-size: 14.5px; line-height: 1.7; color: var(--muted); }
+.tour-card p b { color: var(--text); }
+.tour-card .tour-emoji { font-size: 40px; display: block; margin-bottom: 6px; }
+.tour-dots { display: flex; gap: 5px; margin-bottom: 14px; }
+.tour-card.center .tour-dots { justify-content: center; }
+.tour-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--border); }
+.tour-dots span.on { background: var(--accent); width: 18px; border-radius: 4px; }
+.tour-btns { display: flex; gap: 6px; align-items: center; }
+.tour-btns .btn { height: 36px; }
+
 /* 문서 안 찾기 */
 .find-bar {
   position: absolute; top: 12px; right: 20px; z-index: 35; display: flex; align-items: center; gap: 4px;
@@ -752,6 +780,20 @@ body.zen .zen-exit:hover { opacity: 1; }
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>
           인쇄 · PDF로 저장<kbd>Ctrl+P</kbd>
         </button>
+        <hr style="border:0;border-top:1px solid var(--border);margin:4px 0">
+        <button class="menu-item" id="mGuide">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>
+          사용 안내서
+        </button>
+        <button class="menu-item" id="mRules">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          마크다운 작성 규칙
+        </button>
+        <button class="menu-item" id="mTour">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z"/></svg>
+          처음 사용 안내 다시 보기
+        </button>
+        <hr style="border:0;border-top:1px solid var(--border);margin:4px 0">
         <button class="menu-item" id="mNew">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
           새 문서 쓰기
@@ -909,6 +951,24 @@ body.zen .zen-exit:hover { opacity: 1; }
 
 <div class="drop-overlay" id="dropOverlay"><div>여기에 놓으면 열립니다</div></div>
 <div class="toast" id="toast" role="status"></div>
+
+<!-- 처음 사용 안내 (튜토리얼) -->
+<div class="tour" id="tour" hidden>
+  <div class="tour-shade" id="tourShade"></div>
+  <div class="tour-spot" id="tourSpot"></div>
+  <div class="tour-card" id="tourCard" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+    <div class="tour-step" id="tourStep"></div>
+    <h3 id="tourTitle"></h3>
+    <p id="tourText"></p>
+    <div class="tour-dots" id="tourDots"></div>
+    <div class="tour-btns">
+      <button class="btn ghost" id="tourSkip">건너뛰기</button>
+      <span style="flex:1"></span>
+      <button class="btn" id="tourPrev">이전</button>
+      <button class="btn primary" id="tourNext">다음</button>
+    </div>
+  </div>
+</div>
 
 <script src="vendor/markdown-it.min.js"></script>
 <script src="vendor/markdown-it-footnote.min.js"></script>
@@ -3314,6 +3374,144 @@ ${clone.innerHTML}
   applySettings();
   setSideTab(side.tab);
   renderFileList();
+
+  /* =========================================================
+     앱에 들어 있는 문서: 사용 안내서, 작성 규칙
+     ========================================================= */
+  async function openBuiltinDoc(file) {
+    closeMenus();
+    const path = 'markcont 안내/' + file;
+    let entry = state.files.find((f) => f.loose && f.path === path);
+    if (!entry) {
+      try {
+        const res = await fetch('docs/' + encodeURIComponent(file));
+        if (!res.ok) throw new Error(res.status);
+        entry = { name: file, path, text: await res.text(), loose: true, builtin: true };
+        state.files.push(entry);
+      } catch {
+        toast('안내 문서를 열지 못했습니다. 인터넷 주소(웹 앱)나 PC 프로그램에서 열어 주세요.', 3500);
+        return false;
+      }
+    }
+    return openEntry(entry);
+  }
+  $('#mGuide').onclick = () => openBuiltinDoc('사용-안내서.md');
+  $('#mRules').onclick = () => openBuiltinDoc('마크다운-작성-규칙.md');
+
+  /* =========================================================
+     처음 사용 안내 (튜토리얼): 처음 한 번 자동으로, ⋯ 메뉴에서 다시 보기
+     ========================================================= */
+  const TOUR = [
+    { center: true, emoji: '👋', title: 'markcont에 오신 것을 환영합니다',
+      text: '마크다운 파일을 <b>보기 좋게 보고, 바로 고치는</b> 뷰어입니다.<br>주요 기능을 1분 만에 둘러볼게요.', next: '둘러보기 시작' },
+    { target: '#btnOpen', mobile: '#btnMore', title: '파일 열기',
+      text: '<b>파일 열기</b>(Ctrl+O)로 .md 파일을 엽니다.<br>파일을 창 위에 <b>끌어다 놓아도</b> 열려요.',
+      mobileText: '<b>⋯</b> 메뉴의 <b>파일 열기</b>로 .md 파일을 엽니다.' },
+    { target: '#btnFolder', title: '폴더 통째로 열기',
+      text: '폴더를 열면 왼쪽에 <b>폴더 트리</b>가 나옵니다.<br>md 파일이 있는 폴더만 골라서 보여줘요.' },
+    { target: '#sidebar', mobile: '#btnSidebar', title: '사이드바',
+      text: '<b>파일 · 목차</b> 탭을 오가며 씁니다.<br>파일이나 폴더를 <b>오른쪽 클릭</b>하면 새 문서, 새 폴더, 이름 바꾸기, 삭제를 할 수 있어요.',
+      mobileText: '<b>☰</b> 단추로 사이드바를 열어 <b>파일 트리와 목차</b>를 봅니다.<br>줄 끝 <b>⋯</b> 단추로 새 문서 · 이름 바꾸기 · 삭제를 해요.' },
+    { target: '#btnEdit', mobile: '#fabEdit', needDoc: true, title: '실시간 편집',
+      text: '<b>편집</b>(Ctrl+E)을 누르면 왼쪽에 원본, 오른쪽에 결과가 나란히 나옵니다.<br>입력하는 즉시 결과가 바뀌어요.',
+      mobileText: '<b>연필</b> 단추를 누르면 원본을 고칠 수 있고, 결과가 바로 바뀝니다.' },
+    { target: '#btnSettings', title: '보기 설정',
+      text: '<b>Aa</b>에서 글자 크기, 고딕 · 명조, 본문 폭, 알림 상자 모양, 코드 줄 번호를 바꿉니다.' },
+    { target: '#btnMore', title: '더 많은 기능',
+      text: '<b>⋯</b> 메뉴에 문서에서 찾기, 집중 모드, HTML · PDF 저장, 그리고 <b>사용 안내서</b>와 <b>작성 규칙</b>이 있어요.',
+      mobileText: '<b>⋯</b> 메뉴에 파일 · 폴더 열기, 보기 설정, 찾기, 집중 모드, PDF 저장, <b>사용 안내서</b>가 있어요.' },
+    { target: '#btnTheme', title: '밝게 · 어둡게', text: '눈이 편한 쪽으로 테마를 바꿉니다.' },
+    { center: true, emoji: '🎉', title: '준비 끝!',
+      text: '지금 열린 문서는 <b>사용 안내서</b>예요. 천천히 읽어 보세요.<br>이 안내는 <b>⋯ → 처음 사용 안내 다시 보기</b>로 언제든 다시 볼 수 있습니다.',
+      next: '시작하기', alt: '내 파일 열기' },
+  ];
+  const tour = { i: 0, steps: [], on: false };
+  const isNarrow = () => window.innerWidth <= 900;
+  function tourTarget(step) {
+    const sel = isNarrow() && 'mobile' in step ? step.mobile : step.target;
+    if (!sel) return null;
+    const t = $(sel);
+    if (!t || !t.offsetParent && getComputedStyle(t).position !== 'fixed') return null;
+    const r = t.getBoundingClientRect();
+    return r.width && r.height ? t : null;
+  }
+  async function startTour() {
+    closeMenus(); closeFind(); closeCtxMenu();
+    if (document.body.classList.contains('zen')) setZen(false);
+    let hasDoc = !!state.current;
+    if (!hasDoc) hasDoc = !!(await openBuiltinDoc('사용-안내서.md'));
+    if (state.editing) setEditing(false);
+    tour.steps = TOUR.filter((s) => (s.center || tourTarget(s)) && (!s.needDoc || hasDoc));
+    tour.i = 0;
+    tour.on = true;
+    $('#tour').hidden = false;
+    showTourStep();
+  }
+  function endTour() {
+    tour.on = false;
+    $('#tour').hidden = true;
+    store.set('mdv-tour-done', '1');
+  }
+  function showTourStep() {
+    const s = tour.steps[tour.i];
+    const card = $('#tourCard'), spot = $('#tourSpot'), box = $('#tour');
+    const narrowText = isNarrow() && s.mobileText;
+    $('#tourStep').textContent = s.center ? '' : `${tour.i} / ${tour.steps.length - 2}`;
+    $('#tourTitle').textContent = s.title;
+    $('#tourText').innerHTML = (s.emoji ? `<span class="tour-emoji">${s.emoji}</span>` : '') + (narrowText || s.text);
+    if (s.emoji) { $('#tourText').prepend($('#tourText').querySelector('.tour-emoji')); }
+    $('#tourDots').innerHTML = tour.steps.map((_, i) => `<span class="${i === tour.i ? 'on' : ''}"></span>`).join('');
+    const last = tour.i === tour.steps.length - 1;
+    $('#tourPrev').hidden = tour.i === 0 || last;
+    $('#tourNext').textContent = s.next || (tour.i === tour.steps.length - 2 ? '마치기' : '다음');
+    $('#tourSkip').textContent = last && s.alt ? s.alt : '건너뛰기';
+    $('#tourSkip').hidden = false;
+    card.classList.toggle('center', !!s.center);
+    card.style.left = card.style.top = '';
+    const t = !s.center && tourTarget(s);
+    box.classList.toggle('has-spot', !!t);
+    if (t) {
+      const r = t.getBoundingClientRect(), pad = 6;
+      const sx = Math.max(4, r.left - pad), sy = Math.max(4, r.top - pad);
+      const sw = Math.min(innerWidth - 8, r.right + pad) - sx, sh = Math.min(innerHeight - 8, r.bottom + pad) - sy;
+      Object.assign(spot.style, { left: sx + 'px', top: sy + 'px', width: sw + 'px', height: sh + 'px' });
+      const cw = card.offsetWidth, ch = card.offsetHeight, gap = 14;
+      let left, top;
+      if (sh > innerHeight * 0.5 && sx + sw + gap + cw < innerWidth) { left = sx + sw + gap; top = Math.max(16, Math.min(sy + 40, innerHeight - ch - 16)); }
+      else {
+        left = Math.max(16, Math.min(sx + sw / 2 - cw / 2, innerWidth - cw - 16));
+        top = sy + sh + gap + ch < innerHeight ? sy + sh + gap : Math.max(16, sy - ch - gap);
+      }
+      card.style.left = left + 'px';
+      card.style.top = top + 'px';
+    }
+    $('#tourNext').focus({ preventScroll: true });
+  }
+  function tourGo(step) {
+    const n = tour.i + step;
+    if (n < 0) return;
+    if (n >= tour.steps.length) { endTour(); return; }
+    tour.i = n;
+    showTourStep();
+  }
+  $('#tourNext').onclick = () => tourGo(1);
+  $('#tourPrev').onclick = () => tourGo(-1);
+  $('#tourSkip').onclick = () => {
+    const s = tour.steps[tour.i];
+    endTour();
+    if (tour.i === tour.steps.length - 1 && s.alt) $('#btnOpen').click();
+  };
+  $('#tourShade').onclick = () => {}; // 바깥을 눌러도 닫히지 않게
+  window.addEventListener('keydown', (e) => {
+    if (!tour.on) return;
+    if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); endTour(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); e.stopImmediatePropagation(); tourGo(1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopImmediatePropagation(); tourGo(-1); }
+    else if (!['Enter', ' ', 'Tab'].includes(e.key)) { e.stopImmediatePropagation(); }
+  }, true);
+  window.addEventListener('resize', () => { if (tour.on) showTourStep(); });
+  $('#mTour').onclick = () => { closeMenus(); startTour(); };
+  if (!store.get('mdv-tour-done')) setTimeout(() => { if (!tour.on) startTour(); }, 800);
 
   /* =========================================================
      PC 프로그램(Tauri)으로 실행했을 때: 더블클릭한 파일 열기, 원래 파일에 저장
