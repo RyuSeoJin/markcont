@@ -197,7 +197,7 @@ console.log("Hello");
 
 ### 7-2. Diagrams (markcont style)
 
-Diagrams that markcont draws itself. Flowcharts follow the **rsj flowchart rules**: the user zone is on top and the system zone below, each shape has a fixed meaning, and the flow runs left to right. Lines are horizontal or vertical only, and a decision's **Yes is blue and No is red**.
+Diagrams that markcont draws itself. Flowcharts follow the [**rsj flowchart rules**](https://github.com/RyuSeoJin/rsj-centralized-control/blob/main/core/base/rules/flowchart.md): the user zone is on top and the system zone below, each shape has a fixed meaning, and the flow runs left to right. Lines are horizontal or vertical only, and a decision's **Yes is blue and No is red**.
 
 | Code block language | Kind | Use for |
 |:---|:---|:---|
@@ -211,7 +211,7 @@ Diagrams that markcont draws itself. Flowcharts follow the **rsj flowchart rules
 
 #### Flowchart: write it as a table
 
-Write each shape as **one table row**. You can paste an rsj node table as-is. The header row is optional; without it, columns are read as `code | zone | shape | text | goes to | rule`.
+Write each shape as **one table row**. You can paste an [rsj node table](https://github.com/RyuSeoJin/rsj-centralized-control/blob/main/core/modules/workflow-explorer/design-template/workflow-explorer-node-table-sample.md) as-is. The header row is optional; without it, columns are read as `code | zone | shape | text | goes to | rule`.
 
 | Column | How to write | Example |
 |:---|:---|:---|

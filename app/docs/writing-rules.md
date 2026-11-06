@@ -197,7 +197,7 @@ console.log("안녕하세요");
 
 ### 7-2. 다이어그램 (markcont 방식)
 
-markcont가 직접 그리는 다이어그램입니다. 흐름도는 **rsj 흐름도 규칙**을 따릅니다. 위는 유저 구역, 아래는 시스템 구역이고, 도형마다 뜻이 정해져 있으며, 왼쪽에서 오른쪽으로 흘러갑니다. 선은 수평 · 수직만 쓰고, 조건의 **예는 파랑, 아니오는 빨강**입니다.
+markcont가 직접 그리는 다이어그램입니다. 흐름도는 [**rsj 흐름도 규칙**](https://github.com/RyuSeoJin/rsj-centralized-control/blob/main/core/base/rules/flowchart.md)을 따릅니다. 위는 유저 구역, 아래는 시스템 구역이고, 도형마다 뜻이 정해져 있으며, 왼쪽에서 오른쪽으로 흘러갑니다. 선은 수평 · 수직만 쓰고, 조건의 **예는 파랑, 아니오는 빨강**입니다.
 
 | 코드 블록 언어 | 종류 | 쓰는 곳 |
 |:---|:---|:---|
@@ -211,7 +211,7 @@ markcont가 직접 그리는 다이어그램입니다. 흐름도는 **rsj 흐름
 
 #### 흐름도: 표로 쓰기
 
-도형 하나를 **표의 한 줄**로 씁니다. rsj의 노드 표를 그대로 붙여 넣어도 됩니다. 머리줄은 빼도 되고, 그때는 `코드 | 구역 | 도형 | 문구 | 나감 | 판정 기준` 순서로 읽습니다.
+도형 하나를 **표의 한 줄**로 씁니다. rsj의 [노드 표](https://github.com/RyuSeoJin/rsj-centralized-control/blob/main/core/modules/workflow-explorer/design-template/workflow-explorer-node-table-sample.md)를 그대로 붙여 넣어도 됩니다. 머리줄은 빼도 되고, 그때는 `코드 | 구역 | 도형 | 문구 | 나감 | 판정 기준` 순서로 읽습니다.
 
 | 칸 | 쓰는 법 | 예 |
 |:---|:---|:---|
