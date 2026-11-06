@@ -3378,25 +3378,34 @@ ${clone.innerHTML}
   /* =========================================================
      앱에 들어 있는 문서: 사용 안내서, 작성 규칙
      ========================================================= */
-  async function openBuiltinDoc(file) {
+  // 파일 이름은 영어(PC 프로그램 내부 서버가 한글 경로를 못 찾는 경우가 있음), 화면에는 한글 이름으로
+  const BUILTIN = {
+    guide: { file: 'guide.md', name: '사용-안내서.md' },
+    rules: { file: 'writing-rules.md', name: '마크다운-작성-규칙.md' },
+    features: { file: 'features.md', name: '기능-예제.md' },
+  };
+  async function openBuiltinDoc(key) {
     closeMenus();
-    const path = 'markcont 안내/' + file;
+    const doc = BUILTIN[key];
+    const path = 'markcont 안내/' + doc.name;
     let entry = state.files.find((f) => f.loose && f.path === path);
     if (!entry) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 3000);
       try {
-        const res = await fetch('docs/' + encodeURIComponent(file));
+        const res = await fetch('docs/' + doc.file, { signal: ctrl.signal, cache: 'no-cache' });
         if (!res.ok) throw new Error(res.status);
-        entry = { name: file, path, text: await res.text(), loose: true, builtin: true };
+        entry = { name: doc.name, path, text: await res.text(), loose: true, builtin: true };
         state.files.push(entry);
       } catch {
-        toast('안내 문서를 열지 못했습니다. 인터넷 주소(웹 앱)나 PC 프로그램에서 열어 주세요.', 3500);
+        toast('안내 문서를 열지 못했습니다.', 3000);
         return false;
-      }
+      } finally { clearTimeout(timer); }
     }
-    return openEntry(entry);
+    try { return await openEntry(entry); } catch { return false; }
   }
-  $('#mGuide').onclick = () => openBuiltinDoc('사용-안내서.md');
-  $('#mRules').onclick = () => openBuiltinDoc('마크다운-작성-규칙.md');
+  $('#mGuide').onclick = () => openBuiltinDoc('guide');
+  $('#mRules').onclick = () => openBuiltinDoc('rules');
 
   /* =========================================================
      처음 사용 안내 (튜토리얼): 처음 한 번 자동으로, ⋯ 메뉴에서 다시 보기
@@ -3436,12 +3445,18 @@ ${clone.innerHTML}
     return r.width && r.height ? t : null;
   }
   async function startTour() {
-    closeMenus(); closeFind(); closeCtxMenu();
-    if (document.body.classList.contains('zen')) setZen(false);
+    // 무슨 일이 있어도 안내는 띄움: 안내서를 못 열거나 오류가 나도 건너뛰고 계속
     let hasDoc = !!state.current;
-    if (!hasDoc) hasDoc = !!(await openBuiltinDoc('사용-안내서.md'));
-    if (state.editing) setEditing(false);
+    try {
+      closeMenus(); closeFind(); closeCtxMenu();
+      if (document.body.classList.contains('zen')) setZen(false);
+      if (!hasDoc) hasDoc = !!(await openBuiltinDoc('guide'));
+      if (state.editing) setEditing(false);
+    } catch {}
+    hasDoc = hasDoc || !!state.current;
     tour.steps = TOUR.filter((s) => (s.center || tourTarget(s)) && (!s.needDoc || hasDoc));
+    if (!hasDoc) tour.steps[tour.steps.length - 1] = { ...TOUR[TOUR.length - 1],
+      text: '<b>파일 열기</b>나 <b>폴더 열기</b>로 내 문서를 열어 보세요.<br>이 안내는 <b>⋯ → 처음 사용 안내 다시 보기</b>로 언제든 다시 볼 수 있습니다.' };
     tour.i = 0;
     tour.on = true;
     $('#tour').hidden = false;

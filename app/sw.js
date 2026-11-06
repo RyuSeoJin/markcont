@@ -1,6 +1,6 @@
 // 오프라인에서도 열리도록 앱 파일을 저장해 두는 서비스 워커
 // 새 버전을 올릴 때는 아래 VERSION 숫자를 올리세요.
-const VERSION = 'v1.0.2';
+const VERSION = 'v1.0.3';
 const CACHE = 'markcont-' + VERSION;
 
 const APP_FILES = [
@@ -12,9 +12,9 @@ const APP_FILES = [
   './icons/icon-maskable-512.png',
   './icons/apple-touch-icon.png',
   './icons/favicon-32.png',
-  './docs/사용-안내서.md',
-  './docs/마크다운-작성-규칙.md',
-  './docs/기능-예제.md',
+  './docs/guide.md',
+  './docs/writing-rules.md',
+  './docs/features.md',
   './vendor/highlight.min.js',
   './vendor/hljs-github-dark.min.css',
   './vendor/hljs-github.min.css',
