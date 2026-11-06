@@ -216,6 +216,31 @@
 .markdown-body mark.find-hit.now { background: #ff9f1c; outline: 2px solid #ff9f1c; }
 
 /* 접힌 제목 아래 내용 */
+/* ```markdown example: 쓰는 법 | 보이는 모습 */
+.markdown-body { container-type: inline-size; }
+.markdown-body .md-example {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); margin: 0 0 1.4em;
+  border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface);
+}
+.markdown-body .ex-pane { min-width: 0; padding: 10px 16px 14px; }
+.markdown-body .ex-src { background: var(--code-bg); border-right: 1px solid var(--border); }
+.markdown-body .ex-label { font-family: var(--font); font-size: 12px; font-weight: 700; color: var(--muted); margin: 0 0 8px; letter-spacing: .01em; }
+.markdown-body .ex-src .code-block { margin: 0; border: 0; border-radius: 0; background: none; }
+.markdown-body .ex-src .code-head { display: none; }
+.markdown-body .ex-src .code-body pre, .markdown-body .ex-src > pre { padding: 0; margin: 0; border: 0; background: none; }
+.markdown-body .ex-src code { font-size: .84em; white-space: pre-wrap; word-break: break-word; }
+.markdown-body .ex-body { font-size: .95em; }
+.markdown-body .ex-body > :first-child { margin-top: 0; }
+.markdown-body .ex-body > :last-child { margin-bottom: 0; }
+.markdown-body .ex-body h1 { font-size: 1.55em; margin-top: .2em; }
+.markdown-body .ex-body h2 { font-size: 1.3em; margin-top: .6em; }
+.markdown-body .ex-body h3 { font-size: 1.12em; margin-top: .6em; }
+.markdown-body .ex-body .footnotes-sep { margin-top: 1em; }
+@container (max-width: 620px) {
+  .markdown-body .md-example { grid-template-columns: minmax(0, 1fr); }
+  .markdown-body .ex-src { border-right: 0; border-bottom: 1px solid var(--border); }
+}
+
 .markdown-body .fold-hidden { display: none !important; }
 @media print { .markdown-body .fold-hidden { display: revert !important; } }
 </style>
@@ -1202,8 +1227,27 @@ body.zen .zen-exit:hover { opacity: 1; }
       const label = m.alias || (m.file ? m.file + (m.heading ? ' › ' + m.heading : '') : m.heading);
       return `<a class="wikilink" href="#" ${attrs}>${e(label)}</a>`;
     };
+    // ```markdown example → 왼쪽에 쓰는 법, 오른쪽에 보이는 모습 (다른 프로그램에서는 그냥 코드 블록)
+    const defaultFence = md.renderer.rules.fence;
+    md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+      const t = tokens[idx];
+      const depth = (env && env.depth) || 0;
+      if (depth < 2 && /^(markdown|md)\s+(example|preview|예시)\b/i.test(t.info.trim())) {
+        const src = t.content.replace(/\n$/, '');
+        let hl;
+        try { hl = window.hljs && hljs.getLanguage('markdown') ? hljs.highlight(src, { language: 'markdown', ignoreIllegals: true }).value : escapeHtml(src); }
+        catch { hl = escapeHtml(src); }
+        const out = md.render(src, { nested: true, depth: depth + 1, docId: 'ex' + depth + '-' + idx }); // docId: 예시 안 각주 번호가 본문과 겹치지 않게
+        const line = t.map && !depth ? ` data-line="${t.map[0]}"` : '';
+        return `<div class="md-example"${line}>` +
+          `<div class="ex-pane ex-src"><div class="ex-label">✏️ 이렇게 쓰면</div><pre><code class="language-markdown">${hl}</code></pre></div>` +
+          `<div class="ex-pane ex-out"><div class="ex-label">👀 이렇게 보입니다</div><div class="ex-body">${out}</div></div></div>\n`;
+      }
+      return defaultFence(tokens, idx, options, env, self);
+    };
     // 블록마다 원본 줄 번호를 data-line 으로 남김 (스크롤 맞춤, 체크박스 클릭에 사용)
     md.core.ruler.push('source_lines', (s) => {
+      if (s.env && s.env.nested) return;
       for (const t of s.tokens) if (t.map && t.nesting >= 0 && t.type !== 'inline') t.attrSet('data-line', String(t.map[0]));
     });
   }
@@ -1393,6 +1437,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     // 제목: id, 링크 복사, 접기 단추
     const used = new Map();
     doc.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach((h) => {
+      if (h.closest('.md-example')) return; // 예시 안의 제목은 목차 · 접기에서 뺌
       const title = h.textContent.trim();
       let id = slugify(title);
       const n = used.get(id) || 0;
@@ -1504,7 +1549,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       if (code.classList.contains('language-mermaid')) {
         const d = document.createElement('div');
         d.className = 'mermaid';
-        d.dataset.line = pre.dataset.line || code.dataset.line || '';
+        if (pre.dataset.line || code.dataset.line) d.dataset.line = pre.dataset.line || code.dataset.line;
         d.textContent = code.textContent;
         pre.replaceWith(d);
         mermaidBlocks.push(d);
@@ -1517,7 +1562,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       if (/^(math|latex|tex|katex)$/i.test(lang)) {
         const d = document.createElement('div');
         d.className = 'math-block';
-        d.dataset.line = lineAttr;
+        if (lineAttr) d.dataset.line = lineAttr;
         d.innerHTML = renderMath(code.textContent.trim(), true);
         pre.replaceWith(d);
         return;
@@ -1525,7 +1570,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       // 코드 블록 머리줄: 언어 이름, 복사, 크게 보기 + 줄 번호
       const block = document.createElement('div');
       block.className = 'code-block';
-      block.dataset.line = lineAttr;
+      if (lineAttr) block.dataset.line = lineAttr;
       const head = document.createElement('div');
       head.className = 'code-head';
       head.innerHTML = `<span class="code-lang"></span><button type="button" class="code-copy" title="복사">${COPY_ICON}</button><button type="button" class="code-expand" title="크게 보기">${EXPAND_ICON}</button>`;
@@ -1825,7 +1870,7 @@ body.zen .zen-exit:hover { opacity: 1; }
      ========================================================= */
   let observer;
   function buildToc() {
-    const heads = [...el.doc.querySelectorAll('h1,h2,h3')];
+    const heads = [...el.doc.querySelectorAll('h1,h2,h3')].filter((h) => !h.closest('.md-example'));
     el.toc.innerHTML = '';
     el.tocSection.hidden = heads.length < 2;
     const minLevel = Math.min(...heads.map(headingLevel));
