@@ -152,6 +152,7 @@
 .markdown-body .footnotes { font-size: .9em; color: var(--muted); }
 .markdown-body .footnote-ref a, .markdown-body .footnote-backref { border: 0; }
 .markdown-body .footnote-ref { font-size: .75em; }
+.markdown-body .fn-missing { color: var(--c-red); border-bottom: 1.5px dashed var(--c-red); cursor: help; }
 
 /* 위키링크, 유튜브 */
 .markdown-body a.wikilink { border-bottom-style: dashed; }
@@ -226,7 +227,7 @@
 .markdown-body .ex-src { background: var(--code-bg); border-right: 1px solid var(--border); }
 .markdown-body .ex-label { font-family: var(--font); font-size: 12px; font-weight: 700; color: var(--muted); margin: 0 0 8px; letter-spacing: .01em; }
 .markdown-body .ex-src .code-block { margin: 0; border: 0; border-radius: 0; background: none; }
-.markdown-body .ex-src .code-head { display: none; }
+.markdown-body .ex-src .code-head, .markdown-body .ex-src .code-lines { display: none; }
 .markdown-body .ex-src .code-body pre, .markdown-body .ex-src > pre { padding: 0; margin: 0; border: 0; background: none; }
 .markdown-body .ex-src code { font-size: .84em; white-space: pre-wrap; word-break: break-word; }
 .markdown-body .ex-body { font-size: .95em; }
@@ -1202,6 +1203,41 @@ body.zen .zen-exit:hover { opacity: 1; }
     return true;
   }
 
+  // 두 글자 기호로 감싸는 문법(==, ++)을 안전하게 찾는 규칙
+  //  - 여는 기호 앞, 닫는 기호 뒤가 영문 · 숫자 · 같은 기호면 문법이 아님 (x==1, y==2, C++, a++b)
+  //  - 여는 기호 바로 뒤, 닫는 기호 바로 앞은 빈칸이 아니어야 함 (a == b == c 는 그대로)
+  //  - 한글은 붙어도 됨 (==중요==를)
+  function pairRule(code, tag) {
+    const ch = String.fromCharCode(code);
+    const pair = ch + ch;
+    const stuck = new RegExp('[A-Za-z0-9' + (ch === '+' ? '\\+' : ch) + ']');
+    return function (state, silent) {
+      const src = state.src, start = state.pos, max = state.posMax;
+      if (src.charCodeAt(start) !== code || src.charCodeAt(start + 1) !== code) return false;
+      if (start > 0 && stuck.test(src[start - 1])) return false;
+      const first = src[start + 2];
+      if (!first || start + 2 >= max || /\s/.test(first) || first === ch) return false;
+      let end = src.indexOf(pair, start + 3);
+      while (end !== -1 && end + 2 <= max) {
+        const before = src[end - 1], after = src[end + 2] || ' ';
+        if (!/\s/.test(before) && !stuck.test(after)) break;
+        end = src.indexOf(pair, end + 1);
+      }
+      if (end === -1 || end + 2 > max) return false;
+      if (!silent) {
+        state.push(tag + '_open', tag, 1).markup = pair;
+        const oldMax = state.posMax;
+        state.pos = start + 2;
+        state.posMax = end;
+        state.md.inline.tokenize(state);
+        state.posMax = oldMax;
+        state.push(tag + '_close', tag, -1).markup = pair;
+      }
+      state.pos = end + 2;
+      return true;
+    };
+  }
+
   let md;
   function buildMd() {
     if (!libsOk) return;
@@ -1214,7 +1250,10 @@ body.zen .zen-exit:hover { opacity: 1; }
         return '';
       },
     });
-    for (const p of [window.markdownitFootnote, window.markdownitDeflist, window.markdownitMark, window.markdownitIns]) if (p) md.use(p);
+    for (const p of [window.markdownitFootnote, window.markdownitDeflist]) if (p) md.use(p);
+    // 형광펜 ==글== · 추가 표시 ++글++ : 영문 · 숫자에 붙은 기호(x==1, C++)는 문법으로 보지 않음
+    md.inline.ruler.before('emphasis', 'mark_safe', pairRule(0x3D, 'mark'));
+    md.inline.ruler.before('emphasis', 'ins_safe', pairRule(0x2B, 'ins'));
     md.inline.ruler.after('escape', 'math_inline', mathInline);
     md.block.ruler.before('fence', 'math_block', mathBlock, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
     md.inline.ruler.before('link', 'wikilink', wikiRule);
@@ -1454,10 +1493,15 @@ body.zen .zen-exit:hover { opacity: 1; }
 
     // 체크리스트 [ ] [x] — 클릭하면 원본도 바뀜
     doc.querySelectorAll('li').forEach((li) => {
-      const holder = li.firstChild && li.firstChild.nodeType === 3 ? li : (li.firstElementChild?.tagName === 'P' ? li.firstElementChild : null);
-      const tn = holder && holder.firstChild;
+      // 빈 줄이 섞인 목록은 <li> 안에 줄바꿈 글자 + <p> 가 들어오므로, 빈 글자는 건너뛰고 찾음
+      let first = li.firstChild;
+      while (first && first.nodeType === 3 && !first.nodeValue.trim()) first = first.nextSibling;
+      const holder = !first ? null : first.nodeType === 3 ? li : first.tagName === 'P' ? first : null;
+      let tn = holder === li ? first : holder && holder.firstChild;
+      while (tn && tn.nodeType === 3 && !tn.nodeValue.trim() && tn.nextSibling) tn = tn.nextSibling;
       if (!tn || tn.nodeType !== 3) return;
-      const m = tn.nodeValue.match(/^\[([ xX])\]\s/);
+      tn.nodeValue = tn.nodeValue.replace(/^\s+/, '');
+      const m = tn.nodeValue.match(/^\[([ xX])\](\s|$)/);
       if (!m) return;
       tn.nodeValue = tn.nodeValue.slice(m[0].length);
       const cb = document.createElement('input');
@@ -1468,6 +1512,32 @@ body.zen .zen-exit:hover { opacity: 1; }
       li.classList.add('task-item');
       li.classList.toggle('task-done', cb.checked);
     });
+
+    // 설명([^1]: …)이 없는 각주 표시는 글자 그대로 남으므로, 빨간 점선으로 알려줌
+    {
+      const walker = document.createTreeWalker(doc, NodeFilter.SHOW_TEXT, {
+        acceptNode: (n) => (n.parentElement.closest('code, pre, .katex, .ex-src, .fn-missing') ? NodeFilter.FILTER_REJECT
+          : /\[\^[^\]\s]+\]/.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP),
+      });
+      const hits = [];
+      while (walker.nextNode()) hits.push(walker.currentNode);
+      for (const n of hits) {
+        const text = n.nodeValue, frag = document.createDocumentFragment();
+        let last = 0;
+        text.replace(/\[\^([^\]\s]+)\]/g, (m, id, off) => {
+          frag.append(text.slice(last, off));
+          const s = document.createElement('span');
+          s.className = 'fn-missing';
+          s.textContent = m;
+          s.title = `각주 설명이 없습니다. 문서 아무 곳에나 한 줄로 [^${id}]: 설명 을 쓰세요.`;
+          frag.append(s);
+          last = off + m.length;
+          return m;
+        });
+        frag.append(text.slice(last));
+        n.replaceWith(frag);
+      }
+    }
 
     // 표 가로 스크롤
     doc.querySelectorAll('table').forEach((t) => {
@@ -2840,8 +2910,8 @@ body.zen .zen-exit:hover { opacity: 1; }
     h = h.replace(/(\*\*|__)(?=\S)(.+?)(?<=\S)\1/g, '<span class="t-b">$&</span>');
     h = h.replace(/(^|[^*\w])([*_])(?=[^\s*_])([^*_\n]+?)(?<=[^\s*_])\2(?![*\w])/g, '$1<span class="t-i">$2$3$2</span>');
     h = h.replace(/~~(.+?)~~/g, '<span class="t-s">$&</span>');
-    h = h.replace(/==(?=\S)(.+?)(?<=\S)==/g, '<span class="t-m">$&</span>');
-    h = h.replace(/\+\+(?=\S)(.+?)(?<=\S)\+\+/g, '<span class="t-b">$&</span>');
+    h = h.replace(/(^|[^A-Za-z0-9=])(==(?=[^\s=])(.+?)(?<=\S)==)(?![A-Za-z0-9=])/g, '$1<span class="t-m">$2</span>');
+    h = h.replace(/(^|[^A-Za-z0-9+])(\+\+(?=[^\s+])(.+?)(?<=\S)\+\+)(?![A-Za-z0-9+])/g, '$1<span class="t-b">$2</span>');
     if (/^\s*\|/.test(s)) h = h.replace(/\|/g, '<span class="t-pipe">|</span>');
     return h.replace(/\u0001(\d+)\u0002/g, (m, i) => keep[+i]);
   }
