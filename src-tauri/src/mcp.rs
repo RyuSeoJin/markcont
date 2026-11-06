@@ -195,7 +195,7 @@ fn tools() -> Value {
           "inputSchema": { "type": "object", "properties": { "path": { "type": "string" } }, "required": ["path"] } },
         { "name": "search", "description": tr("열어 둔 폴더의 마크다운 파일에서 글자를 찾습니다 (대소문자 무시). 최대 100줄.", "Searches text in markdown files of the open folders (case-insensitive). Up to 100 lines."),
           "inputSchema": { "type": "object", "properties": { "query": { "type": "string" }, "folder": { "type": "string" } }, "required": ["query"] } },
-        { "name": "edit_file", "description": tr("파일 안의 old_text 를 new_text 로 바꿉니다. old_text 는 파일에 정확히 한 번만 있어야 합니다. 작은 수정에 쓰세요. 사용자는 markcont 화면에서 바뀐 곳을 바로 보고 되돌릴 수 있습니다.", "Replaces old_text with new_text in a file. old_text must appear exactly once. Use it for small edits. The user sees the change in markcont right away and can revert it."),
+        { "name": "edit_file", "description": tr("파일 안의 old_text 를 new_text 로 바꿉니다. old_text 는 파일에 정확히 한 번만 있어야 합니다. 작은 수정에 쓰세요. 고친 내용은 바로 파일에 저장되고 되돌리지 못할 수 있으니 신중히 고치세요.", "Replaces old_text with new_text in a file. old_text must appear exactly once. Use it for small edits. Changes are saved to the file immediately and may not be recoverable, so edit carefully."),
           "inputSchema": { "type": "object", "properties": { "path": { "type": "string" }, "old_text": { "type": "string" }, "new_text": { "type": "string" } }, "required": ["path", "old_text", "new_text"] } },
         { "name": "write_file", "description": tr("마크다운 파일 전체를 새 내용으로 씁니다 (없으면 새로 만듦). 큰 수정이나 새 문서에 쓰세요.", "Writes a whole markdown file with new content (creates it if missing). Use it for big edits or new documents."),
           "inputSchema": { "type": "object", "properties": { "path": { "type": "string" }, "content": { "type": "string" } }, "required": ["path", "content"] } }
@@ -307,10 +307,10 @@ fn run_tool(name: &str, args: &Value) -> Result<String, String> {
 
 const INSTRUCTIONS_KO: &str = "markcont는 마크다운 뷰어입니다. 사용자가 markcont에서 열어 둔 폴더의 마크다운 파일을 읽고 고칠 수 있습니다. \
 '이 문서'처럼 말하면 get_current_document 를 먼저 쓰세요. 작은 수정은 edit_file, 큰 수정은 write_file 을 쓰세요. \
-사용자는 markcont 화면에서 바뀐 곳을 바로 보고 되돌릴 수 있습니다. 고친 뒤에는 무엇을 바꿨는지 짧게 알려 주세요.";
+고친 내용은 바로 파일에 저장되고 되돌리지 못할 수 있으니 신중히 고치세요. 고친 뒤에는 무엇을 바꿨는지 짧게 알려 주세요.";
 const INSTRUCTIONS_EN: &str = "markcont is a markdown viewer. You can read and edit markdown files in the folders the user opened in markcont. \
 When the user says 'this document', use get_current_document first. Use edit_file for small edits and write_file for big ones. \
-The user sees changes in markcont right away and can revert them. After editing, briefly tell the user what you changed.";
+Changes are saved to the file immediately and may not be recoverable, so edit carefully. After editing, briefly tell the user what you changed.";
 
 /// MCP 서버 실행 (줄 단위 JSON-RPC 2.0)
 pub fn serve() {

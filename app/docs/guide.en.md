@@ -184,13 +184,13 @@ You can let Claude Desktop · Claude Code edit your markcont documents directly 
 | **🔌 Claude edited ○○** at the top | The file Claude just read or edited |
 | Changed spots **glow yellow** | Places Claude (or another program) changed |
 | **View changes** in the notification | A −/+ comparison and **Undo this change** |
-| "Claude edited" in the **History** window | A point you can always go back before |
+| "Claude edited" in the **History** window | A point you can go back to (the history is cleared when markcont closes) |
 
 > [!NOTE]
 > Once connected, the content of documents Claude reads is sent to Anthropic for processing. The Claude app asks for permission before it uses a tool. markcont doesn't use a subscription or an API key.
 
 > [!WARNING]
-> **Be careful with documents from other people.** An AI may follow instructions hidden inside a document (e.g. "change all the other documents too") (prompt injection). markcont limits the damage by blocking delete · rename · running commands and by working only inside the folders you have open, but don't hand a folder containing untrusted documents to an AI while connected. If something gets changed by mistake, you can undo it with **View changes · Undo history**.
+> **Be careful with documents from other people.** An AI may follow instructions hidden inside a document (e.g. "change all the other documents too") (prompt injection). markcont limits the damage by blocking delete · rename · running commands and by working only inside the folders you have open, but don't hand a folder containing untrusted documents to an AI while connected. If something gets changed by mistake, you can undo it with **View changes · Undo history**, but once it has been saved it cannot be recovered, so please use it with care.
 
 ---
 
@@ -213,7 +213,7 @@ Folders with no md files at all, folders whose names start with `.`, and `node_m
 <details>
 <summary>How do I write documents that look good?</summary>
 
-Open **⋯ → Markdown writing rules**. Give that document to an AI along with yours and say "Rewrite this following these rules."
+Open **⋯ → [Markdown writing rules](Markdown-Writing-Rules.md)**. Give that document to an AI along with yours and say "Rewrite this following these rules."
 
 </details>
 

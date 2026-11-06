@@ -85,6 +85,7 @@ The PC app also works as an **MCP server**. Ask Claude Desktop · Claude Code so
 
 - Claude can read and edit **only Markdown · text files inside the folders you have open**. It can't delete, rename, or run commands.
 - Changes are highlighted in markcont, and you can review them with **View changes · Undo**.
+- If something gets changed by mistake, you can undo it with **View changes · Undo history**, but once it has been saved it cannot be recovered, so please use it with care.
 
 ## 🔒 Privacy
 
