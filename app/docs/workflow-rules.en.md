@@ -119,6 +119,17 @@ Put an indented list in a ```` ```ui ```` (or ```` ```노출 ````) code block an
 
 ---
 
+## 7️⃣ Data definition
+
+Don't cram the data needed for implementation into one cell of the "implementation essentials" table. Use a ```` ```data ```` block: **one data = one card, one field = one line**. See "Data definition" in section 7-2 of the [Markdown writing rules](Markdown-Writing-Rules.md).
+
+- Keep the "implementation essentials" table as **a list of decisions**, and put the data definition below it.
+- Name fields the same way screens and policies do — `Mail title` · `Expires at`.
+- For a field that holds other data, write that data's name as the type — `Reward list`. A connector line links the cards.
+- Write `open` in the status column for undecided fields.
+
+---
+
 ## ✅ Checklist
 
 - [ ] About 10 nodes per section?
@@ -127,3 +138,4 @@ Put an indented list in a ```` ```ui ```` (or ```` ```노출 ````) code block an
 - [ ] Shape text around 20 characters, with details pointed to by policy ID?
 - [ ] User actions in the user zone, judgments and screens in the system zone?
 - [ ] Entry points marked in the exposure locations?
+- [ ] Data written as a data definition block, one line per field?

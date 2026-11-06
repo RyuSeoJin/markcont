@@ -238,6 +238,33 @@
 :root[data-theme="dark"] { --dg-line: #d4d7dc; --dg-yes: #60a5fa; --dg-no: #f87171; --dg-sec: #94a3b8; --dg-node: #1f2328; --dg-stroke: #8b98a9; --dg-ret: #fb923c; --dg-sub: #a78bfa; }
 .markdown-body .dg { margin: 0 0 1.1em; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
 .markdown-body .dg-scroll { overflow-x: auto; }
+/* 데이터 정의 카드 */
+.markdown-body .dt { position: relative; }
+.markdown-body .dt-links { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 0; }
+.markdown-body .dt-links path { fill: none; stroke: color-mix(in srgb, var(--accent) 55%, transparent); stroke-width: 1.6; stroke-dasharray: 5 4; }
+.markdown-body .dt-links circle { fill: var(--accent); }
+.markdown-body .dt-grid { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 18px 46px; align-items: flex-start; }
+.markdown-body .dt-card { flex: 1 1 300px; max-width: 520px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, .05); scroll-margin-top: 30px; }
+.markdown-body .dt-card:target, .markdown-body .dt-card.flash { outline: 2px solid var(--accent); outline-offset: 2px; }
+.markdown-body .dt-card header { display: flex; align-items: center; gap: 8px; padding: 9px 13px; background: color-mix(in srgb, var(--accent) 9%, var(--surface-2)); border-bottom: 1px solid var(--border); }
+.markdown-body .dt-card header b { font-size: 1.02em; }
+.markdown-body .dt-card header code { font-size: .78em; }
+.markdown-body .dt-count { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+.markdown-body .dt-desc { margin: 0; padding: 7px 13px; font-size: .86em; color: var(--muted); border-bottom: 1px dashed var(--border); }
+.markdown-body .dt-row { padding: 7px 13px; border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
+.markdown-body .dt-row:last-child { border-bottom: 0; }
+.markdown-body .dt-main { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 7px; }
+.markdown-body .dt-name { font-weight: 700; padding: 1px 8px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--border); font-size: .92em; }
+.markdown-body .dt-name::before { content: '['; color: var(--muted); margin-right: 1px; }
+.markdown-body .dt-name::after { content: ']'; color: var(--muted); margin-left: 1px; }
+.markdown-body .dt-type { font-family: var(--mono); font-size: .8em; color: var(--c-purple); background: color-mix(in srgb, var(--c-purple) 9%, transparent); padding: 1px 7px; border-radius: 5px; }
+.markdown-body .dt-ref { font-size: .82em; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 1px 8px; border-radius: 5px; text-decoration: none; }
+.markdown-body .dt-req { font-size: 10.5px; font-weight: 700; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 0 7px; line-height: 1.7; }
+.markdown-body .dt-req.on { color: var(--c-red); border-color: color-mix(in srgb, var(--c-red) 45%, transparent); background: color-mix(in srgb, var(--c-red) 8%, transparent); }
+.markdown-body .dt-st { font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 0 7px; line-height: 1.7; color: var(--t); background: color-mix(in srgb, var(--t) 13%, transparent); }
+.markdown-body .dt-st.tint-green { --t: var(--c-green); } .markdown-body .dt-st.tint-amber { --t: var(--c-amber); } .markdown-body .dt-st.tint-red { --t: var(--c-red); } .markdown-body .dt-st.tint-gray { --t: var(--muted); }
+.markdown-body .dt-sub { margin-top: 3px; font-size: .84em; color: var(--muted); }
+.markdown-body .dt-ex { margin-left: 8px; font-family: var(--mono); font-size: .95em; opacity: .85; }
 /* 노출 위치 나무 */
 .markdown-body .ut { font-size: .95em; line-height: 1.5; }
 .markdown-body .ut-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px dashed var(--border); }
@@ -1883,6 +1910,13 @@ body.zen .zen-exit:hover { opacity: 1; }
   }
 
   const source = () => el.editor.value;
+  // 데이터 정의 카드 사이 연결선: 그린 뒤 · 화면 크기가 바뀔 때마다 다시
+  let dataLinkRaf = 0;
+  function drawAllDataLinks() {
+    if (!window.MarkDiagram) return;
+    el.doc.querySelectorAll('.dg-html .dt').forEach((dt) => { try { MarkDiagram.drawDataLinks(dt.parentElement); } catch {} });
+  }
+  if (window.ResizeObserver) new ResizeObserver(() => { clearTimeout(dataLinkRaf); dataLinkRaf = setTimeout(drawAllDataLinks, 60); }).observe(el.doc);
 
   function render(keepScroll = false) {
     if (!libsOk || !state.current) return;
@@ -1899,6 +1933,8 @@ body.zen .zen-exit:hover { opacity: 1; }
     buildToc();
     applyFolds();
     updateMeta(src);
+    requestAnimationFrame(drawAllDataLinks);
+    setTimeout(drawAllDataLinks, 120); // 화면이 뒤에 있어 그리기 콜백이 늦을 때도
     lineTops = null;
     if (keepScroll) el.preview.scrollTop = scroll;
     if (state.editing) { paintEditor(); cursorBlock = null; updateCursor(); }
@@ -2176,6 +2212,10 @@ body.zen .zen-exit:hover { opacity: 1; }
         if (lineAttr) d.dataset.line = lineAttr;
         try {
           if (dgKind === 'ui') { d.classList.add('dg-html'); d.innerHTML = MarkDiagram.render(dgKind, code.textContent); }
+          else if (dgKind === 'data') {
+            d.classList.add('dg-html');
+            d.innerHTML = MarkDiagram.render(dgKind, code.textContent); // 카드 사이 연결선은 다 그린 뒤 drawAllDataLinks
+          }
           else { d.innerHTML = '<div class="dg-scroll">' + MarkDiagram.render(dgKind, code.textContent) + '</div>'; addDgExpand(d); }
         }
         catch (err) { d.classList.add('dg-error'); d.textContent = L('다이어그램을 그리지 못했습니다\n', "Couldn't draw the diagram\n") + err.message; }
@@ -2277,6 +2317,8 @@ body.zen .zen-exit:hover { opacity: 1; }
       toast(L('코드를 복사했습니다', 'Code copied'), 1400);
       return;
     }
+    const dref = t.closest('.dt-ref');
+    if (dref) { e.preventDefault(); const c = document.getElementById(dref.dataset.ref); if (c) { c.scrollIntoView({ block: 'center', behavior: 'smooth' }); c.classList.add('flash'); setTimeout(() => c.classList.remove('flash'), 1400); } return; }
     const dgx = t.closest('.dg-expand');
     if (dgx) { openDiagramViewer(dgx.parentElement); return; }
     const expand = t.closest('.code-expand');

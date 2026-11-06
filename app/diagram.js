@@ -1222,9 +1222,138 @@
     return `<div class="ut"><div class="ut-legend">${legend}</div>${list(root.kids)}</div>`;
   }
 
+  /* =====================================================================
+     데이터 정의 (data) — 데이터마다 카드, 필드마다 줄 (이름 · 형식 · 필수 · 설명 · 예시 · 상태)
+     ===================================================================== */
+  const DHEAD = {};
+  [['name', '필드 필드명 이름 항목 field name'], ['type', '형식 타입 자료형 종류 type format'], ['req', '필수 필수여부 required req'],
+    ['desc', '설명 내용 뜻 description desc'], ['ex', '예시 예 example sample'], ['status', '상태 status']]
+    .forEach(([k, names]) => names.split(' ').forEach((n) => (DHEAD[normKey(n)] = k)));
+  function splitDataLine(line) {
+    if (line.includes('\t')) return line.split('\t').map((s) => s.trim());
+    if (line.includes('|')) return line.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map((s) => s.trim());
+    // CSV: 따옴표 안의 쉼표는 나누지 않음
+    const out = [];
+    let cur = '', q = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { if (q && line[i + 1] === '"') { cur += '"'; i++; } else q = !q; }
+      else if (c === ',' && !q) { out.push(cur.trim()); cur = ''; }
+      else cur += c;
+    }
+    out.push(cur.trim());
+    return out;
+  }
+  function parseData(src, errs) {
+    const ents = [];
+    let cur = null, cols = ['name', 'type', 'req', 'desc', 'ex', 'status'];
+    src.split('\n').forEach((raw, i) => {
+      const line = raw.trim(), ln = i + 1;
+      let m;
+      if (!line || /^(%%|\/\/)/.test(line)) return;
+      if ((m = line.match(/^#{1,6}\s+(.+?)(?:\s*\(([^)]+)\))?\s*$/))) { cur = { name: m[1].trim(), id: (m[2] || '').trim(), desc: [], fields: [], ln }; ents.push(cur); return; }
+      if (cur && (m = line.match(/^>\s?(.*)$/))) { cur.desc.push(m[1]); return; }
+      if (/^\|?\s*:?-{3,}/.test(line)) return;
+      const cells = splitDataLine(line);
+      const keys = cells.map((c) => DHEAD[normKey(c)] || null);
+      if (keys.includes('name') && keys.filter(Boolean).length >= 2) { cols = keys; return; }
+      if (!cur) { cur = { name: L('데이터', 'Data'), id: '', desc: [], fields: [], ln }; ents.push(cur); }
+      const f = {};
+      cols.forEach((k, j) => { if (k) f[k] = (cells[j] || '').replace(/^`(.*)`$/, '$1'); });
+      f.name = (f.name || '').replace(/^\[(.*)\]$/, '$1').trim();
+      if (!f.name) { errs.push({ ln, msg: L('필드 이름이 비어 있습니다', 'The field name is empty') }); return; }
+      const rq = normKey(f.req);
+      f.required = /^(필수|required|req|y|yes|o|✓|✔|true|1)$/.test(rq) ? true : /^(선택|optional|opt|n|no|x|false|0|—|-)$/.test(rq) || !rq ? false : null;
+      f.ln = ln;
+      cur.fields.push(f);
+    });
+    if (!ents.length || !ents.some((e) => e.fields.length)) errs.push({ msg: L('데이터가 없습니다 (「# 데이터 이름」 아래에 필드를 한 줄씩)', 'No data (write fields one per line under "# Data name")') });
+    // 다른 데이터를 가리키는 형식: 「→ 보상」 · 「보상 목록」 · 「보상[]」 · 「list of 보상」
+    const byName = new Map();
+    for (const e of ents) { byName.set(e.name, e); if (e.id) byName.set(e.id, e); }
+    for (const e of ents) for (const f of e.fields) {
+      const t = (f.type || '').trim();
+      let m = t.match(/^(?:→|->)\s*(.+?)(\s*(목록|리스트|\[\]|\s+list|\s+array))?$/i) || t.match(/^(.+?)\s*(목록|리스트|\[\]|\s+list|\s+array|s)$/i) || t.match(/^(?:list of|array of)\s+(.+)$/i);
+      let target = m && byName.get(m[1].trim().replace(/\s*데이터$/, '')) || m && byName.get(m[1].trim());
+      if (!target && byName.has(t)) target = byName.get(t);
+      if (!target && byName.has(t.replace(/\s*데이터$/, ''))) target = byName.get(t.replace(/\s*데이터$/, ''));
+      if (target && target !== e) { f.ref = target; f.many = /목록|리스트|\[\]|list|array/i.test(t); }
+    }
+    return ents;
+  }
+  const STATUS_TINT = [[/^확정|done|confirmed/i, 'green'], [/^승인\s*전|pending/i, 'amber'], [/^미결|open|undecided/i, 'red']];
+  function renderData(src, uid) {
+    const errs = [];
+    const ents = parseData(src, errs);
+    if (errs.length) fail(errs);
+    const ent = (e, i) => {
+      const rows = e.fields.map((f) => {
+        const type = f.ref
+          ? `<a class="dt-ref" href="#${uid}-e${ents.indexOf(f.ref)}" data-ref="${uid}-e${ents.indexOf(f.ref)}">→ ${esc(f.ref.name)}${f.many ? ' ' + esc(L('목록', '[ ]')) : ''}</a>`
+          : (f.type ? `<span class="dt-type">${esc(f.type)}</span>` : '');
+        const req = f.required === true ? `<span class="dt-req on" title="${esc(L('필수', 'Required'))}">${esc(L('필수', 'req'))}</span>`
+          : f.required === false ? `<span class="dt-req" title="${esc(L('선택', 'Optional'))}">${esc(L('선택', 'opt'))}</span>` : (f.req ? `<span class="dt-req">${esc(f.req)}</span>` : '');
+        const st = f.status ? `<span class="dt-st tint-${(STATUS_TINT.find(([re]) => re.test(f.status)) || [0, 'gray'])[1]}">${esc(f.status)}</span>` : '';
+        return `<div class="dt-row"${f.ref ? ` data-to="${uid}-e${ents.indexOf(f.ref)}"` : ''}><div class="dt-main"><span class="dt-name">${esc(f.name)}</span>${type}${req}${st}</div>` +
+          (f.desc || f.ex ? `<div class="dt-sub">${f.desc ? esc(f.desc) : ''}${f.ex ? `<span class="dt-ex">${esc(L('예: ', 'e.g. '))}${esc(f.ex)}</span>` : ''}</div>` : '') + '</div>';
+      }).join('');
+      return `<section class="dt-card" id="${uid}-e${i}"><header><span class="dt-ico">🗃</span><b>${esc(e.name)}</b>${e.id ? `<code>${esc(e.id)}</code>` : ''}<span class="dt-count">${esc(L(`필드 ${e.fields.length}개`, `${e.fields.length} field${e.fields.length === 1 ? '' : 's'}`))}</span></header>` +
+        (e.desc.length ? `<p class="dt-desc">${esc(e.desc.join(' '))}</p>` : '') + rows + '</section>';
+    };
+    return `<div class="dt" data-uid="${uid}"><svg class="dt-links" aria-hidden="true"></svg><div class="dt-grid">${ents.map(ent).join('')}</div></div>`;
+  }
+  // 카드 사이 연결선 (그린 뒤 · 크기가 바뀔 때마다 다시)
+  function drawDataLinks(box) {
+    const dt = box.querySelector('.dt');
+    if (!dt) return;
+    const svg = dt.querySelector('.dt-links');
+    const base = dt.getBoundingClientRect();
+    svg.setAttribute('width', dt.scrollWidth);
+    svg.setAttribute('height', dt.scrollHeight);
+    let paths = '';
+    const used = new Map();
+    dt.querySelectorAll('.dt-row[data-to]').forEach((row) => {
+      const card = dt.querySelector('#' + CSS.escape(row.dataset.to));
+      const from = row.closest('.dt-card');
+      if (!card || card === from) return;
+      const a = row.getBoundingClientRect(), b = card.querySelector('header').getBoundingClientRect(), fc = from.getBoundingClientRect(), tc = card.getBoundingClientRect();
+      const k = (used.get(card) || 0); used.set(card, k + 1);
+      let x1, y1 = a.top + a.height / 2 - base.top, x2, y2 = b.top + b.height / 2 - base.top + k * 4;
+      if (tc.left >= fc.right - 4) { x1 = fc.right - base.left; x2 = tc.left - base.left; }
+      else if (tc.right <= fc.left + 4) { x1 = fc.left - base.left; x2 = tc.right - base.left; }
+      else { x1 = fc.right - base.left; x2 = tc.right - base.left; }
+      const dx = Math.max(40, Math.abs(x2 - x1) / 2);
+      const c1 = x1 + (x1 === fc.right - base.left ? dx : -dx), c2 = x2 + (x2 === tc.left - base.left ? -dx : dx);
+      paths += `<path d="M${r1(x1)},${r1(y1)} C${r1(c1)},${r1(y1)} ${r1(c2)},${r1(y2)} ${r1(x2)},${r1(y2)}"/><circle cx="${r1(x1)}" cy="${r1(y1)}" r="3"/><circle cx="${r1(x2)}" cy="${r1(y2)}" r="3"/>`;
+    });
+    svg.innerHTML = paths;
+  }
+  // 다른 뷰어용: 데이터마다 일반 표
+  function dataToTables(src) {
+    const errs = [];
+    const ents = parseData(src, errs);
+    if (errs.length) fail(errs);
+    const hasEx = ents.some((e) => e.fields.some((f) => f.ex)), hasSt = ents.some((e) => e.fields.some((f) => f.status));
+    const head = [L('필드', 'Field'), L('형식', 'Type'), L('필수', 'Required'), L('설명', 'Description')].concat(hasEx ? [L('예시', 'Example')] : [], hasSt ? [L('상태', 'Status')] : []);
+    const cell = (s) => String(s || '').replace(/\|/g, '\\|');
+    const out = [];
+    for (const e of ents) {
+      out.push(`**${e.name}**${e.id ? ` (\`${e.id}\`)` : ''}`, '');
+      if (e.desc.length) out.push(e.desc.join(' '), '');
+      out.push('| ' + head.join(' | ') + ' |', '|' + head.map(() => '---').join('|') + '|');
+      for (const f of e.fields) {
+        const type = f.ref ? `→ ${f.ref.name}${f.many ? ' ' + L('목록', '[ ]') : ''}` : f.type;
+        const req = f.required === true ? L('필수', 'Required') : f.required === false ? L('선택', 'Optional') : f.req;
+        out.push('| ' + [f.name, type, req, f.desc].concat(hasEx ? [f.ex] : [], hasSt ? [f.status] : []).map(cell).join(' | ') + ' |');
+      }
+      out.push('');
+    }
+    return out.join('\n').trim();
+  }
+
   /* ===================================================================== */
   const KIND = {};
-  [['flow', 'flow 흐름도'], ['sequence', 'sequence seq 주고받기 순서'], ['state', 'state 상태'], ['timeline', 'timeline schedule 일정표 일정'], ['ui', 'ui 노출 노출위치 exposure']]
+  [['flow', 'flow 흐름도'], ['sequence', 'sequence seq 주고받기 순서'], ['state', 'state 상태'], ['timeline', 'timeline schedule 일정표 일정'], ['ui', 'ui 노출 노출위치 exposure'], ['data', 'data 데이터 데이터정의 schema']]
     .forEach(([k, names]) => names.split(' ').forEach((n) => (KIND[n] = k)));
   let uidN = 0;
   window.MarkDiagram = {
@@ -1236,8 +1365,11 @@
       if (kind === 'state') return renderState(src, uid);
       if (kind === 'timeline') return renderTimeline(src, uid);
       if (kind === 'ui') return renderUiTree(src);
+      if (kind === 'data') return renderData(src, uid);
       throw new Error('unknown diagram kind');
     },
+    drawDataLinks,
+    dataToTables,
     // 다른 뷰어용: 같은 내용을 Mermaid 문법으로
     toMermaid(kind, src) {
       if (kind === 'flow') return flowMermaid(src);

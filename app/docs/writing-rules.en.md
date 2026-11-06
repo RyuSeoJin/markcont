@@ -214,6 +214,7 @@ Diagrams that markcont draws itself. Flowcharts follow the **markcont flowchart 
 | `state` | State changes | Order, document and approval states |
 | `timeline` | Timeline | Project schedules, milestones |
 | `ui` (or `노출`) | Exposure locations | Where a feature sits and what shows after entering it |
+| `data` (or `데이터`) | Data definition | Data and fields developers manage |
 
 > [!NOTE]
 > These are markcont-only. GitHub and Obsidian show them as plain code blocks. If the diagram must render elsewhere too, use Mermaid (7-3).
@@ -392,6 +393,30 @@ Put an indented list in a ```` ```ui ```` block and it shows as a **📍 locatio
     - Mailbox sheet
       - [Receive] → Rewards popup
       - [Delete] → Delete confirm popup
+```
+````
+
+#### Data definition
+
+Under `# Data name`, write **one field per line**. Columns are `field | type | required | description | example | status`; a header row sets a different order. Separate columns with `|`, commas (CSV) or tabs, so you can paste straight from a spreadsheet.
+
+- If a type names another data (`Reward` · `Reward list` · `→ Reward`), a **connector line** links the cards; click it to jump to that card.
+- A `> note` line becomes a description under the card header; parentheses in `# Name (id)` show as the code name.
+- Save for other viewers turns each data into a normal table.
+
+````markdown example
+```data
+# Mail (mail)
+> One mail kept in the mailbox
+field | type | required | description | example
+Mail title | text(40) | required | Shown in list · detail | 7-day login reward
+Sent at | datetime | required | Arrival time | 2026-11-06 05:00
+Sender | text | optional | Ops · system | Ops team
+Reward list | Reward list | required | In attachment order | Ticket 3
+
+# Reward (reward)
+Reward type | ticket · illustration card · video card | required
+Amount | number | required
 ```
 ````
 
@@ -721,6 +746,7 @@ Check **where it works** first, and if the document will be opened elsewhere too
 | Chemical formula | `$\ce{H2O}$` | ✅ | ❌ | ❌ |
 | Diagram (Mermaid) | ```` ```mermaid ```` | ✅ | ✅ | ✅ |
 | Diagram (markcont style) | ```` ```flow ```` ```` ```sequence ```` ```` ```state ```` ```` ```timeline ```` | ✅ | ❌ shown as code | ❌ shown as code |
+| Exposure · data definition | ```` ```ui ```` · ```` ```data ```` | ✅ | ❌ shown as code | ❌ shown as code |
 | Wikilink | `[[document]]` · `[[document#heading\|alias]]` | ✅ | ❌ | ✅ |
 | Embed image (wiki style) | `![[picture.png]]` | ✅ | ❌ | ✅ |
 | Video · audio | `![description](video.mp4)` | ✅ | ❌ broken image | ✅ |

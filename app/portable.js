@@ -22,6 +22,7 @@
     chem: () => [L('화학식 \\ce{}', 'Chemistry \\ce{}'), L('바꾸지 않음 (GitHub 수식은 \\ce 를 모름)', 'not converted (GitHub math has no \\ce)')],
     diagramErr: () => [L('다이어그램 (틀린 곳 있음)', 'Diagram (has errors)'), L('바꾸지 않음', 'not converted')],
     uiTree: () => [L('노출 위치 블록', 'Exposure block'), L('일반 들여 쓴 목록으로', 'to a normal indented list')],
+    dataTable: () => [L('데이터 정의 블록', 'Data definition block'), L('데이터마다 일반 표로', 'to a normal table per data')],
   };
   const STD = { note: 1, tip: 1, important: 1, warning: 1, caution: 1 };
   const MAP = { info: 'NOTE', todo: 'NOTE', example: 'NOTE', question: 'NOTE', faq: 'NOTE', danger: 'CAUTION' };
@@ -87,6 +88,12 @@
         while (j < lines.length && !closeRe.test(lines[j])) j++;
         const body = lines.slice(i + 1, j), close = j < lines.length ? lines[j] : null;
         const kind = window.MarkDiagram && MarkDiagram.kindOf(lang);
+        if (kind === 'data') {
+          try { out.push(...MarkDiagram.dataToTables(body.join('\n')).split('\n')); note(ln, 'dataTable', lang); }
+          catch { out.push(line, ...body); if (close != null) out.push(close); note(ln, 'diagramErr', lang); }
+          i = j + 1;
+          continue;
+        }
         if (kind === 'ui') {
           out.push(...body.map((b) => (/^\s*([-*+]|\d+[.)])\s/.test(b) || !b.trim() ? b : b.replace(/^(\s*)/, '$1- '))));
           note(ln, 'uiTree', lang);
