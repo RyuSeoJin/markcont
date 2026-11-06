@@ -1,6 +1,6 @@
 ---
 title: markcont User guide
-version: 1.2.1
+version: 1.3.0
 ---
 
 # 📘 markcont User guide
@@ -87,6 +87,7 @@ Builds a table of contents from the document's headings (`#`). The part you're r
 | Find in document | <kbd>Ctrl</kbd>+<kbd>F</kbd> | Highlights matches and steps through them |
 | Focus mode | <kbd>Ctrl</kbd>+<kbd>.</kbd> | Leaves only the body text. Press <kbd>Esc</kbd> to exit |
 | Enlarge code | ⤢ in the code block header | Shows the code full screen |
+| Enlarge a diagram | ⤢ at the top right of a diagram | Wheel or pinch to zoom, drag to pan, "Fit to screen" |
 
 > [!NOTE]
 > **When markcont goes online** — the Serif font (Google Fonts), YouTube thumbnails, web images in a document, and the styles (CDN) of files saved as HTML are downloaded from external servers, and your IP address is sent to those servers. Everything else works without the internet.

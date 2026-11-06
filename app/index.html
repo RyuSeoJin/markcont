@@ -75,6 +75,23 @@
 .markdown-body a:hover { border-bottom-color: var(--accent); }
 .markdown-body strong { font-weight: 700; }
 .markdown-body ul, .markdown-body ol { padding-left: 1.6em; }
+/* 들여 쓴 목록: 세로 안내선으로 어느 위 줄에 속하는지 보이게 */
+.markdown-body li > ul, .markdown-body li > ol { border-left: 1px solid color-mix(in srgb, var(--muted) 28%, transparent); margin-left: -.95em; padding-left: 2.2em; }
+.markdown-body li > ul:hover, .markdown-body li > ol:hover { border-left-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+/* 표: 한글은 낱말 단위로만 줄바꿈, 코드 · 날짜 모양은 한 덩어리 */
+.markdown-body td, .markdown-body th { word-break: keep-all; overflow-wrap: break-word; }
+.markdown-body .nb { white-space: nowrap; }
+/* 상태 배지 (문서 정보 「배지:」) */
+.markdown-body .mc-badge { display: inline-block; padding: 0 .55em; border-radius: 999px; font-size: .86em; font-weight: 600; line-height: 1.65; white-space: nowrap; color: var(--b); background: color-mix(in srgb, var(--b) 13%, transparent); border: 1px solid color-mix(in srgb, var(--b) 35%, transparent); }
+.markdown-body .mc-badge.b-blue { --b: var(--c-blue); }
+.markdown-body .mc-badge.b-green { --b: var(--c-green); }
+.markdown-body .mc-badge.b-amber { --b: var(--c-amber); }
+.markdown-body .mc-badge.b-red { --b: var(--c-red); }
+.markdown-body .mc-badge.b-purple { --b: var(--c-purple); }
+.markdown-body .mc-badge.b-gray { --b: var(--muted); }
+/* 찾지 못한 그림 */
+.markdown-body .img-missing { display: inline-block; padding: .55em .85em; border: 1px dashed color-mix(in srgb, var(--c-amber) 55%, var(--border)); border-radius: 8px; color: var(--muted); font-size: .88em; background: color-mix(in srgb, var(--c-amber) 6%, transparent); }
+.markdown-body .img-missing code { font-size: .92em; }
 .markdown-body li + li { margin-top: .25em; }
 .markdown-body li > ul, .markdown-body li > ol { margin: .25em 0 0; }
 .markdown-body li.task-item { list-style: none; margin-left: -1.4em; }
@@ -191,17 +208,33 @@
   position: fixed; inset: 16px; z-index: 70; margin: 0; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,.35);
 }
 .markdown-body .code-block.expanded .code-body { flex: 1; }
+/* 다이어그램 크게 보기 */
+.dg-viewer { position: fixed; inset: 0; z-index: 95; display: flex; flex-direction: column; background: var(--bg); }
+.dg-viewer[hidden] { display: none; }
+.dg-viewer-bar { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.dg-viewer-bar .zoom { min-width: 52px; text-align: center; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dg-viewer-bar .hint { font-size: 12px; color: var(--muted); margin-left: 8px; }
+.dg-viewer-area { flex: 1; position: relative; overflow: hidden; cursor: grab; touch-action: none; background: var(--surface); }
+.dg-viewer-area.drag { cursor: grabbing; }
+.dg-viewer-stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.dg-viewer-stage svg { display: block; max-width: none !important; font-family: var(--font); }
 .markdown-body .language-diff .hljs-addition { display: inline-block; min-width: 100%; background: color-mix(in srgb, var(--c-green) 16%, transparent); color: inherit; }
 .markdown-body .language-diff .hljs-deletion { display: inline-block; min-width: 100%; background: color-mix(in srgb, var(--c-red) 16%, transparent); color: inherit; }
 
 /* 다이어그램 카드 */
 .markdown-body .mermaid { padding: 20px 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); overflow-x: auto; }
-/* markcont 다이어그램 (rsj 흐름도 규칙) */
+/* markcont 다이어그램 (markcont 흐름도 기준) */
 :root { --dg-line: #1e1e1e; --dg-yes: #2563eb; --dg-no: #dc2626; --dg-sec: #475569; --dg-node: #ffffff; --dg-stroke: #64748b; --dg-ret: #ea580c; --dg-sub: #7c3aed; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --dg-line: #d4d7dc; --dg-yes: #60a5fa; --dg-no: #f87171; --dg-sec: #94a3b8; --dg-node: #1f2328; --dg-stroke: #8b98a9; --dg-ret: #fb923c; --dg-sub: #a78bfa; } }
 :root[data-theme="dark"] { --dg-line: #d4d7dc; --dg-yes: #60a5fa; --dg-no: #f87171; --dg-sec: #94a3b8; --dg-node: #1f2328; --dg-stroke: #8b98a9; --dg-ret: #fb923c; --dg-sub: #a78bfa; }
-.markdown-body .dg { margin: 0 0 1.1em; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); overflow-x: auto; }
+.markdown-body .dg { margin: 0 0 1.1em; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.markdown-body .dg-scroll { overflow-x: auto; }
 .markdown-body .dg svg { display: block; margin: 0 auto; max-width: none; font-family: var(--font); }
+.markdown-body .dg, .markdown-body .mermaid { position: relative; }
+.markdown-body .dg-expand { position: absolute; top: 8px; right: 8px; z-index: 2; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; display: grid; place-items: center; opacity: .8; }
+.markdown-body .dg-expand:hover { opacity: 1; color: var(--accent); border-color: var(--accent); }
+.markdown-body .dg-expand svg { width: 16px; height: 16px; }
+@media print { .markdown-body .dg-expand { display: none; } }
 .markdown-body .dg.dg-error { white-space: pre-wrap; font-size: .88em; color: var(--c-red); background: color-mix(in srgb, var(--c-red) 7%, var(--surface)); border-color: color-mix(in srgb, var(--c-red) 35%, var(--border)); padding: 12px 14px; }
 .dg-svg text { font-size: 13px; fill: var(--text); dominant-baseline: central; text-anchor: middle; }
 .dg-svg .dg-lane.u { fill: color-mix(in srgb, var(--dg-yes) 5%, transparent); }
@@ -1010,6 +1043,9 @@ body.zen .zen-exit:hover { opacity: 1; }
           <label class="check-row"><input type="checkbox" id="optSync"><span>편집할 때 스크롤 맞추기<small>원본과 미리보기가 같은 위치를 보여줍니다</small></span></label>
         </div>
         <div class="set-row">
+          <label class="check-row"><input type="checkbox" id="optCompat"><span>다른 뷰어 호환 안내 보기<small>markcont 전용 문법이 있으면 문서 위에 알려 줍니다 (문서 정보 「뷰어: markcont」 면 그 문서만 끔)</small></span></label>
+        </div>
+        <div class="set-row">
           <div class="set-label"><span>언어</span><span id="langHint">Language</span></div>
           <div class="seg" id="langSeg"><button data-v="ko">한국어</button><button data-v="en">English</button></div>
         </div>
@@ -1260,6 +1296,7 @@ body.zen .zen-exit:hover { opacity: 1; }
 <div class="toast" id="toast" role="status"></div>
 
 <!-- Claude와 연결 (MCP) -->
+<div class="dg-viewer" id="dgViewer" hidden></div>
 <div class="modal" id="compatModal" hidden>
   <div class="modal-card" role="dialog" aria-modal="true" aria-label="다른 뷰어 호환">
     <div class="modal-head"><div class="modal-title">다른 뷰어에서 다르게 보이는 곳</div>
@@ -1386,7 +1423,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   /* =========================================================
      설정 (글자 크기, 글꼴, 폭, 줄바꿈, 스크롤 맞춤)
      ========================================================= */
-  const settings = Object.assign({ size: 16.5, font: 'sans', width: 'normal', sync: true, callout: 'soft', lines: false, confirmSave: true }, store.json('mdv-settings', {}));
+  const settings = Object.assign({ size: 16.5, font: 'sans', width: 'normal', sync: true, compatHint: true, callout: 'soft', lines: false, confirmSave: true }, store.json('mdv-settings', {}));
   delete settings.breaks; // 없앤 설정 (엔터 한 번도 줄바꿈으로 보기)
   const WIDTHS = { narrow: '680px', normal: '820px', wide: '1060px' };
   let serifLoaded = false;
@@ -1410,6 +1447,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     document.querySelectorAll('#langSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === LANG));
     $('#optLines').checked = settings.lines;
     $('#optConfirmSave').checked = settings.confirmSave;
+    $('#optCompat').checked = settings.compatHint !== false;
     $('#optSync').checked = settings.sync;
     store.set('mdv-settings', JSON.stringify(settings));
     if (rerender) { buildMd(); render(true); }
@@ -1433,6 +1471,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   $('#optLines').onchange = (e) => { settings.lines = e.target.checked; applySettings(true); };
   $('#optConfirmSave').onchange = (e) => { settings.confirmSave = e.target.checked; applySettings(); };
   $('#optSync').onchange = (e) => { settings.sync = e.target.checked; applySettings(); };
+  $('#optCompat').onchange = (e) => { settings.compatHint = e.target.checked; applySettings(); if (state.current) updateMeta(source()); };
 
   /* =========================================================
      테마
@@ -1767,14 +1806,37 @@ body.zen .zen-exit:hover { opacity: 1; }
     const n = (m[0].match(/\n/g) || []).length;
     return { fm: m[1], body: '\n'.repeat(n) + src.slice(m[0].length) };
   }
-  function frontMatterHtml(fm) {
+  function fmRows(fm) {
     const rows = [];
-    for (const line of fm.split(/\r?\n/)) {
+    for (const line of String(fm || '').split(/\r?\n/)) {
       const kv = line.match(/^([\w가-힣 .-]+):\s*(.*)$/);
       const li = line.match(/^\s*-\s+(.*)$/);
       if (kv) rows.push([kv[1], kv[2].replace(/^["']|["']$/g, '')]);
       else if (li && rows.length) rows[rows.length - 1][1] += (rows[rows.length - 1][1] ? ', ' : '') + li[1];
     }
+    return rows;
+  }
+  // 문서 정보로 정하는 markcont 보기 옵션
+  //  - 뷰어: markcont   → 「다른 뷰어에서 다르게 보이는 곳」 안내를 띄우지 않음
+  //  - 배지: 확정=초록, 승인 전=주황, 미결=빨강 → 그 말로 시작하는 표 칸을 색 배지로
+  const BADGE_TINT = { 파랑: 'blue', 파란색: 'blue', blue: 'blue', 초록: 'green', 초록색: 'green', 녹색: 'green', green: 'green', 주황: 'amber', 노랑: 'amber', orange: 'amber', yellow: 'amber', amber: 'amber', 빨강: 'red', 빨간색: 'red', red: 'red', 보라: 'purple', purple: 'purple', 회색: 'gray', gray: 'gray', grey: 'gray' };
+  function docOptions(fm) {
+    const o = { markcontOnly: false, badges: [] };
+    for (const [k, v] of fmRows(fm)) {
+      const key = k.trim().toLowerCase();
+      if (/^(뷰어|viewer)$/.test(key)) o.markcontOnly = /markcont/i.test(v);
+      if (/^(배지|badges?)$/.test(key)) {
+        for (const part of v.split(/[,，]/)) {
+          const m = part.match(/^\s*(.+?)\s*=\s*(\S+)\s*$/);
+          if (m && BADGE_TINT[m[2].toLowerCase()]) o.badges.push({ word: m[1], tint: BADGE_TINT[m[2].toLowerCase()] });
+        }
+        o.badges.sort((a, b) => b.word.length - a.word.length);
+      }
+    }
+    return o;
+  }
+  function frontMatterHtml(fm) {
+    const rows = fmRows(fm);
     if (!rows.length) return '';
     const body = rows.map(([k, v]) => `<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(v)}</td></tr>`).join('');
     return `<details class="front-matter" open><summary>${L('문서 정보', 'Document info')}</summary><table>${body}</table></details>`;
@@ -1789,6 +1851,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     find.hits = []; find.now = -1;
     if (!$('#findBar').hidden) setTimeout(() => runFind($('#findInput').value.trim()), 0);
     const { fm, body } = splitFrontMatter(src);
+    state.docOpts = docOptions(fm);
     let html = md.render(body);
     html = DOMPurify.sanitize(html, { ADD_ATTR: ['target'], FORBID_TAGS: ['style'] });
     el.doc.innerHTML = (fm ? frontMatterHtml(fm) : '') + html;
@@ -1905,6 +1968,40 @@ body.zen .zen-exit:hover { opacity: 1; }
       }
     }
 
+    // 표 칸: 문서 정보 「배지:」의 말로 시작하면 색 배지, 코드 · 날짜 모양(MAIL-P01, 2026-09-18)은 줄을 바꾸지 않음
+    const badges = (state.docOpts && state.docOpts.badges) || [];
+    doc.querySelectorAll('td, th').forEach((cell) => {
+      if (cell.closest('.front-matter')) return;
+      if (badges.length && cell.tagName === 'TD') {
+        const w = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP) });
+        const first = w.nextNode();
+        if (first && !first.parentElement.closest('code, .katex, a')) {
+          const lead = first.nodeValue.match(/^\s*/)[0], rest = first.nodeValue.slice(lead.length);
+          const b = badges.find((x) => rest.startsWith(x.word));
+          if (b) {
+            const sp = document.createElement('span');
+            sp.className = 'mc-badge b-' + b.tint;
+            sp.textContent = b.word;
+            first.nodeValue = rest.slice(b.word.length);
+            first.parentNode.insertBefore(sp, first);
+          }
+        }
+      }
+      const tw = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.parentElement.closest('.katex, .nb') ? NodeFilter.FILTER_REJECT : /[A-Za-z0-9가-힣)][-./:][A-Za-z0-9(]/.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP) });
+      const texts = [];
+      while (tw.nextNode()) texts.push(tw.currentNode);
+      for (const t of texts) {
+        const parts = t.nodeValue.split(/(\s+)/);
+        if (!parts.some((x) => x.length <= 32 && /[A-Za-z0-9가-힣)][-./:][A-Za-z0-9(]/.test(x))) continue;
+        const frag = document.createDocumentFragment();
+        for (const x of parts) {
+          if (x.length <= 32 && /[A-Za-z0-9가-힣)][-./:][A-Za-z0-9(]/.test(x)) { const sp = document.createElement('span'); sp.className = 'nb'; sp.textContent = x; frag.append(sp); }
+          else frag.append(x);
+        }
+        t.replaceWith(frag);
+      }
+    });
+
     // 표 가로 스크롤
     doc.querySelectorAll('table').forEach((t) => {
       if (t.closest('.front-matter')) return;
@@ -1977,7 +2074,24 @@ body.zen .zen-exit:hover { opacity: 1; }
       img.addEventListener('error', () => img.classList.add('broken'), { once: true });
       if (!hasScheme(src) && !src.startsWith('data:')) {
         const key = findAssetKey(base, src);
-        if (key) assetUrl(key).then((u) => (img.src = u)).catch(() => {});
+        if (key) { assetUrl(key).then((u) => (img.src = u)).catch(() => {}); return; }
+        let rel = src;
+        try { rel = decodeURIComponent(src); } catch {}
+        const cur = state.current;
+        // PC 프로그램: 열어 둔 폴더 밖이어도 문서 위치를 기준으로 직접 읽음
+        if (cur && cur.tauriPath && isTauri()) {
+          const dir = cur.tauriPath.replace(/[\\/][^\\/]*$/, '');
+          const parts = dir.split(/[\\/]/);
+          for (const seg of rel.split('/')) { if (seg === '..') parts.pop(); else if (seg && seg !== '.') parts.push(seg); }
+          const abs = parts.join(dir.includes('\\') ? '\\' : '/');
+          tinvoke('read_binary', { path: abs })
+            .then((buf) => { img.src = URL.createObjectURL(new Blob([buf], /\.svg$/i.test(abs) ? { type: 'image/svg+xml' } : {})); })
+            .catch(() => img.replaceWith(missingImage(src, false)));
+          return;
+        }
+        const r = rootOf(base);
+        const outside = /^\.\.\//.test(rel) && (!r || !resolvePath(base, rel).startsWith(r.key + '/'));
+        img.replaceWith(missingImage(src, outside));
       }
     });
 
@@ -2003,7 +2117,7 @@ body.zen .zen-exit:hover { opacity: 1; }
         const d = document.createElement('div');
         d.className = 'dg';
         if (lineAttr) d.dataset.line = lineAttr;
-        try { d.innerHTML = MarkDiagram.render(dgKind, code.textContent); }
+        try { d.innerHTML = '<div class="dg-scroll">' + MarkDiagram.render(dgKind, code.textContent) + '</div>'; addDgExpand(d); }
         catch (err) { d.classList.add('dg-error'); d.textContent = L('다이어그램을 그리지 못했습니다\n', "Couldn't draw the diagram\n") + err.message; }
         pre.replaceWith(d);
         return;
@@ -2050,7 +2164,7 @@ body.zen .zen-exit:hover { opacity: 1; }
             : { primaryColor: '#d7f5ea', primaryBorderColor: '#3cb995', primaryTextColor: '#1f2328', lineColor: '#3d4a45', secondaryColor: '#eef7f3', tertiaryColor: '#ffffff', actorBkg: '#d7f5ea', actorBorder: '#3cb995', actorTextColor: '#1f2328', signalColor: '#1f2328', signalTextColor: '#1f2328', noteBkgColor: '#fff8d6', fontFamily: 'Pretendard Variable, Pretendard, sans-serif' },
         });
         return m.run({ nodes: mermaidBlocks });
-      }).then(() => { lineTops = null; }).catch(() => {});
+      }).then(() => { mermaidBlocks.forEach((b) => b.querySelector('svg') && addDgExpand(b)); lineTops = null; }).catch(() => {});
     }
   }
 
@@ -2067,6 +2181,17 @@ body.zen .zen-exit:hover { opacity: 1; }
     a.title = L('유튜브에서 보기', 'Watch on YouTube');
     a.innerHTML = `<img src="https://i.ytimg.com/vi/${id}/hqdefault.jpg" alt="${L('유튜브 동영상', 'YouTube video')}" loading="lazy"><span>▶</span>`;
     return a;
+  }
+  function missingImage(src, outside) {
+    const sp = document.createElement('span');
+    sp.className = 'img-missing';
+    sp.append('🖼 ' + (outside
+      ? L('열어 둔 폴더 밖의 그림입니다 — 그림이 들어 있는 위 폴더를 열어 주세요: ', 'This image is outside the open folder — open a parent folder that contains it: ')
+      : L('그림을 찾지 못했습니다: ', "Couldn't find the image: ")));
+    const c = document.createElement('code');
+    c.textContent = src;
+    sp.append(c);
+    return sp;
   }
   function mediaNode(src, alt) {
     const kind = VIDEO_EXT.test(src) ? 'video' : AUDIO_EXT.test(src) ? 'audio' : 'img';
@@ -2092,6 +2217,8 @@ body.zen .zen-exit:hover { opacity: 1; }
       toast(L('코드를 복사했습니다', 'Code copied'), 1400);
       return;
     }
+    const dgx = t.closest('.dg-expand');
+    if (dgx) { openDiagramViewer(dgx.parentElement); return; }
     const expand = t.closest('.code-expand');
     if (expand) { toggleExpand(expand.closest('.code-block')); return; }
     const anchor = t.closest('.h-anchor');
@@ -2163,6 +2290,106 @@ body.zen .zen-exit:hover { opacity: 1; }
       ta.value = text; document.body.append(ta); ta.select(); document.execCommand('copy'); ta.remove();
     }
   }
+
+  /* ---------- 다이어그램 크게 보기: 확대 · 축소 · 끌어 옮기기 · 화면에 맞추기 ---------- */
+  function addDgExpand(box) {
+    if (box.querySelector(':scope > .dg-expand')) return;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'dg-expand';
+    b.title = L('크게 보기 (확대 · 축소 · 끌어 옮기기)', 'Expand (zoom · pan)');
+    b.innerHTML = EXPAND_ICON;
+    box.prepend(b);
+  }
+  const dgv = { s: 1, x: 0, y: 0, w: 0, h: 0, pts: new Map(), pinch: null };
+  function dgvApply() {
+    $('#dgStage').style.transform = `translate(${dgv.x}px, ${dgv.y}px) scale(${dgv.s})`;
+    $('#dgZoomVal').textContent = Math.round(dgv.s * 100) + '%';
+  }
+  function dgvFit() {
+    const r = $('#dgArea').getBoundingClientRect();
+    dgv.s = Math.min((r.width - 48) / dgv.w, (r.height - 48) / dgv.h, 2);
+    dgv.x = (r.width - dgv.w * dgv.s) / 2;
+    dgv.y = (r.height - dgv.h * dgv.s) / 2;
+    dgvApply();
+  }
+  function dgvZoomAt(f, cx, cy) {
+    const ns = Math.min(8, Math.max(0.08, dgv.s * f));
+    dgv.x = cx - (cx - dgv.x) * (ns / dgv.s);
+    dgv.y = cy - (cy - dgv.y) * (ns / dgv.s);
+    dgv.s = ns;
+    dgvApply();
+  }
+  function dgvCenterZoom(f) { const r = $('#dgArea').getBoundingClientRect(); dgvZoomAt(f, r.width / 2, r.height / 2); }
+  function openDiagramViewer(box) {
+    const svg = box && box.querySelector('svg:not(.dg-expand svg)');
+    if (!svg) return;
+    const v = $('#dgViewer');
+    if (!v.dataset.ready) {
+      v.dataset.ready = '1';
+      v.innerHTML = `<div class="dg-viewer-bar">
+          <button class="btn icon" id="dgZoomOut" title="${L('축소', 'Zoom out')}">−</button>
+          <span class="zoom" id="dgZoomVal">100%</span>
+          <button class="btn icon" id="dgZoomIn" title="${L('확대', 'Zoom in')}">+</button>
+          <button class="btn" id="dgFit">${L('화면에 맞추기', 'Fit to screen')}</button>
+          <button class="btn" id="dgActual">100%</button>
+          <span class="hint">${L('휠 · 두 손가락으로 확대 · 축소, 끌어서 옮기기', 'Wheel or pinch to zoom, drag to pan')}</span>
+          <span style="flex:1"></span>
+          <button class="btn" id="dgClose">${L('닫기 (Esc)', 'Close (Esc)')}</button>
+        </div>
+        <div class="dg-viewer-area" id="dgArea"><div class="dg-viewer-stage" id="dgStage"></div></div>`;
+      $('#dgZoomIn').onclick = () => dgvCenterZoom(1.25);
+      $('#dgZoomOut').onclick = () => dgvCenterZoom(1 / 1.25);
+      $('#dgFit').onclick = dgvFit;
+      $('#dgActual').onclick = () => { const r = $('#dgArea').getBoundingClientRect(); dgv.s = 1; dgv.x = Math.max(24, (r.width - dgv.w) / 2); dgv.y = Math.max(24, (r.height - dgv.h) / 2); dgvApply(); };
+      $('#dgClose').onclick = closeDiagramViewer;
+      const area = $('#dgArea');
+      area.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const r = area.getBoundingClientRect();
+        dgvZoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)), e.clientX - r.left, e.clientY - r.top);
+      }, { passive: false });
+      area.addEventListener('pointerdown', (e) => {
+        area.setPointerCapture(e.pointerId);
+        dgv.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        area.classList.add('drag');
+        if (dgv.pts.size === 2) {
+          const [a, b] = [...dgv.pts.values()];
+          dgv.pinch = Math.hypot(a.x - b.x, a.y - b.y);
+        }
+      });
+      area.addEventListener('pointermove', (e) => {
+        const p = dgv.pts.get(e.pointerId);
+        if (!p) return;
+        if (dgv.pts.size === 1) { dgv.x += e.clientX - p.x; dgv.y += e.clientY - p.y; dgvApply(); }
+        p.x = e.clientX; p.y = e.clientY;
+        if (dgv.pts.size === 2) {
+          const [a, b] = [...dgv.pts.values()];
+          const d = Math.hypot(a.x - b.x, a.y - b.y), r = area.getBoundingClientRect();
+          if (dgv.pinch) dgvZoomAt(d / dgv.pinch, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top);
+          dgv.pinch = d;
+        }
+      });
+      const up = (e) => { dgv.pts.delete(e.pointerId); if (dgv.pts.size < 2) dgv.pinch = null; if (!dgv.pts.size) area.classList.remove('drag'); };
+      area.addEventListener('pointerup', up);
+      area.addEventListener('pointercancel', up);
+      area.addEventListener('dblclick', dgvFit);
+    }
+    const vb = svg.viewBox && svg.viewBox.baseVal;
+    const rect = svg.getBoundingClientRect();
+    dgv.w = (vb && vb.width) || rect.width;
+    dgv.h = (vb && vb.height) || rect.height;
+    const c = svg.cloneNode(true);
+    c.removeAttribute('style');
+    c.setAttribute('width', dgv.w);
+    c.setAttribute('height', dgv.h);
+    const stage = $('#dgStage');
+    stage.innerHTML = '';
+    stage.append(c);
+    v.hidden = false;
+    requestAnimationFrame(dgvFit);
+  }
+  function closeDiagramViewer() { $('#dgViewer').hidden = true; $('#dgStage').innerHTML = ''; }
 
   function toggleExpand(block, force) {
     const on = force ?? !block.classList.contains('expanded');
@@ -2418,7 +2645,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     }
     el.docMeta.append(facts);
     // 다른 뷰어에서 다르게 보이는 곳 (markcont 전용 문법)
-    if (window.MarkPortable && !cur.builtin) {
+    if (window.MarkPortable && !cur.builtin && settings.compatHint !== false && !docOptions(splitFrontMatter(src).fm).markcontOnly) {
       let n = 0;
       try { n = MarkPortable.convert(src).changes.length; } catch {}
       if (n) {
@@ -4382,7 +4609,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   async function exportHtml() {
     closeMenus();
     const clone = el.doc.cloneNode(true);
-    clone.querySelectorAll('.copy, .h-tools, .code-head button').forEach((b) => b.remove());
+    clone.querySelectorAll('.copy, .h-tools, .code-head button, .dg-expand').forEach((b) => b.remove());
     clone.querySelectorAll('.code-block.expanded').forEach((b) => b.classList.remove('expanded'));
     clone.querySelectorAll('mark.find-hit').forEach((m) => m.replaceWith(document.createTextNode(m.textContent)));
     clone.querySelectorAll('.fold-hidden, .folded').forEach((n) => n.classList.remove('fold-hidden', 'folded'));
@@ -4493,6 +4720,7 @@ ${clone.innerHTML}
 
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      if (!$('#dgViewer').hidden) { closeDiagramViewer(); return; }
       const exp = document.querySelector('.code-block.expanded');
       if (exp) { toggleExpand(exp, false); return; }
       if (!$('#findBar').hidden) { closeFind(); return; }
@@ -4518,7 +4746,7 @@ ${clone.innerHTML}
 
   applySettings();
   // 버전 표시 (새 버전을 낼 때 package.json · tauri.conf.json 과 함께 올리세요)
-  const APP_VERSION = '1.2.1';
+  const APP_VERSION = '1.3.0';
   $('#appVersion').textContent = `markcont v${APP_VERSION} · ${window.__TAURI__ ? L('PC 프로그램', 'PC app') : L('웹 앱', 'web app')}`;
   setSideTab(side.tab);
   renderFileList();

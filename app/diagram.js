@@ -1,7 +1,7 @@
 // markcont 다이어그램 — 외부 라이브러리 없이 SVG 로 그립니다.
-// 흐름도는 rsj 흐름도 규칙을 따릅니다: 위 유저 구역 · 아래 시스템 구역, 도형마다 정해진 뜻,
+// 흐름도는 markcont 흐름도 기준을 따릅니다: 위 유저 구역 · 아래 시스템 구역, 도형마다 정해진 뜻,
 // 왼쪽 → 오른쪽 배치, 수평 · 수직 선만, 예 = 파랑 · 아니오 = 빨강, 분기 값은 선의 출발 쪽,
-// 다른 섹션으로 가거나 두 열 이상 되돌아갈 때는 「→ 코드」 · 「↩ 코드」 연결자.
+// 다른 섹션으로 가거나 멀리 건너가는 선은 「→ 코드」 · 「↩ 코드」 연결자로 끊음.
 // 같은 모양 규칙으로 주고받는 순서(sequence) · 상태 변화(state) · 일정표(timeline)도 그립니다.
 (function () {
   const L = (ko, en) => (window.L ? window.L(ko, en) : ko);
@@ -82,7 +82,7 @@
   const kindOfLabel = (s) => (YES.test(s || '') ? 'yes' : NO.test(s || '') ? 'no' : 'normal');
 
   /* =====================================================================
-     흐름도 (flow) — rsj 노드 표:  코드 | 구역 | 도형 | 문구 | 나감 | 판정 기준
+     흐름도 (flow) — 노드 표:  코드 | 구역 | 도형 | 문구 | 나감 | 판정 기준 (| 섹션)
      ===================================================================== */
   const SHAPE = {};
   [['term', '시작종료 시작 종료 끝 알약 term start end'], ['action', '행동 처리 행동처리 사각형 네모 action'],
@@ -93,7 +93,7 @@
   const ZONE_S = new Set(['시스템', '시스템구역', '서버', 'system', 's']);
   const HEAD = {};
   [['code', '코드 code id'], ['zone', '구역 zone lane'], ['shape', '도형 모양 shape type'], ['text', '문구 내용 글 text label'],
-    ['out', '나감 다음 연결 out next goesto'], ['judge', '판정기준 판정 judge rule'], ['color', '색 color']]
+    ['out', '나감 다음 연결 out next goesto'], ['judge', '판정기준 판정 judge rule'], ['color', '색 color'], ['section', '섹션 묶음 section group']]
     .forEach(([k, names]) => names.split(' ').forEach((n) => (HEAD[normKey(n)] = k)));
 
   function splitOut(out) {
@@ -108,14 +108,17 @@
   }
 
   function parseFlow(src, errs) {
-    const nodes = new Map(), edges = [], secNames = new Map(), colors = [];
+    const nodes = new Map(), edges = [], secNames = new Map(), colors = [], secLines = [], explicit = new Set();
+    let longLines = 'auto';
     let cols = ['code', 'zone', 'shape', 'text', 'out', 'judge'];
     let hideCodes = false;
     src.split('\n').forEach((raw, i) => {
       const line = raw.trim(), ln = i + 1;
       let m;
       if (!line || /^(%%|\/\/)/.test(line) || /^\*\*.*\*\*$/.test(line)) return;
-      if ((m = line.match(/^#{1,6}\s+(\S+?)[:：]?\s+(.+)$/)) || (m = line.match(/^(?:섹션|section)\s+(\S+?)[:：]?\s+(.+)$/i))) { secNames.set(m[1], m[2].trim()); return; }
+      if ((m = line.match(/^#{1,6}\s+(.+?)\s*[:：]\s+(.+)$/)) || (m = line.match(/^#{1,6}\s+(\S+)\s+(.+)$/)) || (m = line.match(/^(?:섹션|section)\s+(.+?)\s*[:：]?\s+(.+)$/i))) { secLines.push([m[1].trim(), m[2].trim()]); return; }
+      if (/^(긴\s*선\s*끊기|cut\s*long\s*lines?)$/i.test(line)) { longLines = 'cut'; return; }
+      if (/^(긴\s*선\s*잇기|keep\s*long\s*lines?)$/i.test(line)) { longLines = 'keep'; return; }
       if (/^(코드\s*숨기기|hide\s*codes?)$/i.test(line)) { hideCodes = true; return; }
       const c = parseColorLine(line, errs, ln);
       if (c) { colors.push(c); return; }
@@ -139,14 +142,25 @@
         else { errs.push({ ln, msg: L(`구역은 유저 · 시스템 중 하나입니다: ${row.zone}`, `Zone must be user or system: ${row.zone}`) }); zone = 's'; }
       }
       const judge = (row.judge || '').trim();
-      nodes.set(id, { id, zone, type, text: (row.text || '').trim(), judge: /^[—–-]$/.test(judge) ? '' : judge, tint: row.color ? TINT[normKey(row.color)] : undefined, ln });
-      for (const e of splitOut(row.out)) edges.push({ from: id, ...e, ln });
+      const secSet = (row.section || '').trim().replace(/^[—–-]$/, '');
+      if (secSet) explicit.add(secSet);
+      nodes.set(id, { id, zone, type, text: (row.text || '').trim(), judge: /^[—–-]$/.test(judge) ? '' : judge, tint: row.color ? TINT[normKey(row.color)] : undefined, secSet: secSet || undefined, ln });
+      for (const e of splitOut(row.out)) edges.push({ from: id, ...e, ln, idx: edges.length });
     });
+    // 섹션 줄: 「# 받기: N9 N10 N11」 처럼 뒤가 모두 노드 코드면 그 노드들을 그 섹션으로, 아니면 「# S1 로그인」 섹션 이름
+    for (const [key, rest] of secLines) {
+      const codes = rest.split(/[\s,，]+/).filter(Boolean);
+      if (codes.length && codes.every((c) => nodes.has(c))) { explicit.add(key); for (const c of codes) nodes.get(c).secSet = key; }
+      else secNames.set(key.replace(/[:：]$/, ''), rest);
+    }
     applyColors(colors, (n) => nodes.get(n));
-    return { nodes, edges, secNames, hideCodes };
+    return { nodes, edges, secNames, hideCodes, explicit, longLines };
   }
 
-  function renderFlow(src, uid) {
+  // 노드의 섹션: 따로 정했으면 그것, 아니면 코드 앞부분(S1-02 → S1)
+  const flowSec = (n) => n.secSet || (n.id.includes('-') ? n.id.slice(0, n.id.lastIndexOf('-')) : '');
+  const secLabel = (f, sec) => (f.explicit.has(sec) ? sec : sec + (f.secNames.get(sec) ? ' · ' + f.secNames.get(sec) : ''));
+  function renderFlow(src, uid, opt = {}) {
     const errs = [];
     const f = parseFlow(src, errs);
     if (!f.nodes.size) { if (!errs.length) errs.push({ msg: L('도형이 하나도 없습니다', 'No nodes') }); fail(errs); }
@@ -155,7 +169,7 @@
     const hasZones = [...nodes.values()].some((n) => n.zone);
     for (const n of nodes.values()) {
       if (!n.zone) n.zone = 's';
-      n.sec = n.id.includes('-') ? n.id.slice(0, n.id.lastIndexOf('-')) : '';
+      n.sec = flowSec(n);
     }
     const secOrder = [];
     for (const n of nodes.values()) if (!secOrder.includes(n.sec)) secOrder.push(n.sec);
@@ -211,6 +225,10 @@
       } else if (e.back && a.col - b.col >= 2) {
         const c = { id: `__c${cid++}`, type: 'ret', zone: a.zone, sec: a.sec, col: a.col + 1, virtual: true, code: '↩ ' + b.id, text: b.text };
         nodes.set(c.id, c); e.to = c.id; e.back = false;
+      } else if (!e.back && b.col - a.col >= 2 && (opt.cut?.has(e.idx) || f.longLines === 'cut')) {
+        // 앞으로 멀리 건너가는 선: 긴 선 대신 「→ 코드」 연결자
+        const c = { id: `__c${cid++}`, type: 'goto', zone: a.zone, sec: a.sec, col: a.col + 1, virtual: true, code: '→ ' + b.id, text: b.text };
+        nodes.set(c.id, c); e.to = c.id;
       }
     }
     for (const e of edges) if (e.subLink) e.hidden = true;
@@ -276,7 +294,7 @@
     for (const sec of secOrder) {
       const list = [...nodes.values()].filter((n) => n.sec === sec);
       const ncol = Math.max(...list.map((n) => n.col)) + 1;
-      const framed = !!sec && (f.secNames.has(sec) || secOrder.length > 1);
+      const framed = !!sec && (f.secNames.has(sec) || f.explicit.has(sec) || secOrder.length > 1);
       const x0 = x;
       if (framed) x += SEC_PAD;
       for (let c = 0; c < ncol; c++) {
@@ -332,9 +350,10 @@
       const sk = n.type === 'input' || n.type === 'output' ? SKEW / 2 : 0;
       return { x: n.cx - n.w / 2 + sk, y: n.cy + dy };
     };
-    const outPort = (n, side, dy) => {
-      if (side === 'top') return { x: n.cx, y: n.cy - n.h / 2 };
-      if (side === 'bottom') return { x: n.cx, y: n.cy + n.h / 2 };
+    const outPort = (n, side, dy, dx = 0) => {
+      const inset = n.type === 'decision' ? (Math.abs(dx) / (n.w / 2)) * (n.h / 2) : 0; // 마름모 빗변 위의 점
+      if (side === 'top') return { x: n.cx + dx, y: n.cy - n.h / 2 + inset };
+      if (side === 'bottom') return { x: n.cx + dx, y: n.cy + n.h / 2 - inset };
       const sk = n.type === 'input' || n.type === 'output' ? SKEW / 2 : 0;
       return { x: n.cx + n.w / 2 - sk, y: n.cy + (n.type === 'decision' ? 0 : dy) };
     };
@@ -365,12 +384,18 @@
           const dy = nodes.get(e.to).cy - a.cy;
           e.side = i === 0 ? 'right' : dy < -2 ? 'top' : 'bottom';
         });
+        // 같은 꼭짓점으로 여러 선이 나가면 꼭짓점 둘레로 비켜 냄
+        for (const side of ['top', 'bottom']) {
+          const g = fw.filter((e) => e.side === side);
+          g.forEach((e, i) => (e.exDx = (i - (g.length - 1) / 2) * 18));
+        }
       } else {
-        const step = Math.min(10, a.h / (fw.length + 1));
+        const step = Math.min(14, (a.h - 8) / Math.max(1, fw.length));
         fw.forEach((e, i) => { e.side = 'right'; e.outDy = (i - (fw.length - 1) / 2) * step; });
       }
     }
     let backK = 0;
+    const toCut = new Set();
     for (const e of vis) {
       const a = nodes.get(e.from), b = nodes.get(e.to);
       const skip = [a, b];
@@ -385,7 +410,7 @@
         e.pts = [S, { x: S.x, y: yE }, { x: xb, y: yE }, { x: xb, y: E.y }, E];
         continue;
       }
-      const S = outPort(a, e.side, e.outDy || 0), E = inPort(b, e.inDy || 0);
+      const S = outPort(a, e.side, e.outDy || 0, e.exDx || 0), E = inPort(b, e.inDy || 0);
       const cands = [];
       const xb = Math.min(gapBefore(b), E.x - 18);
       const rowTop = rowY[b.zone][b.slot], rowBot = rowTop + rowH[b.zone][b.slot];
@@ -401,7 +426,10 @@
         for (const yc of [rowTop - GY / 2, rowBot + GY / 2]) cands.push([S, { x: xa, y: S.y }, { x: xa, y: yc }, { x: xb, y: yc }, { x: xb, y: E.y }, E]);
       }
       e.pts = cands.find((p) => !hits(p, skip)) || cands[cands.length - 1];
+      if (e.pts.length > 4 && b.col - a.col >= 2 && !b.virtual && f.longLines === 'auto' && !opt.cut) toCut.add(e.idx);
     }
+    // 그림을 가로지르는 긴 선이 있으면 그 선만 연결자로 끊어서 다시 그림 (markcont 흐름도 기준)
+    if (toCut.size) return renderFlow(src, uid, { cut: toCut });
 
     // 7) 그리기
     let svg = markers(uid, ['normal', 'yes', 'no']);
@@ -417,19 +445,36 @@
       if (!b.framed) continue;
       const y0 = M + 4, y1 = H - M + 2;
       svg += `<rect class="dg-sec${b.sub ? ' sub' : ''}" x="${r1(b.x0)}" y="${r1(y0)}" width="${r1(b.x1 - b.x0)}" height="${r1(y1 - y0)}" rx="10"/>`;
-      const name = f.secNames.get(sec);
-      svg += `<text class="dg-sec-label" x="${r1(b.x0 + 12)}" y="${r1(y0 + 17)}">${esc(sec)}${name ? ' · ' + esc(name) : ''}</text>`;
+      svg += `<text class="dg-sec-label" x="${r1(b.x0 + 12)}" y="${r1(y0 + 17)}">${esc(secLabel(f, sec))}</text>`;
     }
     for (const e of vis) {
       const kind = e.kind || 'normal';
       svg += `<path class="dg-edge ${kind}" d="${pathD(e.pts)}" marker-end="url(#${uid}-${kind})"/>`;
     }
     for (const n of nodes.values()) svg += flowNode(n, SKEW);
+    const placed = [];
+    const clash = (r) => placed.some((q) => r.x0 < q.x1 && r.x1 > q.x0 && r.y0 < q.y1 && r.y1 > q.y0) ||
+      rects.some((q) => r.x0 < q.x1 - 5 && r.x1 > q.x0 + 5 && r.y0 < q.y1 - 5 && r.y1 > q.y0 + 5);
     for (const e of vis) {
       if (!e.label) continue;
       const [p0, p1] = e.pts;
-      if (Math.abs(p0.y - p1.y) < 0.5) svg += labelBox(e.label, p1.x >= p0.x ? p0.x + 5 : p0.x - 5, p0.y, e.kind, p1.x >= p0.x ? 'start' : 'end');
-      else svg += labelBox(e.label, p0.x, p1.y > p0.y ? p0.y + 14 : p0.y - 14, e.kind, 'middle');
+      const w = textW(e.label, 11, 600) + 10, h = 17;
+      const cands = [];
+      if (Math.abs(p0.y - p1.y) < 0.5) {
+        const dir = p1.x >= p0.x ? 1 : -1;
+        for (const dy of [0, -19, 19, -38, 38, -57, 57]) for (const dx of [5, w + 10]) cands.push({ x: dir > 0 ? p0.x + dx : p0.x - dx - w, y: p0.y + dy - h / 2 });
+      } else {
+        const dir = p1.y > p0.y ? 1 : -1;
+        for (const dy of [14, 34, 54, 74, 94, 114]) for (const dx of [-w / 2, 4, -w - 4]) cands.push({ x: p0.x + dx, y: p0.y + dir * dy - h / 2 });
+      }
+      // 겹치지 않는 자리가 없으면 가장 덜 겹치는 자리
+      const area = (c) => {
+        const r = { x0: c.x, x1: c.x + w, y0: c.y, y1: c.y + h };
+        return placed.reduce((sum, q) => sum + Math.max(0, Math.min(r.x1, q.x1) - Math.max(r.x0, q.x0)) * Math.max(0, Math.min(r.y1, q.y1) - Math.max(r.y0, q.y0)), 0);
+      };
+      const pick = cands.find((c) => !clash({ x0: c.x, x1: c.x + w, y0: c.y, y1: c.y + h })) || cands.reduce((m, c) => (area(c) < area(m) ? c : m), cands[0]);
+      placed.push({ x0: pick.x, x1: pick.x + w, y0: pick.y, y1: pick.y + h });
+      svg += labelBox(e.label, pick.x, pick.y + h / 2, e.kind, 'start');
     }
     for (const n of nodes.values()) {
       if (n.type === 'decision' && n.judge) svg += `<text class="dg-judge" x="${r1(n.cx + n.w / 4 + 6)}" y="${r1(n.cy + n.h / 4 + 12)}">${esc(L('판정: ', 'Rule: ') + n.judge)}</text>`;
@@ -958,10 +1003,9 @@
       used.add(m); mids.set(id, m);
     }
     const hasZones = [...nodes.values()].some((n) => n.zone);
-    const secOf = (id) => (id.includes('-') ? id.slice(0, id.lastIndexOf('-')) : '');
     const secs = [];
-    for (const n of nodes.values()) { n.sec = secOf(n.id); if (!secs.includes(n.sec)) secs.push(n.sec); }
-    const framed = (s) => !!s && (f.secNames.has(s) || secs.length > 1);
+    for (const n of nodes.values()) { n.sec = flowSec(n); if (!secs.includes(n.sec)) secs.push(n.sec); }
+    const framed = (s) => !!s && (f.secNames.has(s) || f.explicit.has(s) || secs.length > 1);
     const label = (n) => {
       const parts = [];
       if (!f.hideCodes && n.type !== 'ref') parts.push('<b>' + (n.type === 'sub' ? '▸ ' : '') + n.id + '</b>');
@@ -985,7 +1029,7 @@
     secs.forEach((sec, i) => {
       const list = [...nodes.values()].filter((n) => n.sec === sec);
       const fr = framed(sec);
-      if (fr) out.push(`  subgraph s${i + 1}[${mq(sec + (f.secNames.get(sec) ? ' · ' + f.secNames.get(sec) : ''))}]`);
+      if (fr) out.push(`  subgraph s${i + 1}[${mq(secLabel(f, sec))}]`);
       for (const n of list) out.push(`${fr ? '    ' : '  '}${mids.get(n.id)}${shape(n)}`);
       if (fr) out.push('  end');
     });

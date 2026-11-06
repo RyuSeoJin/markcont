@@ -13,7 +13,7 @@
 [**📥 내려받기**](https://github.com/RyuSeoJin/markcont/releases/latest) &nbsp;·&nbsp;
 [**📘 사용 안내서**](app/docs/guide.md)
 
-<img src=".github/assets/demo.gif" width="860" alt="markcont 데모: 폴더 트리, 보기 좋은 문서, rsj 흐름도, 입력하는 즉시 바뀌는 미리보기, 다크 모드, 다른 뷰어에서 다르게 보이는 곳 확인">
+<img src=".github/assets/demo.gif" width="860" alt="markcont 데모: 폴더 트리, 보기 좋은 문서, markcont 흐름도, 입력하는 즉시 바뀌는 미리보기, 다크 모드, 다른 뷰어에서 다르게 보이는 곳 확인">
 
 </div>
 
@@ -63,7 +63,7 @@ curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh 
 - GitHub 스타일 화면, 다크 모드, 글자 크기 · 글꼴 · 본문 폭 설정
 - 알림 상자 `> [!NOTE]` 11종(접기 가능), 표, 체크리스트(눌러서 체크), 각주, 형광펜 `==글==`
 - 코드 색상 · 줄 번호 · 복사 · 크게 보기, `diff` 색칠
-- 수식 `$E=mc^2$`, 화학식 `$\ce{H2O}$`, 다이어그램: markcont 방식([rsj 흐름도 규칙](https://github.com/RyuSeoJin/rsj-centralized-control/blob/main/core/base/rules/flowchart.md)의 흐름도 · 주고받는 순서 · 상태 변화 · 일정표)과 Mermaid
+- 수식 `$E=mc^2$`, 화학식 `$\ce{H2O}$`, 다이어그램: markcont 방식(markcont 흐름도 기준의 흐름도 · 주고받는 순서 · 상태 변화 · 일정표)과 Mermaid
 - 위키링크 `[[문서#제목]]`, 동영상 · 유튜브 썸네일
 - 여러 폴더를 함께 여는 작업 공간, 폴더 트리 · 파일 찾기 · 오른쪽 클릭 메뉴, 목차, 제목 접기, 문서 안 찾기, 집중 모드
 - 실시간 편집: 줄 번호와 문법 색이 있는 원본, 지금 고치는 곳 표시, 스크롤 맞춤

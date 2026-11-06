@@ -205,7 +205,7 @@ console.log("Hello");
 
 ### 7-2. Diagrams (markcont style)
 
-Diagrams that markcont draws itself. Flowcharts follow the [**rsj flowchart rules**](https://github.com/RyuSeoJin/rsj-centralized-control/blob/main/core/base/rules/flowchart.md): the user zone is on top and the system zone below, each shape has a fixed meaning, and the flow runs left to right. Lines are horizontal or vertical only, and a decision's **Yes is blue and No is red**.
+Diagrams that markcont draws itself. Flowcharts follow the **markcont flowchart standard**: the user zone is on top and the system zone below, each shape has a fixed meaning, and the flow runs left to right. Lines are horizontal or vertical only, and a decision's **Yes is blue and No is red**.
 
 | Code block language | Kind | Use for |
 |:---|:---|:---|
@@ -219,7 +219,7 @@ Diagrams that markcont draws itself. Flowcharts follow the [**rsj flowchart rule
 
 #### Flowchart: write it as a table
 
-Write each shape as **one table row**. You can paste an [rsj node table](https://github.com/RyuSeoJin/rsj-centralized-control/blob/main/core/modules/workflow-explorer/design-template/workflow-explorer-node-table-sample.md) as-is. The header row is optional; without it, columns are read as `code | zone | shape | text | goes to | rule`.
+Write each shape as **one table row**. You can paste a node table from a planning document as-is (unknown columns are ignored). The header row is optional; without it, columns are read as `code | zone | shape | text | goes to | rule`.
 
 | Column | How to write | Example |
 |:---|:---|:---|
@@ -229,6 +229,7 @@ Write each shape as **one table row**. You can paste an [rsj node table](https:/
 | Text | Text inside the shape. Use `<br>` for a line break | `Signed in?` |
 | Goes to | `→ code`. Separate several branches with `/` | `yes → S1-03 / no → S1-04` |
 | Rule | Shown small next to a decision as "Rule: …" | `user.signedIn` |
+| Section (optional) | A section name, independent of the code | `Receive` |
 
 | Shape name | Looks like | Meaning |
 |:---|:---|:---|
@@ -275,7 +276,7 @@ Write **the code of an earlier shape** in "goes to". One column back is drawn as
 
 #### Grouping: split into sections
 
-Shapes whose codes share a prefix form **one section** inside a frame. Name a section with a `# code name` line. Links to another section are cut with a **"→ code" connector** instead of a long line, and a section opened by a `sub` shape is drawn with a **dashed frame** (sub-flow).
+Shapes whose codes share a prefix form **one section** inside a frame. Name a section with a `# code name` line. If codes have no prefix (like `N1` · `N23`), group them yourself: list the codes on a section line such as **`# Receive: N9 N10 N11`**, or add a `section` column to the table. Links to another section are cut with a **"→ code" connector** instead of a long line, and a section opened by a `sub` shape is drawn with a **dashed frame** (sub-flow).
 
 ````markdown example
 ```flow
@@ -383,9 +384,11 @@ Testing: 3d, crit
 1. Flows run **left → right**. The main path stays straight; branches stack in new rows (up in the user zone, down in the system zone).
 2. A decision asks one question, and its branches are labeled **yes · no**.
 3. User actions (tap, type, close) are **user-zone shapes**; automatic processing and screens go in the system zone.
-4. Use connectors ("→ code" · "↩ code") to jump to another section or far back. A connector shows the target's code and text.
-5. Mark guessed shapes or links with "(guess)" at the end of the text.
-6. If something is written wrong, the diagram area shows **which line is wrong and why**.
+4. Links to another section, links going two or more columns back, and **long lines that would cut across the chart** become connectors ("→ code" · "↩ code") automatically. A connector shows the target's code and text. Add a `cut long lines` line to cut every link that skips two or more columns, or `keep long lines` to never cut them.
+5. When a shape has many branches, the lines spread around its corners and their labels are moved so they don't overlap.
+6. Mark guessed shapes or links with "(guess)" at the end of the text.
+7. If something is written wrong, the diagram area shows **which line is wrong and why**.
+8. For a big chart, use **⤢** at the top right to enlarge it: wheel or pinch to zoom, drag to pan, and "Fit to screen".
 
 ---
 
@@ -847,6 +850,12 @@ tags:
 
 - Wrap lines in `---` starting from the **very first line** of the document, and they're shown neatly in a **document info** box above the text.
 - Write one `name: value` per line, and list items as `  - item`.
+- These names also work as markcont view options. They never change the text itself.
+
+| name: value | What it does |
+|:---|:---|
+| `badges: done=green, pending=orange, open=red` | Table cells that start with those words show as colored badges (blue · green · orange · red · purple · gray) |
+| `viewer: markcont` | A markcont-only document: hides the "⚠ spots look different in other viewers" notice |
 
 ### Line breaks
 

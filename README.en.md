@@ -13,7 +13,7 @@ Web · Windows · macOS · Linux
 [**📥 Download**](https://github.com/RyuSeoJin/markcont/releases/latest) &nbsp;·&nbsp;
 [**📘 User guide**](app/docs/guide.en.md)
 
-<img src=".github/assets/demo.gif" width="860" alt="markcont demo: folder tree, nicely formatted documents, an rsj flowchart, a preview that updates as you type, dark mode, checking spots that look different in other viewers">
+<img src=".github/assets/demo.gif" width="860" alt="markcont demo: folder tree, nicely formatted documents, a markcont flowchart, a preview that updates as you type, dark mode, checking spots that look different in other viewers">
 
 </div>
 
@@ -63,7 +63,7 @@ curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh 
 - GitHub-style display, dark mode, text size · font · body width settings
 - 11 kinds of callouts `> [!NOTE]` (foldable), tables, task lists (click to check), footnotes, highlight `==text==`
 - Code highlighting · line numbers · copy · enlarge, `diff` coloring
-- Math `$E=mc^2$`, chemical formulas `$\ce{H2O}$`, diagrams: markcont style ([rsj-rule](https://github.com/RyuSeoJin/rsj-centralized-control/blob/main/core/base/rules/flowchart.md) flowcharts, message order, state changes, timelines) and Mermaid
+- Math `$E=mc^2$`, chemical formulas `$\ce{H2O}$`, diagrams: markcont style (markcont-standard flowcharts, message order, state changes, timelines) and Mermaid
 - Wikilinks `[[document#heading]]`, video · YouTube thumbnails
 - A workspace that opens several folders together, folder tree · file search · right-click menu, table of contents, heading folding, find in document, focus mode
 - Live editing: source with line numbers and syntax colors, a marker for where you're editing, scroll sync
