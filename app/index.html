@@ -600,6 +600,7 @@ body.zen .zen-exit:hover { opacity: 1; }
 }
 .modal-head { display: flex; align-items: center; gap: 8px; padding: 12px 12px 10px 16px; border-bottom: 1px solid var(--border); }
 .modal-head .seg { width: min(360px, 100%); }
+.modal-title { font-weight: 700; font-size: 15px; }
 .modal-head .btn { margin-left: auto; }
 .modal-body { overflow: auto; padding: 12px 16px; min-height: 120px; }
 .modal-foot { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--border); }
@@ -841,6 +842,9 @@ body.zen .zen-exit:hover { opacity: 1; }
           <label class="check-row"><input type="checkbox" id="optLines"><span>코드 줄 번호 보기</span></label>
         </div>
         <div class="set-row">
+          <label class="check-row"><input type="checkbox" id="optConfirmSave"><span>저장하기 전에 바뀐 내용 확인<small>저장할 때 무엇이 바뀌는지 먼저 보여주고 한 번 더 묻습니다</small></span></label>
+        </div>
+        <div class="set-row">
           <label class="check-row"><input type="checkbox" id="optBreaks"><span>엔터 한 번도 줄바꿈으로 보기<small>Obsidian, Typora처럼 쓴 그대로 줄을 나눕니다</small></span></label>
         </div>
         <div class="set-row">
@@ -1068,6 +1072,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   <div class="modal-card" role="dialog" aria-modal="true" aria-label="바뀐 내용">
     <div class="modal-head">
       <div class="seg" id="chgTabs"><button data-v="diff">저장 후 바뀐 내용</button><button data-v="hist">되돌리기 기록</button></div>
+      <div class="modal-title" id="chgTitle" hidden>저장 전에 바뀐 내용 확인</div>
       <button class="btn icon ghost" id="chgClose" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </div>
     <div class="modal-body" id="chgBody"></div>
@@ -1147,7 +1152,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   /* =========================================================
      설정 (글자 크기, 글꼴, 폭, 줄바꿈, 스크롤 맞춤)
      ========================================================= */
-  const settings = Object.assign({ size: 16.5, font: 'sans', width: 'normal', breaks: false, sync: true, callout: 'soft', lines: false }, store.json('mdv-settings', {}));
+  const settings = Object.assign({ size: 16.5, font: 'sans', width: 'normal', breaks: false, sync: true, callout: 'soft', lines: false, confirmSave: true }, store.json('mdv-settings', {}));
   const WIDTHS = { narrow: '680px', normal: '820px', wide: '1060px' };
   let serifLoaded = false;
   function applySettings(rerender) {
@@ -1168,6 +1173,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     document.querySelectorAll('#widthSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === settings.width));
     document.querySelectorAll('#calloutSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === settings.callout));
     $('#optLines').checked = settings.lines;
+    $('#optConfirmSave').checked = settings.confirmSave;
     $('#optBreaks').checked = settings.breaks;
     $('#optSync').checked = settings.sync;
     store.set('mdv-settings', JSON.stringify(settings));
@@ -1181,6 +1187,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   $('#widthSeg').onclick = (e) => { if (e.target.dataset.v) { settings.width = e.target.dataset.v; applySettings(); } };
   $('#calloutSeg').onclick = (e) => { const v = e.target.closest('button')?.dataset.v; if (v) { settings.callout = v; applySettings(true); } };
   $('#optLines').onchange = (e) => { settings.lines = e.target.checked; applySettings(true); };
+  $('#optConfirmSave').onchange = (e) => { settings.confirmSave = e.target.checked; applySettings(); };
   $('#optBreaks').onchange = (e) => { settings.breaks = e.target.checked; applySettings(true); };
   $('#optSync').onchange = (e) => { settings.sync = e.target.checked; applySettings(); };
 
@@ -3486,7 +3493,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       const ra = $('#chgRevertAll');
       if (ra) ra.onclick = () => { if (confirm('저장한 뒤 고친 내용을 모두 되돌릴까요? (Ctrl+Z 로 다시 살릴 수 있습니다)')) { replaceAll(savedText(), '모두 되돌리기'); toast('저장한 상태로 되돌렸습니다'); renderChanges(); } };
       const sv = $('#chgSave');
-      if (sv) sv.onclick = async () => { await save(); renderChanges(); };
+      if (sv) sv.onclick = async () => { await save({ skipConfirm: true }); renderChanges(); };
       return;
     }
     // 되돌리기 기록
@@ -3506,6 +3513,45 @@ body.zen .zen-exit:hover { opacity: 1; }
     const rs = $('#chgRestore');
     if (rs) rs.onclick = () => { replaceAll(sel.text, fmtTime(sel.t) + ' 로 되돌림'); chg.pick = 1; toast(fmtTime(sel.t) + ' 시점으로 되돌렸습니다 (Ctrl+Z 로 취소)'); renderChanges(); };
   }
+  // 저장 전 확인: 'save' | 'saveAs' | 'cancel' 를 돌려줌
+  let confirmResolve = null;
+  function confirmSave(mode) {
+    return new Promise((resolve) => {
+      confirmResolve = resolve;
+      const cur = state.current;
+      const where = mode === 'over'
+        ? (canOverwrite(cur) ? `<b>${escapeHtml(cur.tauriPath || cur.path)}</b> 에 저장하면 아래처럼 바뀝니다.` : '원래 위치를 몰라서 <b>새 파일</b>로 저장하게 됩니다.')
+        : '지금 내용을 <b>새 파일</b>로 저장합니다. 원래 파일은 그대로입니다. 마지막 저장 뒤 바뀐 곳:';
+      $('#chgTabs').hidden = true;
+      $('#chgTitle').hidden = false;
+      $('#chgBody').innerHTML = `<p class="chg-help">${where} <span class="chg-del">− 지운 줄</span> · <span class="chg-add">+ 새로 쓴 줄</span></p>` + diffHtml(savedText(), el.editor.value);
+      $('#chgFoot').innerHTML =
+        '<label class="check-row" style="font-size:12.5px;margin-right:auto"><input type="checkbox" id="chgNoAsk"><span>다음부터 묻지 않기</span></label>' +
+        '<button class="btn" data-r="cancel">취소</button>' +
+        (mode === 'over' ? '<button class="btn" data-r="saveAs">새 파일로 저장…</button>' : '') +
+        `<button class="btn primary" data-r="save">${mode === 'over' ? '저장' : '저장 위치 고르기…'}</button>`;
+      $('#chgFoot').querySelectorAll('[data-r]').forEach((b) => (b.onclick = () => finishConfirm(b.dataset.r)));
+      $('#changesModal').hidden = false;
+      $('#chgFoot [data-r="save"]').focus();
+    });
+  }
+  function finishConfirm(result) {
+    if (result !== 'cancel' && $('#chgNoAsk') && $('#chgNoAsk').checked) {
+      settings.confirmSave = false;
+      applySettings();
+      setTimeout(() => toast('저장 전 확인을 껐습니다. 보기 설정(Aa)에서 다시 켤 수 있어요.', 3500), 1200);
+    }
+    $('#changesModal').hidden = true;
+    $('#chgTitle').hidden = true;
+    $('#chgTabs').hidden = false;
+    const res = confirmResolve;
+    confirmResolve = null;
+    if (res) res(result);
+    el.editor.focus({ preventScroll: true });
+  }
+  // 확인이 필요한지: 설정이 켜져 있고, 저장한 내용과 다를 때
+  const needConfirm = () => settings.confirmSave && state.current && savedText() !== el.editor.value;
+
   function openChanges(tab) {
     if (!state.current) return;
     if (!state.editing) setEditing(true);
@@ -3514,7 +3560,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     $('#changesModal').hidden = false;
     renderChanges();
   }
-  function closeChanges() { $('#changesModal').hidden = true; el.editor.focus({ preventScroll: true }); }
+  function closeChanges() { if (confirmResolve) { finishConfirm('cancel'); return; } $('#changesModal').hidden = true; el.editor.focus({ preventScroll: true }); }
   $('#chgTabs').onclick = (e) => { const v = e.target.closest('button')?.dataset.v; if (v) { chg.tab = v; chg.pick = -1; renderChanges(); } };
   $('#chgClose').onclick = closeChanges;
   $('#changesModal').addEventListener('click', (e) => { if (e.target.id === 'changesModal') closeChanges(); });
@@ -3522,6 +3568,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   $('#btnChanges').onclick = () => openChanges();
   window.addEventListener('keydown', (e) => {
     if (!$('#changesModal').hidden && e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); closeChanges(); }
+    else if (confirmResolve && e.key === 'Enter' && !e.isComposing && !(e.target.closest && e.target.closest('button, input'))) { e.preventDefault(); e.stopImmediatePropagation(); finishConfirm('save'); }
     else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'h' && state.current) { e.preventDefault(); openChanges('hist'); }
   }, true);
 
@@ -3628,9 +3675,14 @@ body.zen .zen-exit:hover { opacity: 1; }
     const n = (e && e.name) || '새 문서.md';
     return MD_EXT.test(n) ? n : n + '.md';
   }
-  async function saveAs({ reason } = {}) {
+  async function saveAs({ reason, skipConfirm = false } = {}) {
     const cur = state.current;
     if (!cur) return;
+    if (!skipConfirm && needConfirm()) {
+      const r = await confirmSave('as');
+      if (r === 'cancel') return;
+      reason = null;
+    }
     const text = source();
     if (reason) toast(reason, 2600);
     try {
@@ -3699,9 +3751,14 @@ body.zen .zen-exit:hover { opacity: 1; }
     toast(`새 파일로 저장했습니다: ${entry.path}` + (old && old !== entry && (old.handle || old.tauriPath) ? ' (원래 파일은 그대로)' : ''), 3500);
   }
 
-  async function save({ quiet = false } = {}) {
+  async function save({ quiet = false, skipConfirm = false } = {}) {
     const cur = state.current;
     if (!cur) return;
+    if (!quiet && !skipConfirm && needConfirm()) {
+      const r = await confirmSave('over');
+      if (r === 'cancel') return;
+      if (r === 'saveAs' || !canOverwrite(cur)) return saveAs({ skipConfirm: true });
+    }
     const text = source();
     let saved = false;
     if (cur.tauriPath && tauriInvoke) {
@@ -3727,7 +3784,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     }
     if (!saved) {
       if (quiet) return;
-      return saveAs({ reason: '원래 파일 위치를 알 수 없어서 새 파일로 저장합니다' });
+      return saveAs({ reason: '원래 파일 위치를 알 수 없어서 새 파일로 저장합니다', skipConfirm: skipConfirm || settings.confirmSave });
     }
     cur.text = text;
     state.dirty = false;
