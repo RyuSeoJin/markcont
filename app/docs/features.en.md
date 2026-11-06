@@ -124,4 +124,4 @@ Review: 2d
 - To a heading in this document: [[#3. Task lists]]
 - A YouTube link on its own line becomes a thumbnail:
 
-https://www.youtube.com/watch?v=jNQXAC9IVRw
+https://youtu.be/SEgHM748yrE?si=HsLb-OZOiQqXq3ng

@@ -124,4 +124,4 @@ markcont --> 나: 바뀐 곳 표시
 - 이 문서 안의 제목으로: [[#3. 체크리스트]]
 - 유튜브 링크만 따로 쓰면 썸네일이 됩니다:
 
-https://www.youtube.com/watch?v=jNQXAC9IVRw
+https://youtu.be/SEgHM748yrE?si=HsLb-OZOiQqXq3ng
