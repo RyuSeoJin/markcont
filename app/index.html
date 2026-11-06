@@ -1132,27 +1132,15 @@ body.zen .zen-exit:hover { opacity: 1; }
         <div class="features-wrap">
           <div class="features-head">markcont로 할 수 있는 것</div>
           <div class="features">
-          <button class="feat" type="button" data-feat>
-            <span class="feat-ico">📖</span>
-            <span class="feat-text"><b>보기 좋게</b><span>알림 상자 · 표 · 체크리스트 · 코드 색상을 GitHub 스타일로</span></span>
-          </button>
-          <button class="feat" type="button" data-feat>
+          <button class="feat" type="button" data-feat="features">
             <span class="feat-ico">✏️</span>
             <span class="feat-text"><b>실시간 편집</b><span>원본과 결과를 나란히, 고친 곳 표시와 되돌리기 기록</span></span>
           </button>
-          <button class="feat" type="button" data-feat>
-            <span class="feat-ico">📁</span>
-            <span class="feat-text"><b>폴더 작업 공간</b><span>여러 폴더를 트리로 쌓아 보고, 새 문서 · 이름 바꾸기 · 삭제</span></span>
+          <button class="feat" type="button" data-feat="rules">
+            <span class="feat-ico">🤖</span>
+            <span class="feat-text"><b>AI로 보기 좋게 다듬기</b><span>작성 규칙을 AI에게 주거나 Claude와 연결해서 문서 정리</span></span>
           </button>
-          <button class="feat" type="button" data-feat>
-            <span class="feat-ico">∑</span>
-            <span class="feat-text"><b>수식 · 다이어그램</b><span>수식 · 화학식, 분기와 반복이 있는 흐름도</span></span>
-          </button>
-          <button class="feat" type="button" data-feat>
-            <span class="feat-ico">🔍</span>
-            <span class="feat-text"><b>찾기 · 목차</b><span>목차와 제목 접기, 문서 안 찾기, 집중 모드</span></span>
-          </button>
-          <button class="feat" type="button" data-feat>
+          <button class="feat" type="button" data-feat="guide#save">
             <span class="feat-ico">💾</span>
             <span class="feat-text"><b>저장 · 내보내기</b><span>저장 전 확인, 새 파일로 저장, PDF · HTML</span></span>
           </button>
@@ -4439,7 +4427,15 @@ ${clone.innerHTML}
   $('#mGuide').onclick = () => openBuiltinDoc('guide');
   $('#wGuide').onclick = () => openBuiltinDoc('guide');
   $('#wFeatures').onclick = () => openBuiltinDoc('features');
-  document.querySelectorAll('[data-feat]').forEach((b) => (b.onclick = () => openBuiltinDoc('features')));
+  // 처음 화면 카드: 카드마다 맞는 안내 문서 (· 그 안의 제목)로
+  const FEAT_HEADING = { save: L('5️⃣ 저장과 내보내기', '5️⃣ Saving and exporting') };
+  document.querySelectorAll('[data-feat]').forEach((b) => (b.onclick = async () => {
+    const [key, part] = (b.dataset.feat || 'features').split('#');
+    const ok = await openBuiltinDoc(key);
+    if (!ok || !part) return;
+    const id = slugify(FEAT_HEADING[part] || part);
+    [80, 700, 1500].forEach((ms) => setTimeout(() => { const t = document.getElementById(id); if (t) { unfoldTo(t); t.scrollIntoView({ block: 'start' }); } }, ms));
+  }));
   $('#mRules').onclick = () => openBuiltinDoc('rules');
   $('#mLicenses').onclick = () => openBuiltinDoc('licenses');
 
