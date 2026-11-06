@@ -504,8 +504,18 @@ body.resizing { cursor: col-resize; user-select: none; }
   position: absolute; left: -10000px; top: 0; visibility: hidden; white-space: pre-wrap; overflow-wrap: break-word; box-sizing: border-box;
 }
 .preview-pane { overflow-y: auto; min-height: 0; padding: 44px 40px 120px; position: relative; }
-.doc-meta { max-width: var(--doc-width, 820px); margin: 0 auto 28px; font-size: 13px; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
-.doc-meta span + span::before { content: "·"; margin-right: 10px; }
+.doc-meta { max-width: var(--doc-width, 820px); margin: 0 auto 28px; font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+.meta-loc { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.meta-loc .loc-text { color: var(--text); font-weight: 600; overflow-wrap: anywhere; }
+.meta-btn {
+  border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 6px; font-size: 12px;
+  padding: 1px 8px; cursor: pointer;
+}
+.meta-btn:hover { color: var(--accent); border-color: var(--accent); }
+.meta-facts { display: flex; gap: 10px; flex-wrap: wrap; }
+.meta-facts span + span::before { content: "·"; margin-right: 10px; }
+.meta-note { font-size: 12.5px; line-height: 1.6; padding: 6px 10px; border-radius: 8px; background: var(--surface-2); }
+.tree-row .nm .row-sub { display: block; font-size: 11px; color: var(--muted); font-weight: 400; overflow: hidden; text-overflow: ellipsis; }
 
 /* 제목 옆 도구: 링크 복사, 접기 */
 .h-tools { display: inline-flex; gap: 2px; margin-left: .35em; vertical-align: middle; opacity: 0; transition: opacity .15s; }
@@ -539,8 +549,23 @@ body.resizing { cursor: col-resize; user-select: none; }
 .welcome-card .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .welcome-card .btn { height: 40px; padding: 0 18px; font-size: 14.5px; }
 .welcome-icon { width: 56px; height: 56px; color: var(--accent); }
-.features { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 28px; }
-.features span { font-size: 12.5px; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+.features-wrap { margin-top: 30px; padding-top: 22px; border-top: 1px solid var(--border); text-align: left; }
+.features-head { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .04em; margin: 0 0 10px 4px; }
+.features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.feat {
+  display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 12px;
+  background: var(--surface-2); text-align: left; cursor: pointer; transition: border-color .15s, transform .15s;
+}
+.feat:hover { border-color: var(--accent); transform: translateY(-1px); }
+.feat-ico { font-size: 20px; line-height: 1; flex: none; width: 24px; text-align: center; margin-top: 1px; }
+.feat-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.feat-text b { font-size: 13.5px; }
+.feat-text span { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.features-links { display: flex; gap: 14px; justify-content: center; margin-top: 14px; }
+.features-links button { border: 0; background: none; color: var(--accent); font-size: 13px; cursor: pointer; padding: 2px 4px; }
+.features-links button:hover { text-decoration: underline; }
+@media (max-width: 700px) { .features { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .features { grid-template-columns: minmax(0, 1fr); } }
 .recent { margin-top: 26px; text-align: left; }
 .recent h2 { font-size: 12px; color: var(--muted); font-weight: 700; margin: 0 0 6px 4px; letter-spacing: .04em; }
 .recent button {
@@ -972,10 +997,38 @@ body.zen .zen-exit:hover { opacity: 1; }
           <button class="btn" id="wNew">새 문서 쓰기</button>
         </div>
         <div class="recent" id="recent" hidden></div>
-        <div class="features">
-          <span>목차 · 제목 접기</span><span>알림 상자 [!NOTE]</span><span>각주</span><span>표 · 체크리스트</span>
-          <span>코드 색상</span><span>수식</span><span>Mermaid</span><span>위키링크 [[ ]]</span><span>동영상 · 유튜브</span>
-          <span>편집 도구 · 스크롤 맞춤</span><span>바뀐 파일 자동 새로고침</span><span>집중 모드</span><span>PDF · HTML 내보내기</span>
+        <div class="features-wrap">
+          <div class="features-head">markcont로 할 수 있는 것</div>
+          <div class="features">
+          <button class="feat" type="button" data-feat>
+            <span class="feat-ico">📖</span>
+            <span class="feat-text"><b>보기 좋게</b><span>알림 상자 · 표 · 체크리스트 · 코드 색상을 GitHub 스타일로</span></span>
+          </button>
+          <button class="feat" type="button" data-feat>
+            <span class="feat-ico">✏️</span>
+            <span class="feat-text"><b>실시간 편집</b><span>원본과 결과를 나란히, 고친 곳 표시와 되돌리기 기록</span></span>
+          </button>
+          <button class="feat" type="button" data-feat>
+            <span class="feat-ico">📁</span>
+            <span class="feat-text"><b>폴더 작업 공간</b><span>여러 폴더를 트리로 쌓아 보고, 새 문서 · 이름 바꾸기 · 삭제</span></span>
+          </button>
+          <button class="feat" type="button" data-feat>
+            <span class="feat-ico">∑</span>
+            <span class="feat-text"><b>수식 · 다이어그램</b><span>수식 · 화학식, 분기와 반복이 있는 흐름도</span></span>
+          </button>
+          <button class="feat" type="button" data-feat>
+            <span class="feat-ico">🔍</span>
+            <span class="feat-text"><b>찾기 · 목차</b><span>목차와 제목 접기, 문서 안 찾기, 집중 모드</span></span>
+          </button>
+          <button class="feat" type="button" data-feat>
+            <span class="feat-ico">💾</span>
+            <span class="feat-text"><b>저장 · 내보내기</b><span>저장 전 확인, 새 파일로 저장, PDF · HTML</span></span>
+          </button>
+          </div>
+          <div class="features-links">
+            <button type="button" id="wFeatures">기능 예제 열어 보기 →</button>
+            <button type="button" id="wGuide">사용 안내서 →</button>
+          </div>
         </div>
         <div class="notice" id="libNotice" hidden>인터넷에 연결되지 않아 변환 라이브러리를 불러오지 못했습니다. 인터넷 연결 후 새로고침해 주세요.</div>
       </div>
@@ -2078,14 +2131,64 @@ body.zen .zen-exit:hover { opacity: 1; }
     $('#tocEmpty').hidden = !el.tocSection.hidden;
   }
 
+  // 이 문서가 어디에 있는 파일인지 (열린 방식에 따라 알 수 있는 만큼)
+  function describeLocation(e) {
+    if (!e) return {};
+    const dirOf = (p) => p.replace(/[\\/][^\\/]*$/, '');
+    if (e.builtin) return { icon: '📘', short: 'markcont 안내 문서', note: '앱에 들어 있는 문서입니다. 고친 내용은 새 파일로 저장됩니다.' };
+    if (e.isNew) return { icon: '📝', short: '아직 저장하지 않은 새 문서', note: '저장하면 위치를 정할 수 있습니다.' };
+    if (e.tauriPath) return { icon: '📁', short: dirOf(e.tauriPath), full: e.tauriPath, reveal: true };
+    if (!e.loose) {
+      const r = rootOf(e.path);
+      return { icon: '📁', short: e.path, full: e.path, note: r && r.kind === 'handle' ? `'${r.name}' 폴더 안의 파일입니다. 그 폴더가 컴퓨터의 어디에 있는지는 브라우저가 알려주지 않습니다.` : '' };
+    }
+    if (e.handle) return { icon: '📄', short: e.name, note: 'Chrome · Edge는 보안 때문에 파일의 전체 위치를 알려주지 않습니다. 그 파일이 든 폴더를 "폴더 열기"로 열면 트리에서 위치를 볼 수 있고, PC 프로그램에서는 전체 경로가 보입니다.' };
+    if (e.fromRecent) return { icon: '🕘', short: '최근 문서 기록', note: '마지막으로 열었을 때 기록해 둔 내용입니다. 원래 파일과 연결되어 있지 않아서, 저장하면 새 파일로 저장됩니다.' };
+    if (e.file) return { icon: '📄', short: e.name + ' (복사본)', note: '원래 파일 위치를 알 수 없는 방식으로 열렸습니다. 저장하면 새 파일로 저장됩니다. "파일 열기" 단추로 다시 열면 원래 파일에 저장할 수 있습니다.' };
+    return { icon: '📄', short: e.path };
+  }
+  function fmtModified(t) {
+    if (!t) return '';
+    const d = new Date(t), now = new Date();
+    const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    return d.toDateString() === now.toDateString() ? `오늘 ${hm}` : `${d.getFullYear() !== now.getFullYear() ? d.getFullYear() + '년 ' : ''}${d.getMonth() + 1}월 ${d.getDate()}일 ${hm}`;
+  }
   function updateMeta(src) {
     const chars = src.replace(/data:[\w/+.-]+;base64,[A-Za-z0-9+/=]+/g, '').replace(/\s/g, '').length;
     const minutes = Math.max(1, Math.round(chars / 500));
+    const cur = state.current, loc = describeLocation(cur);
     el.docMeta.innerHTML = '';
-    for (const t of [state.current.path, `${chars.toLocaleString()}자`, `약 ${minutes}분 분량`]) {
-      const s = document.createElement('span');
-      s.textContent = t;
-      el.docMeta.append(s);
+    const line = document.createElement('div');
+    line.className = 'meta-loc';
+    line.innerHTML = `<span class="loc-icon">${loc.icon || '📄'}</span><span class="loc-text"></span>`;
+    line.querySelector('.loc-text').textContent = loc.short || cur.path;
+    line.title = loc.full || loc.short || cur.path;
+    if (loc.full) {
+      const b = document.createElement('button');
+      b.className = 'meta-btn'; b.type = 'button'; b.textContent = '경로 복사';
+      b.onclick = () => copyText(loc.full).then(() => toast('경로를 복사했습니다: ' + loc.full));
+      line.append(b);
+    }
+    if (loc.reveal && window.__TAURI__) {
+      const b = document.createElement('button');
+      b.className = 'meta-btn'; b.type = 'button'; b.textContent = '폴더에서 보기';
+      b.onclick = () => window.__TAURI__.core.invoke('reveal_in_folder', { path: cur.tauriPath }).catch((e) => toast('폴더를 열지 못했습니다: ' + e));
+      line.append(b);
+    }
+    el.docMeta.append(line);
+    const facts = document.createElement('div');
+    facts.className = 'meta-facts';
+    for (const t of [cur.lastModified ? '마지막 수정 ' + fmtModified(cur.lastModified) : '', `${chars.toLocaleString()}자`, `약 ${minutes}분 분량`].filter(Boolean)) {
+      const sp = document.createElement('span');
+      sp.textContent = t;
+      facts.append(sp);
+    }
+    el.docMeta.append(facts);
+    if (loc.note) {
+      const n = document.createElement('div');
+      n.className = 'meta-note';
+      n.textContent = 'ⓘ ' + loc.note;
+      el.docMeta.append(n);
     }
   }
 
@@ -2093,6 +2196,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     el.docTitle.textContent = '';
     if (!state.current) return;
     el.docTitle.textContent = state.current.path;
+    { const l = describeLocation(state.current); el.docTitle.title = l.full || [l.short, l.note].filter(Boolean).join('\n'); }
     if (state.dirty) {
       const d = document.createElement('span');
       d.className = 'dirty';
@@ -2246,7 +2350,17 @@ body.zen .zen-exit:hover { opacity: 1; }
         g.textContent = '따로 연 파일';
         frag.append(g);
       }
-      for (const f of looseShown) { frag.append(treeRow({ kind: 'file', name: f.name, path: f.path, depth: 0, entry: f })); shown++; }
+      for (const f of looseShown) {
+        const row = treeRow({ kind: 'file', name: f.name, path: f.path, depth: 0, entry: f });
+        const l = describeLocation(f);
+        const sub = document.createElement('small');
+        sub.className = 'row-sub';
+        sub.textContent = f.tauriPath ? l.short : l.short === f.name ? '위치는 브라우저가 알려주지 않음' : l.short;
+        row.querySelector('.nm').append(sub);
+        row.title = l.full || [f.name, l.note].filter(Boolean).join('\n');
+        frag.append(row);
+        shown++;
+      }
     }
     if (q && !shown) {
       const p = document.createElement('div');
@@ -2346,7 +2460,8 @@ body.zen .zen-exit:hover { opacity: 1; }
         row.querySelector('.more').remove();
         row.onclick = () => {
           let entry = state.files.find((f) => f.path === r.name);
-          if (!entry) { entry = { name: baseName(r.name), path: r.name, text: r.text, loose: true }; state.files.push(entry); }
+          if (!entry && r.tauriPath && window.__TAURI__) { openTauriPaths([r.tauriPath]); return; }
+          if (!entry) { entry = { name: baseName(r.name), path: r.name, text: r.text, loose: true, fromRecent: true }; state.files.push(entry); }
           openEntry(entry);
         };
         rs.append(row);
@@ -2818,8 +2933,31 @@ body.zen .zen-exit:hover { opacity: 1; }
   });
   $('#sideResizer').addEventListener('dblclick', () => { document.documentElement.style.removeProperty('--side-w'); store.set('mdv-side-w', ''); });
 
-  function addFiles(entries, replace) {
+  async function inWorkspace(e) {
+    for (const r of state.roots) {
+      try {
+        if (e.handle && r.kind === 'handle' && r.handle.resolve) {
+          const segs = await r.handle.resolve(e.handle);
+          if (segs && segs.length) return state.files.find((f) => !f.loose && f.path === r.key + '/' + segs.join('/')) || null;
+        }
+        if (e.tauriPath && r.kind === 'tauri') {
+          const base = r.path.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase() + '/';
+          const full = e.tauriPath.replace(/\\/g, '/');
+          if (full.toLowerCase().startsWith(base)) return state.files.find((f) => !f.loose && f.path === r.key + '/' + full.slice(base.length)) || null;
+        }
+      } catch {}
+    }
+    return null;
+  }
+  async function addFiles(entries, replace) {
     if (!entries.length) { toast('마크다운 파일(.md)을 찾지 못했습니다'); return; }
+    if (!replace && state.roots.length) {
+      const kept = [];
+      let hit = null;
+      for (const e of entries) { const w = await inWorkspace(e); if (w) hit = hit || w; else kept.push(e); }
+      if (hit && !kept.length) { toast('열어 둔 폴더 안의 파일이라 그 폴더에서 엽니다'); openEntry(hit); return; }
+      entries = kept.length ? kept : entries;
+    }
     if (replace) { state.files = []; state.hist = []; state.histPos = -1; }
     for (const e of entries) {
       e.loose = true; // 폴더와 상관없이 따로 연 파일
@@ -2889,7 +3027,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   /* ---------- 최근 문서 ---------- */
   function remember(entry) {
     let list = store.json('mdv-recent', []).filter((r) => r.name !== entry.path);
-    if (entry.text.length < 300000) list.unshift({ name: entry.path, text: entry.text, time: Date.now() });
+    if (entry.text.length < 300000) list.unshift({ name: entry.path, text: entry.text, time: Date.now(), tauriPath: entry.tauriPath || undefined });
     list = list.slice(0, 6);
     while (list.length && !store.set('mdv-recent', JSON.stringify(list))) list.pop();
   }
@@ -2911,7 +3049,8 @@ body.zen .zen-exit:hover { opacity: 1; }
       b.title = '마지막으로 열었을 때 저장해 둔 내용을 보여줍니다';
       b.onclick = () => {
         let entry = state.files.find((f) => f.path === r.name);
-        if (!entry) { entry = { name: baseName(r.name), path: r.name, text: r.text }; state.files.push(entry); }
+        if (!entry && r.tauriPath && window.__TAURI__) { openTauriPaths([r.tauriPath]); return; }
+        if (!entry) { entry = { name: baseName(r.name), path: r.name, text: r.text, loose: true, fromRecent: true }; state.files.push(entry); }
         openEntry(entry);
       };
       box.append(b);
@@ -2999,7 +3138,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     let n = 1;
     while (state.files.some((f) => f.path === (n === 1 ? '새 문서.md' : `새 문서 ${n}.md`))) n++;
     const name = n === 1 ? '새 문서.md' : `새 문서 ${n}.md`;
-    const entry = { name, path: name, text: '', loose: true };
+    const entry = { name, path: name, text: '', loose: true, isNew: true };
     state.files.push(entry);
     openEntry(entry).then((ok) => {
       if (!ok) return;
@@ -4002,6 +4141,9 @@ ${clone.innerHTML}
     try { return await openEntry(entry); } catch { return false; }
   }
   $('#mGuide').onclick = () => openBuiltinDoc('guide');
+  $('#wGuide').onclick = () => openBuiltinDoc('guide');
+  $('#wFeatures').onclick = () => openBuiltinDoc('features');
+  document.querySelectorAll('[data-feat]').forEach((b) => (b.onclick = () => openBuiltinDoc('features')));
   $('#mRules').onclick = () => openBuiltinDoc('rules');
 
   /* =========================================================
@@ -4135,6 +4277,7 @@ ${clone.innerHTML}
       try {
         const f = await tauriInvoke('read_file', { path: p });
         entries.push({ name: f.name, path: f.name, text: f.text, tauriPath: f.path, lastModified: f.modified });
+        if (entries.filter((x) => x.path === f.name).length > 1 || state.files.some((x) => x.loose && x.path === f.name && x.tauriPath !== f.path)) entries[entries.length - 1].path = f.name + ' (' + f.path.replace(/[\\/][^\\/]*$/, '').split(/[\\/]/).pop() + ')';
       } catch (e) { toast('파일을 열지 못했습니다: ' + e, 4000); }
     }
     if (entries.length) addFiles(entries, false);

@@ -81,6 +81,29 @@ fn pick_files() -> Vec<String> {
         .collect()
 }
 
+/// 파일 탐색기(Finder)에서 이 파일이 있는 폴더를 열고 파일을 선택해 보여줌
+#[tauri::command]
+fn reveal_in_folder(path: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        std::process::Command::new("explorer")
+            .raw_arg(format!("/select,\"{}\"", path))
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open").args(["-R", &path]).spawn().map_err(|e| e.to_string())?;
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        let dir = std::path::Path::new(&path).parent().map(|p| p.to_path_buf()).unwrap_or_default();
+        std::process::Command::new("xdg-open").arg(dir).spawn().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 /// "새 파일로 저장" 창: 고른 경로를 돌려줌 (취소하면 None)
 #[tauri::command]
 fn pick_save_path(default_name: String, start_dir: Option<String>) -> Option<String> {
@@ -216,6 +239,7 @@ fn main() {
             startup_file,
             pick_files,
             pick_save_path,
+            reveal_in_folder,
             pick_folder,
             list_dir,
             read_binary,
