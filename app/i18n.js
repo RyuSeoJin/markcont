@@ -57,8 +57,6 @@
     '코드 줄 번호 보기': 'Show code line numbers',
     '저장하기 전에 바뀐 내용 확인': 'Review changes before saving',
     '저장할 때 무엇이 바뀌는지 먼저 보여주고 한 번 더 묻습니다': 'Shows what will change and asks once more before saving',
-    '엔터 한 번도 줄바꿈으로 보기': 'Treat single line breaks as line breaks',
-    'Obsidian, Typora처럼 쓴 그대로 줄을 나눕니다': 'Breaks lines exactly as typed, like Obsidian and Typora',
     '편집할 때 스크롤 맞추기': 'Sync scroll while editing',
     '원본과 미리보기가 같은 위치를 보여줍니다': 'Keeps the source and preview at the same spot',
     // ⋯ 메뉴

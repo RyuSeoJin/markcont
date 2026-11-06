@@ -841,10 +841,9 @@ tags:
 |:---|:---|
 | A new paragraph | One blank line |
 | A line break within the same paragraph | Two spaces at the end of the line, or `\` |
-| Treat each single Enter as a line break | Turn on **View settings (Aa) → Treat single line breaks as line breaks** |
 
 > [!NOTE]
-> If the document needs to look the same elsewhere, it's safer to **separate paragraphs with blank lines** than to rely on a setting.
+> A single Enter keeps the text in the same paragraph (same as GitHub and standard markdown). Use the methods above to break lines.
 
 ### Showing source and result side by side
 
