@@ -353,6 +353,9 @@ body.side-collapsed .sidebar { display: none; }
 .tree-row:hover { background: var(--surface-2); }
 .tree-row.current { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 .tree-row.ctx-target { outline: 1.5px solid var(--accent); outline-offset: -1.5px; }
+.tree-row.root { font-weight: 700; margin-top: 6px; }
+.tree-row.root:first-child { margin-top: 0; }
+.tree-row.root .ico { color: var(--accent); }
 .tree-row .chev { width: 14px; height: 14px; flex: none; color: var(--muted); transition: transform .15s; }
 .tree-row.closed .chev { transform: rotate(-90deg); }
 .tree-row .ico { width: 16px; height: 16px; flex: none; color: var(--muted); }
@@ -846,7 +849,7 @@ body.zen .zen-exit:hover { opacity: 1; }
         <button class="side-btn" id="sNewFile" title="새 문서" aria-label="새 문서"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 11v6M9 14h6"/></svg></button>
         <button class="side-btn" id="sRefresh" title="새로 고침" aria-label="새로 고침"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
         <button class="side-btn" id="sCollapse" title="모두 접기 / 펴기" aria-label="모두 접기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 20 5-5 5 5M7 4l5 5 5-5"/></svg></button>
-        <button class="side-btn" id="sOpenFolder" title="다른 폴더 열기" aria-label="다른 폴더 열기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v1"/><path d="m3 19 3-7h15l-3 7z"/></svg></button>
+        <button class="side-btn" id="sOpenFolder" title="폴더 더하기 (여러 폴더를 함께 볼 수 있어요)" aria-label="폴더 더하기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v1"/><path d="m3 19 3-7h15l-3 7z"/></svg></button>
       </div>
       <label class="side-search" id="sideSearch" hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -1031,7 +1034,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     dirty: false,
     hist: [], histPos: -1,
     folds: store.json('mdv-folds', {}),
-    root: null,              // 열린 폴더: { kind: 'handle' | 'tauri' | 'input', name, handle?, path? }
+    roots: [],               // 열린 폴더들(작업 공간): { key, kind: 'handle' | 'tauri' | 'input', name, handle?, path? }
     dirs: new Set(),         // 폴더 안의 하위 폴더 (상대 경로)
     extraDirs: new Set(),    // 새로 만든 빈 폴더 (md가 없어도 보여줌)
   };
@@ -2024,7 +2027,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   };
   const parentOf = (p) => (p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '');
   const joinRel = (dir, name) => (dir ? dir + '/' + name : name);
-  const collapseKey = () => 'mdv-collapsed:' + (state.root ? state.root.name : '');
+  const collapseKey = () => 'mdv-collapsed:workspace';
   function loadCollapsed() { side.collapsed = new Set(store.json(collapseKey(), [])); }
   function saveCollapsed() { store.set(collapseKey(), JSON.stringify([...side.collapsed])); }
 
@@ -2051,6 +2054,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       }
       return node;
     };
+    for (const r of state.roots) ensureDir(r.key);
     for (const d of state.extraDirs) ensureDir(d);
     for (const f of state.files) if (!f.loose) ensureDir(parentOf(f.path)).files.push(f);
     const countUp = (n) => { n.count = n.files.length; for (const c of n.dirs.values()) n.count += countUp(c); return n.count; };
@@ -2058,9 +2062,10 @@ body.zen .zen-exit:hover { opacity: 1; }
     return rootNode;
   }
 
-  function treeRow({ kind, name, path, depth, entry, count, closed }) {
+  function treeRow({ kind, name, path, depth, entry, count, closed, root, readonly }) {
     const row = document.createElement('div');
-    row.className = 'tree-row ' + kind + (closed ? ' closed' : '') + (entry && entry === state.current ? ' current' : '');
+    row.className = 'tree-row ' + kind + (root ? ' root' : '') + (closed ? ' closed' : '') + (entry && entry === state.current ? ' current' : '');
+    if (root) row.dataset.root = '1';
     row.setAttribute('role', 'treeitem');
     row.tabIndex = 0;
     row.style.setProperty('--indent', 6 + depth * 14 + 'px');
@@ -2073,7 +2078,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       if (i >= 0) label = escapeHtml(name.slice(0, i)) + '<mark>' + escapeHtml(name.slice(i, i + q.length)) + '</mark>' + escapeHtml(name.slice(i + q.length));
     }
     row.innerHTML = (kind === 'dir' ? ICON.chev : '<span style="width:14px;flex:none"></span>') + (kind === 'dir' ? ICON.dir : ICON.md) +
-      `<span class="nm">${label}</span>` + (kind === 'dir' ? `<span class="cnt">${count}</span>` : '') +
+      `<span class="nm">${label}</span>` + (readonly ? '<span class="cnt" title="읽기 전용 (Safari · Firefox 에서 연 폴더)">읽기 전용</span>' : '') + (kind === 'dir' ? `<span class="cnt">${count}</span>` : '') +
       `<button class="more" type="button" aria-label="더 보기">${ICON.more}</button>`;
     row.title = path || name;
     if (entry) row._entry = entry;
@@ -2083,15 +2088,15 @@ body.zen .zen-exit:hover { opacity: 1; }
   function renderFileList() {
     const box = el.fileList;
     box.innerHTML = '';
-    const hasRoot = !!state.root;
+    const hasRoot = state.roots.length > 0;
     const loose = state.files.filter((f) => f.loose || !hasRoot);
     const total = state.files.length;
     $('#fileCount').textContent = total ? total : '';
     $('#sideEmpty').hidden = total > 0 || hasRoot;
     $('#sideHead').hidden = !hasRoot && !total;
     $('#sideSearch').hidden = total < 6;
-    $('#rootName').textContent = hasRoot ? state.root.name : '열린 파일';
-    const canWrite = hasRoot && (state.root.kind === 'handle' || state.root.kind === 'tauri');
+    $('#rootName').textContent = !hasRoot ? '열린 파일' : state.roots.length === 1 ? state.roots[0].name : `작업 공간 · 폴더 ${state.roots.length}개`;
+    const canWrite = state.roots.some(writable);
     $('#sNewFile').hidden = !canWrite;
     $('#sRefresh').hidden = !canWrite;
     $('#sCollapse').hidden = !hasRoot;
@@ -2106,11 +2111,23 @@ body.zen .zen-exit:hover { opacity: 1; }
       const sortDirs = (n) => [...n.dirs.values()].sort((a, b) => a.name.localeCompare(b.name, 'ko', { numeric: true }));
       const sortFiles = (n) => n.files.slice().sort((a, b) => a.name.localeCompare(b.name, 'ko', { numeric: true }));
       const walk = (n, depth) => {
-        for (const d of sortDirs(n)) {
-          if (q ? !hasMatch(d) : (d.count === 0 && !state.extraDirs.has(d.path))) continue;
+        const dirs = depth === 0 ? state.roots.map((r) => n.dirs.get(r.key)).filter(Boolean) : sortDirs(n); // 맨 위 폴더는 연 순서대로
+        for (const d of dirs) {
+          const isRoot = depth === 0;
+          if (q ? !hasMatch(d) : (!isRoot && d.count === 0 && !state.extraDirs.has(d.path))) continue;
           const closed = !q && side.collapsed.has(d.path);
-          frag.append(treeRow({ kind: 'dir', name: d.name, path: d.path, depth, count: d.count, closed }));
-          if (!closed) walk(d, depth + 1);
+          const r = isRoot && rootOf(d.path);
+          frag.append(treeRow({ kind: 'dir', root: isRoot, name: isRoot ? r.name : d.name, path: d.path, depth, count: d.count, closed, readonly: isRoot && !writable(r) }));
+          if (!closed) {
+            walk(d, depth + 1);
+            if (isRoot && !d.count && !d.dirs.size) {
+              const p = document.createElement('div');
+              p.className = 'tree-empty';
+              p.style.paddingLeft = '34px';
+              p.textContent = '마크다운 파일이 없습니다.';
+              frag.append(p);
+            }
+          }
         }
         for (const f of sortFiles(n)) {
           if (!matches(f)) continue;
@@ -2119,12 +2136,6 @@ body.zen .zen-exit:hover { opacity: 1; }
         }
       };
       walk(tree, 0);
-      if (!tree.count && !state.extraDirs.size) {
-        const p = document.createElement('div');
-        p.className = 'tree-empty';
-        p.textContent = '이 폴더에는 마크다운 파일이 없습니다.';
-        frag.append(p);
-      }
     }
     const looseShown = loose.filter(matches);
     if (looseShown.length) {
@@ -2196,7 +2207,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     return out;
   }
   function revealCurrent() {
-    if (!state.current || !state.root) return;
+    if (!state.current || !state.roots.length) return;
     let p = parentOf(state.current.path), changed = false;
     while (p) { if (side.collapsed.delete(p)) changed = true; p = parentOf(p); }
     if (changed) saveCollapsed();
@@ -2305,20 +2316,26 @@ body.zen .zen-exit:hover { opacity: 1; }
   /* ---------- 폴더 읽기 · 다시 읽기 ---------- */
   const isTauri = () => !!(window.__TAURI__ && window.__TAURI__.core);
   const tinvoke = (cmd, args) => window.__TAURI__.core.invoke(cmd, args);
-  function absPath(rel) {
-    const r = state.root.path.replace(/[\\/]+$/, '');
+  // 여러 폴더(작업 공간): 모든 경로는 "폴더이름/안쪽/경로" 처럼 맨 앞이 그 폴더의 이름(key)
+  const rootOf = (path) => state.roots.find((r) => path === r.key || path.startsWith(r.key + '/')) || null;
+  const relOf = (path) => { const r = rootOf(path); return !r || path === r.key ? '' : path.slice(r.key.length + 1); };
+  const writable = (r) => !!r && (r.kind === 'handle' || r.kind === 'tauri');
+  function absPath(path) {
+    const root = rootOf(path), rel = relOf(path);
+    const r = root.path.replace(/[\\/]+$/, '');
     const sep = r.includes('\\') ? '\\' : '/';
     return rel ? r + sep + rel.split('/').join(sep) : r;
   }
   async function scanFolder(root) {
-    const files = [], assets = new Map(), dirs = new Set();
+    const files = [], assets = new Map(), dirs = new Set([root.key]);
+    const pre = (rel) => root.key + '/' + rel;
     if (root.kind === 'tauri') {
       const res = await tinvoke('list_dir', { root: root.path });
       const r = root.path.replace(/[\\/]+$/, ''), sep = r.includes('\\') ? '\\' : '/';
       const abs = (rel) => r + sep + rel.split('/').join(sep);
-      for (const p of res.files) files.push({ name: baseName(p), path: p, tauriPath: abs(p), text: null });
-      for (const p of res.assets) assets.set(p, { tauriPath: abs(p) });
-      for (const p of res.dirs) dirs.add(p);
+      for (const p of res.files) files.push({ name: baseName(p), path: pre(p), tauriPath: abs(p), text: null });
+      for (const p of res.assets) assets.set(pre(p), { tauriPath: abs(p) });
+      for (const p of res.dirs) dirs.add(pre(p));
     } else if (root.kind === 'handle') {
       let count = 0;
       const walk = async (h, prefix, depth) => {
@@ -2330,71 +2347,127 @@ body.zen .zen-exit:hover { opacity: 1; }
           else if (ASSET_EXT.test(name)) assets.set(p, { handle: child });
         }
       };
-      await walk(root.handle, '', 0);
+      await walk(root.handle, root.key, 0);
     }
     return { files, assets, dirs };
   }
-  async function openFolder(root, { openPath } = {}) {
-    if (state.dirty && !confirm('저장하지 않은 변경 사항이 있습니다. 버리고 다른 폴더를 열까요?')) return;
-    toast('폴더를 읽는 중…', 8000);
-    let scan;
-    try { scan = await scanFolder(root); } catch (e) { toast('폴더를 읽지 못했습니다: ' + (e.message || e), 4000); return; }
-    clearAssets();
-    state.root = root;
-    state.rootName = root.name;
-    state.extraDirs = new Set();
-    state.assets = scan.assets;
-    state.dirs = scan.dirs;
-    state.files = scan.files;
-    state.hist = []; state.histPos = -1;
-    state.dirty = false;
-    loadCollapsed();
+  async function sameFolder(a, b) {
+    if (a.kind !== b.kind) return false;
+    if (a.kind === 'tauri') return a.path.replace(/[\\/]+$/, '').toLowerCase() === b.path.replace(/[\\/]+$/, '').toLowerCase();
+    if (a.kind === 'handle' && a.handle.isSameEntry) { try { return await a.handle.isSameEntry(b.handle); } catch { return false; } }
+    return false;
+  }
+  function uniqueKey(name) {
+    const base = (name || '폴더').replace(/\//g, '-');
+    let key = base, n = 2;
+    while (state.roots.some((r) => r.key === key)) key = base + ' (' + (n++) + ')';
+    return key;
+  }
+  // 폴더를 작업 공간에 더함
+  async function addRoot(root, scan) {
+    state.roots.push(root);
+    for (const [k, v] of scan.assets) state.assets.set(k, v);
+    for (const d of scan.dirs) state.dirs.add(d);
+    state.files = state.files.concat(scan.files);
+    side.collapsed.delete(root.key); saveCollapsed();
     side.filter = ''; $('#treeFilter').value = '';
     setSideTab('files');
-    rememberFolder(root);
-    toast(scan.files.length ? `마크다운 파일 ${scan.files.length}개를 찾았습니다` : '이 폴더에는 마크다운 파일이 없습니다');
-    const first = (openPath && scan.files.find((f) => f.path === openPath)) ||
-      scan.files.find((e) => /^readme\.md$/i.test(e.path)) || scan.files.find((e) => !e.path.includes('/')) || scan.files[0];
-    if (first) { state.current = null; await openEntry(first); }
-    else { state.current = null; showHome(); renderFileList(); }
+    saveWorkspace();
+    toast(state.roots.length > 1
+      ? `'${root.name}' 폴더를 더했습니다 (마크다운 ${scan.files.length}개) · 지금 폴더 ${state.roots.length}개`
+      : (scan.files.length ? `마크다운 파일 ${scan.files.length}개를 찾았습니다` : '이 폴더에는 마크다운 파일이 없습니다'), 3200);
+    const mine = scan.files;
+    const first = mine.find((e) => /\/readme\.md$/i.test(e.path) && e.path.split('/').length === 2) ||
+      mine.find((e) => e.path.split('/').length === 2) || mine[0];
+    if (first && (!state.current || state.current.loose)) await openEntry(first);
+    else renderFileList();
+    if (!state.current) showHome();
     if (window.innerWidth <= 900) { el.sidebar.classList.add('open'); el.scrim.classList.add('show'); }
   }
-  // 폴더 안의 파일이 생기거나 지워지면 트리에 반영
-  let refreshing = false;
-  async function refreshFolder({ quiet = false } = {}) {
-    const root = state.root;
-    if (!root || (root.kind !== 'handle' && root.kind !== 'tauri') || refreshing) return false;
-    refreshing = true;
-    try {
-      const scan = await scanFolder(root);
-      if (state.root !== root) return false;
-      const oldPaths = state.files.filter((f) => !f.loose).map((f) => f.path).sort().join('\n');
-      const newPaths = scan.files.map((f) => f.path).sort().join('\n');
-      const oldDirs = [...state.dirs].sort().join('\n'), newDirs = [...scan.dirs].sort().join('\n');
-      for (const [k, v] of scan.assets) if (!state.assets.has(k)) state.assets.set(k, v);
-      if (oldPaths === newPaths && oldDirs === newDirs) { if (!quiet) toast('바뀐 것이 없습니다'); return false; }
-      const keep = new Map(state.files.map((f) => [f.path, f]));
-      const merged = scan.files.map((f) => {
-        const old = keep.get(f.path);
-        if (!old) return f;
-        if (f.handle) old.handle = f.handle;
-        return old;
-      });
-      const loose = state.files.filter((f) => f.loose);
-      state.files = merged.concat(loose);
-      state.dirs = scan.dirs;
-      for (const d of [...state.extraDirs]) if (!scan.dirs.has(d)) state.extraDirs.delete(d);
-      if (state.current && !state.current.loose && !state.files.includes(state.current)) {
-        toast('보고 있던 파일이 폴더에서 사라졌습니다', 3500);
+  async function openFolder(root, { quiet } = {}) {
+    for (const r of state.roots) {
+      if (await sameFolder(r, root)) {
+        side.collapsed.delete(r.key); saveCollapsed(); renderFileList();
+        if (!quiet) toast(`'${r.name}' 폴더는 이미 열려 있습니다`);
+        return;
       }
-      renderFileList();
-      if (!quiet) toast('폴더를 다시 읽었습니다');
-      return true;
-    } catch { return false; }
+    }
+    if (!quiet) toast('폴더를 읽는 중…', 8000);
+    root.key = uniqueKey(root.name);
+    let scan;
+    try { scan = await scanFolder(root); } catch (e) { toast('폴더를 읽지 못했습니다: ' + (e.message || e), 4000); return; }
+    rememberFolder(root);
+    await addRoot(root, scan);
+  }
+  // 작업 공간에서 폴더 닫기 (파일은 지우지 않음)
+  async function closeRoot(key) {
+    const root = state.roots.find((r) => r.key === key);
+    if (!root) return;
+    const inside = (p) => p === key || p.startsWith(key + '/');
+    const curInside = state.current && !state.current.loose && inside(state.current.path);
+    if (curInside && state.dirty && !confirm('저장하지 않은 변경 사항이 있습니다. 버리고 폴더를 닫을까요?')) return;
+    state.roots = state.roots.filter((r) => r !== root);
+    state.files = state.files.filter((f) => f.loose || !inside(f.path));
+    for (const k of [...state.assets.keys()]) if (inside(k)) { const u = state.assetUrls.get(k); if (u) URL.revokeObjectURL(u); state.assets.delete(k); state.assetUrls.delete(k); }
+    state.dirs = new Set([...state.dirs].filter((d) => !inside(d)));
+    state.extraDirs = new Set([...state.extraDirs].filter((d) => !inside(d)));
+    side.collapsed = new Set([...side.collapsed].filter((d) => !inside(d))); saveCollapsed();
+    state.hist = state.hist.filter((e) => state.files.includes(e)); state.histPos = state.hist.length - 1; updateNav();
+    saveWorkspace();
+    if (curInside) {
+      state.dirty = false;
+      const next = state.files.find((f) => !f.loose) || state.files[0];
+      if (next) await openEntry(next); else { state.current = null; showHome(); }
+    }
+    renderFileList();
+    toast(`'${root.name}' 폴더를 닫았습니다 (파일은 그대로 있습니다)`);
+  }
+  // PC 프로그램: 다음에 켤 때 같은 폴더들을 다시 열도록 기억
+  function saveWorkspace() {
+    if (!isTauri()) return;
+    store.set('mdv-workspace', JSON.stringify(state.roots.filter((r) => r.kind === 'tauri').map((r) => ({ name: r.name, path: r.path }))));
+  }
+  // 폴더 안의 파일이 생기거나 지워지면 트리에 반영 (폴더마다)
+  let refreshing = false;
+  async function refreshRoot(root) {
+    const scan = await scanFolder(root);
+    if (!state.roots.includes(root)) return false;
+    const inside = (p) => p === root.key || p.startsWith(root.key + '/');
+    const mineOld = state.files.filter((f) => !f.loose && inside(f.path));
+    const oldPaths = mineOld.map((f) => f.path).sort().join('\n');
+    const newPaths = scan.files.map((f) => f.path).sort().join('\n');
+    const oldDirs = [...state.dirs].filter(inside).sort().join('\n'), newDirs = [...scan.dirs].sort().join('\n');
+    for (const [k, v] of scan.assets) if (!state.assets.has(k)) state.assets.set(k, v);
+    if (oldPaths === newPaths && oldDirs === newDirs) return false;
+    const keep = new Map(mineOld.map((f) => [f.path, f]));
+    const merged = scan.files.map((f) => {
+      const old = keep.get(f.path);
+      if (!old) return f;
+      if (f.handle) old.handle = f.handle;
+      return old;
+    });
+    state.files = state.files.filter((f) => f.loose || !inside(f.path)).concat(merged);
+    state.dirs = new Set([...state.dirs].filter((d) => !inside(d)).concat([...scan.dirs]));
+    for (const d of [...state.extraDirs]) if (inside(d) && !scan.dirs.has(d)) state.extraDirs.delete(d);
+    if (state.current && !state.current.loose && inside(state.current.path) && !state.files.includes(state.current)) {
+      toast('보고 있던 파일이 폴더에서 사라졌습니다', 3500);
+    }
+    return true;
+  }
+  async function refreshFolder({ quiet = false, only } = {}) {
+    if (refreshing) return false;
+    const targets = state.roots.filter((r) => writable(r) && (!only || r.key === only));
+    if (!targets.length) return false;
+    refreshing = true;
+    let changed = false;
+    try { for (const r of targets) { try { if (await refreshRoot(r)) changed = true; } catch {} } }
     finally { refreshing = false; }
+    if (changed) renderFileList();
+    if (!quiet) toast(changed ? '폴더를 다시 읽었습니다' : '바뀐 것이 없습니다');
+    return changed;
   }
   $('#sRefresh').onclick = () => refreshFolder();
-  setInterval(() => { if (!document.hidden && state.root && !state.editing) refreshFolder({ quiet: true }); }, 5000);
+  setInterval(() => { if (!document.hidden && state.roots.length && !state.editing) refreshFolder({ quiet: true }); }, 5000);
 
   /* ---------- 오른쪽 클릭 메뉴: 새 문서 · 새 폴더 · 이름 바꾸기 · 삭제 ---------- */
   const CTX_ICONS = {
@@ -2411,23 +2484,30 @@ body.zen .zen-exit:hover { opacity: 1; }
     closeMenus();
     closeCtxMenu();
     const m = $('#ctxMenu');
-    const canWrite = !!state.root && (state.root.kind === 'handle' || state.root.kind === 'tauri');
-    const kind = row ? row.dataset.kind : 'root';
+    const kind = row ? row.dataset.kind : 'empty';      // file · dir · empty(빈 곳)
+    const isRootRow = !!(row && row.dataset.root);
     const path = row ? row.dataset.path : '';
     const entry = row && row._entry;
     const isLoose = entry && entry.loose;
-    if (!state.root && !row) return;
+    const root = row && !isLoose ? rootOf(path) : null;
+    const canWrite = writable(root);
     const dirForNew = kind === 'dir' ? path : kind === 'file' && !isLoose ? parentOf(path) : '';
     const items = [];
     const add = (id, label, icon, opts = {}) => items.push({ id, label, icon, ...opts });
+    if (kind === 'empty') {
+      add('addRoot', state.roots.length ? '폴더 더하기' : '폴더 열기', 'newDir');
+      if (state.roots.length > 1) add('collapseAll', '모든 폴더 접기', 'open');
+    }
     if (kind === 'file') add('open', '열기', 'open');
     if (canWrite && !isLoose) {
       add('newFile', '새 문서', 'newFile');
       add('newDir', '새 폴더', 'newDir');
-      if (kind !== 'root') { add('sep'); add('rename', '이름 바꾸기', 'rename', { kbd: 'F2' }); }
+      if (kind !== 'empty' && !isRootRow) { add('sep'); add('rename', '이름 바꾸기', 'rename', { kbd: 'F2' }); }
     }
-    if (kind !== 'root') add('copy', '경로 복사', 'copy');
-    if (canWrite && !isLoose && kind !== 'root') { add('sep'); add('delete', isTauri() ? '휴지통으로 보내기' : '삭제', 'del', { danger: true, kbd: 'Del' }); }
+    if (isRootRow && canWrite) add('refresh', '다시 읽기', 'open');
+    if (kind !== 'empty') add('copy', '경로 복사', 'copy');
+    if (canWrite && !isLoose && kind !== 'empty' && !isRootRow) { add('sep'); add('delete', isTauri() ? '휴지통으로 보내기' : '삭제', 'del', { danger: true, kbd: 'Del' }); }
+    if (isRootRow) { add('sep'); add('closeRoot', '이 폴더 닫기 (파일은 그대로)', 'del'); }
     m.innerHTML = '';
     for (const it of items) {
       if (it.id === 'sep') { m.append(document.createElement('hr')); continue; }
@@ -2441,11 +2521,15 @@ body.zen .zen-exit:hover { opacity: 1; }
         else if (it.id === 'newDir') fsNewFolder(dirForNew);
         else if (it.id === 'rename') fsRename(kind, path);
         else if (it.id === 'delete') fsDelete(kind, path);
-        else if (it.id === 'copy') { const full = state.root && state.root.kind === 'tauri' && !isLoose ? absPath(path) : path; copyText(full).then(() => toast('경로를 복사했습니다: ' + full)); }
+        else if (it.id === 'copy') { const full = root && root.kind === 'tauri' ? absPath(path) : path; copyText(full).then(() => toast('경로를 복사했습니다: ' + full)); }
+        else if (it.id === 'addRoot') pickFolder();
+        else if (it.id === 'collapseAll') { state.roots.forEach((r) => side.collapsed.add(r.key)); saveCollapsed(); renderFileList(); }
+        else if (it.id === 'refresh') refreshFolder({ only: root.key });
+        else if (it.id === 'closeRoot') closeRoot(root.key);
       };
       m.append(b);
     }
-    if (!canWrite && state.root && !isLoose) {
+    if (!canWrite && root && !isLoose) {
       const note = document.createElement('div');
       note.className = 'ctx-note';
       note.textContent = '새로 만들기 · 이름 바꾸기 · 삭제는 PC 프로그램이나 Chrome · Edge에서 폴더 열기로 연 폴더에서만 됩니다.';
@@ -2472,19 +2556,20 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (!name || name === '.' || name === '..' || BAD_NAME.test(name)) { toast('이름에 \\ / : * ? " < > | 는 쓸 수 없습니다', 3500); return null; }
     return name;
   }
-  async function ensureWrite() {
-    if (state.root.kind !== 'handle') return true;
-    const p = await state.root.handle.requestPermission({ mode: 'readwrite' });
+  async function ensureWrite(root) {
+    if (root.kind !== 'handle') return true;
+    const p = await root.handle.requestPermission({ mode: 'readwrite' });
     if (p !== 'granted') { toast('폴더를 고칠 권한을 받지 못했습니다'); return false; }
     return true;
   }
-  async function dirHandleFor(rel) {
-    let h = state.root.handle;
+  async function dirHandleFor(path) {
+    let h = rootOf(path).handle;
+    const rel = relOf(path);
     if (rel) for (const seg of rel.split('/')) h = await h.getDirectoryHandle(seg);
     return h;
   }
   async function exists(dir, name) {
-    if (state.root.kind === 'tauri') return state.files.some((f) => f.path === joinRel(dir, name)) || state.dirs.has(joinRel(dir, name));
+    if (rootOf(dir).kind === 'tauri') return state.files.some((f) => f.path === joinRel(dir, name)) || state.dirs.has(joinRel(dir, name));
     const dh = await dirHandleFor(dir);
     for await (const n of dh.keys()) if (n.toLowerCase() === name.toLowerCase()) return true;
     return false;
@@ -2496,18 +2581,20 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (!name) return;
     if (!/\.[A-Za-z0-9]+$/.test(name)) name += '.md';
     const rel = joinRel(dir, name);
+    const root = rootOf(dir);
+    if (!writable(root)) return;
     const text = `# ${name.replace(MD_EXT, '')}\n\n`;
     try {
-      if (!(await ensureWrite())) return;
+      if (!(await ensureWrite(root))) return;
       if (await exists(dir, name)) { toast('같은 이름이 이미 있습니다'); return; }
-      if (state.root.kind === 'tauri') await tinvoke('create_file', { path: absPath(rel), text });
+      if (root.kind === 'tauri') await tinvoke('create_file', { path: absPath(rel), text });
       else {
         const fh = await (await dirHandleFor(dir)).getFileHandle(name, { create: true });
         const w = await fh.createWritable(); await w.write(text); await w.close();
       }
     } catch (e) { toast('새 문서를 만들지 못했습니다: ' + (e.message || e), 4000); return; }
     openDirInTree(dir);
-    await refreshFolder({ quiet: true });
+    await refreshFolder({ quiet: true, only: root.key });
     const entry = state.files.find((f) => f.path === rel);
     if (entry && await openEntry(entry)) setEditing(true);
     toast('새 문서를 만들었습니다: ' + rel);
@@ -2516,22 +2603,24 @@ body.zen .zen-exit:hover { opacity: 1; }
     const name = askName('새 폴더 이름', '새 폴더');
     if (!name) return;
     const rel = joinRel(dir, name);
+    const root = rootOf(dir);
     try {
-      if (!(await ensureWrite())) return;
+      if (!(await ensureWrite(root))) return;
       if (await exists(dir, name)) { toast('같은 이름이 이미 있습니다'); return; }
-      if (state.root.kind === 'tauri') await tinvoke('create_dir', { path: absPath(rel) });
+      if (root.kind === 'tauri') await tinvoke('create_dir', { path: absPath(rel) });
       else await (await dirHandleFor(dir)).getDirectoryHandle(name, { create: true });
     } catch (e) { toast('새 폴더를 만들지 못했습니다: ' + (e.message || e), 4000); return; }
     state.extraDirs.add(rel);
     openDirInTree(rel);
-    await refreshFolder({ quiet: true });
+    await refreshFolder({ quiet: true, only: root.key });
     state.extraDirs.add(rel);
     renderFileList();
     toast('새 폴더를 만들었습니다: ' + rel);
   }
   const under = (p, base) => p === base || p.startsWith(base + '/');
   async function fsRename(kind, path) {
-    if (!state.root || !path || (state.root.kind !== 'handle' && state.root.kind !== 'tauri')) return;
+    const root = path && rootOf(path);
+    if (!writable(root) || path === root.key) return; // 맨 위 폴더 이름은 바꾸지 않음
     const oldName = baseName(path);
     if (state.dirty && state.current && under(state.current.path, path)) { toast('먼저 지금 문서를 저장해 주세요'); return; }
     const name = askName(kind === 'dir' ? '새 폴더 이름' : '새 파일 이름', oldName);
@@ -2539,9 +2628,9 @@ body.zen .zen-exit:hover { opacity: 1; }
     const dir = parentOf(path), rel = joinRel(dir, name);
     const curPath = state.current && !state.current.loose ? state.current.path : null;
     try {
-      if (!(await ensureWrite())) return;
+      if (!(await ensureWrite(root))) return;
       if (name.toLowerCase() !== oldName.toLowerCase() && await exists(dir, name)) { toast('같은 이름이 이미 있습니다'); return; }
-      if (state.root.kind === 'tauri') await tinvoke('rename_path', { from: absPath(path), to: absPath(rel) });
+      if (root.kind === 'tauri') await tinvoke('rename_path', { from: absPath(path), to: absPath(rel) });
       else if (kind === 'file') {
         const entry = state.files.find((f) => f.path === path);
         const fh = entry.handle;
@@ -2564,7 +2653,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     side.collapsed = new Set([...side.collapsed].map(moveP)); saveCollapsed();
     state.extraDirs = new Set([...state.extraDirs].map(moveP));
     for (const f of state.files) if (!f.loose && under(f.path, path)) { f.path = moveP(f.path); f.name = baseName(f.path); }
-    await refreshFolder({ quiet: true });
+    await refreshFolder({ quiet: true, only: root.key });
     if (curPath && under(curPath, path)) {
       const now = state.files.find((f) => f.path === moveP(curPath));
       if (now) { state.current = now; updateTitle(); updateMeta(source()); }
@@ -2573,7 +2662,8 @@ body.zen .zen-exit:hover { opacity: 1; }
     toast('이름을 바꿨습니다: ' + rel);
   }
   async function fsDelete(kind, path) {
-    if (!state.root || !path || (state.root.kind !== 'handle' && state.root.kind !== 'tauri')) return;
+    const root = path && rootOf(path);
+    if (!writable(root) || path === root.key) return; // 맨 위 폴더는 '닫기'로만
     const name = baseName(path);
     const n = kind === 'dir' ? state.files.filter((f) => !f.loose && under(f.path, path)).length : 0;
     const what = kind === 'dir' ? `'${name}' 폴더${n ? `(마크다운 파일 ${n}개 포함)` : ''}` : `'${name}'`;
@@ -2582,8 +2672,8 @@ body.zen .zen-exit:hover { opacity: 1; }
       : `${what}를 지울까요?\n\n주의: 브라우저에서 지운 파일은 휴지통으로 가지 않고 완전히 지워집니다. 되살릴 수 없습니다.`;
     if (!confirm(msg)) return;
     try {
-      if (!(await ensureWrite())) return;
-      if (state.root.kind === 'tauri') await tinvoke('delete_path', { path: absPath(path) });
+      if (!(await ensureWrite(root))) return;
+      if (root.kind === 'tauri') await tinvoke('delete_path', { path: absPath(path) });
       else await (await dirHandleFor(parentOf(path))).removeEntry(name, { recursive: kind === 'dir' });
     } catch (e) { toast('지우지 못했습니다: ' + (e.message || e), 4000); return; }
     const wasCurrent = state.current && !state.current.loose && under(state.current.path, path);
@@ -2594,7 +2684,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       const next = state.files.find((f) => !f.loose);
       if (next) await openEntry(next); else { state.current = null; showHome(); }
     }
-    await refreshFolder({ quiet: true });
+    await refreshFolder({ quiet: true, only: root.key });
     renderFileList();
     toast(isTauri() ? '휴지통으로 보냈습니다: ' + name : '지웠습니다: ' + name);
   }
@@ -2785,40 +2875,25 @@ body.zen .zen-exit:hover { opacity: 1; }
     const all = [...el.folderInput.files];
     el.folderInput.value = '';
     if (!all.length) return;
-    if (state.dirty && !confirm('저장하지 않은 변경 사항이 있습니다. 버리고 다른 폴더를 열까요?')) return;
-    clearAssets();
-    const files = [], dirs = new Set();
-    let rootName = '';
+    const rootName = all[0].webkitRelativePath.split('/')[0] || '폴더';
+    const root = { kind: 'input', name: rootName };
+    root.key = uniqueKey(rootName);
+    const files = [], assets = new Map(), dirs = new Set([root.key]);
     for (const f of all) {
-      const parts = f.webkitRelativePath.split('/');
-      rootName = parts[0];
-      const rel = parts.slice(1).join('/');
-      if (/(^|\/)(node_modules|\.git)\//.test(rel) || rel.split('/').some((s) => s.startsWith('.'))) continue;
-      for (let p = parentOf(rel); p; p = parentOf(p)) dirs.add(p);
-      if (MD_EXT.test(f.name)) files.push({ name: f.name, path: rel, file: f, text: null });
-      else if (ASSET_EXT.test(f.name)) state.assets.set(rel, { file: f });
+      const rel = f.webkitRelativePath.split('/').slice(1).join('/');
+      if (/(^|\/)(node_modules|\.git)\//.test(rel) || rel.split('/').some((x) => x.startsWith('.'))) continue;
+      const path = root.key + '/' + rel;
+      for (let d = parentOf(path); d; d = parentOf(d)) dirs.add(d);
+      if (MD_EXT.test(f.name)) files.push({ name: f.name, path, file: f, text: null });
+      else if (ASSET_EXT.test(f.name)) assets.set(path, { file: f });
     }
-    state.root = { kind: 'input', name: rootName };
-    state.rootName = rootName;
-    state.extraDirs = new Set();
-    state.dirs = dirs;
-    state.files = files;
-    state.hist = []; state.histPos = -1;
-    state.dirty = false;
-    loadCollapsed();
-    setSideTab('files');
-    toast(files.length ? `마크다운 파일 ${files.length}개를 찾았습니다 (읽기 전용)` : '이 폴더에는 마크다운 파일이 없습니다');
-    const first = files.find((e) => /^readme\.md$/i.test(e.path)) || files.find((e) => !e.path.includes('/')) || files[0];
-    state.current = null;
-    if (first) await openEntry(first); else { showHome(); renderFileList(); }
+    await addRoot(root, { files, assets, dirs });
   };
 
   function newDoc() {
-    if (state.root && (state.root.kind === 'handle' || state.root.kind === 'tauri')) {
-      const dir = state.current && !state.current.loose ? parentOf(state.current.path) : '';
-      fsNewFile(dir);
-      return;
-    }
+    const target = (state.current && !state.current.loose && writable(rootOf(state.current.path)))
+      ? parentOf(state.current.path) : (state.roots.find(writable) || {}).key;
+    if (target) { fsNewFile(target); return; }
     let n = 1;
     while (state.files.some((f) => f.path === (n === 1 ? '새 문서.md' : `새 문서 ${n}.md`))) n++;
     const name = n === 1 ? '새 문서.md' : `새 문서 ${n}.md`;
@@ -3660,6 +3735,12 @@ ${clone.innerHTML}
   if (tauriInvoke) {
     document.documentElement.classList.add('is-desktop-app');
     tauriInvoke('startup_file').then((p) => p && openTauriPaths([p])).catch(() => {});
+    // 지난번에 열어 둔 폴더들을 다시 열기
+    (async () => {
+      for (const f of store.json('mdv-workspace', [])) {
+        try { await openFolder({ kind: 'tauri', path: f.path, name: f.name }, { quiet: true }); } catch {}
+      }
+    })();
     // 파일 열기 단추는 PC 프로그램의 파일 선택 창을 씀 (원래 파일에 바로 저장 가능)
     const pickInApp = async () => {
       try {
