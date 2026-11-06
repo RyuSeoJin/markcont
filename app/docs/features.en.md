@@ -12,7 +12,7 @@ Open this document to see everything the viewer can show, all in one place. Pres
 
 ## 1. Text formatting
 
-**Bold**, *italic*, ~~strikethrough~~, `inline code`, ==highlight==, ++inserted text++, <kbd>Ctrl</kbd>+<kbd>S</kbd>.
+**Bold**, *italic*, ~~strikethrough~~, `inline code`, ==highlight==, ++inserted text++, --deleted text--, <kbd>Ctrl</kbd>+<kbd>S</kbd>.
 
 ## 2. Callouts
 

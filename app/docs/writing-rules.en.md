@@ -682,6 +682,7 @@ Check **where it works** first, and if the document will be opened elsewhere too
 | Custom callout title | `> [!TIP] My title` | ✅ | ❌ | ✅ |
 | Highlight | `==text==` | ✅ | ❌ plain text | ✅ |
 | Inserted text | `++text++` | ✅ | ❌ plain text | ❌ |
+| Deleted text | `--text--` | ✅ | ❌ plain text | ❌ |
 | Footnote | `text[^1]` + `[^1]: explanation` | ✅ | ✅ | ✅ |
 | Inline footnote | `text^[explanation]` | ✅ | ❌ | ✅ |
 | Definition list | `term` + next line `: definition` | ✅ | ❌ | ❌ |
@@ -732,16 +733,16 @@ On top of the same 5 types as GitHub (`NOTE` · `TIP` · `IMPORTANT` · `WARNING
 - Text written right after `[!TYPE]` becomes the title.
 - Choose the callout look (💡 NOTE / ⓘ Note) in **View settings (Aa) → Callout style**.
 
-### Highlight · inserted text
+### Highlight · inserted · deleted text
 
 ```markdown example
 Highlight only ==the single most important phrase==.
-In a revised document, mark newly added words ++like this++.
+In a revised document, mark newly added words ++like this++ and removed words --like this--.
 ```
 
 #### Keeping symbols from turning into formatting by mistake
 
-`~`, `==`, and `++` show up a lot in everyday writing, so markcont **only treats them as formatting in narrow cases**.
+`~`, `==`, `++`, and `--` show up a lot in everyday writing, so markcont **only treats them as formatting in narrow cases**.
 
 | If you write | markcont shows | Why |
 |:---|:---|:---|
@@ -749,6 +750,7 @@ In a revised document, mark newly added words ++like this++.
 | `x==1 and y==2` | Plain text | `==` attached to letters or numbers isn't a highlight |
 | `a == b == c` | Plain text | A space just inside the symbols means it isn't a highlight |
 | `C++`, `i++ and j++` | Plain text | `++` attached to letters isn't inserted text |
+| `--force`, `a--b`, `A --> B` | Plain text | `--` attached to letters or numbers, or with a space just inside, isn't deleted text |
 | `` `a == b` ``, `$a == b$` | Code · math | Inside code and math, it's always left as is |
 | `==중요==를` | Highlight | Korean (Hangul) letters may touch it |
 

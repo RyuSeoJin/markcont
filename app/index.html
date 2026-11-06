@@ -115,6 +115,7 @@
 }
 .markdown-body mark { background: #fff1a8; color: #1f2328; padding: 0 .15em; border-radius: 3px; }
 .markdown-body ins { text-decoration: underline 2px var(--c-green); text-underline-offset: 3px; background: color-mix(in srgb, var(--c-green) 10%, transparent); }
+.markdown-body del { text-decoration: line-through 2px var(--c-red); background: color-mix(in srgb, var(--c-red) 9%, transparent); }
 .markdown-body .math-block { overflow-x: auto; overflow-y: hidden; margin: 0 0 1.1em; }
 .markdown-body .katex-display { margin: .4em 0; }
 .markdown-body .mermaid { text-align: center; margin: 0 0 1.1em; }
@@ -553,6 +554,8 @@ body.resizing { cursor: col-resize; user-select: none; }
 .t-i { color: var(--hl-i); }
 .t-s { color: var(--muted); text-decoration: line-through; }
 .t-m { background: var(--hl-mark); border-radius: 2px; }
+.t-ins { text-decoration: underline var(--c-green); text-underline-offset: 3px; }
+.t-del { text-decoration: line-through var(--c-red); }
 .t-code, .t-fence, .t-codeblock { color: var(--hl-code); }
 .t-fence { opacity: .8; }
 .t-lk { color: var(--hl-link); }
@@ -1542,14 +1545,14 @@ body.zen .zen-exit:hover { opacity: 1; }
     return true;
   }
 
-  // 두 글자 기호로 감싸는 문법(==, ++)을 안전하게 찾는 규칙
-  //  - 여는 기호 앞, 닫는 기호 뒤가 영문 · 숫자 · 같은 기호면 문법이 아님 (x==1, y==2, C++, a++b)
+  // 두 글자 기호로 감싸는 문법(==, ++, --)을 안전하게 찾는 규칙
+  //  - 여는 기호 앞, 닫는 기호 뒤가 영문 · 숫자 · 같은 기호면 문법이 아님 (x==1, y==2, C++, a++b, a--b, --force)
   //  - 여는 기호 바로 뒤, 닫는 기호 바로 앞은 빈칸이 아니어야 함 (a == b == c 는 그대로)
   //  - 한글은 붙어도 됨 (==중요==를)
   function pairRule(code, tag) {
     const ch = String.fromCharCode(code);
     const pair = ch + ch;
-    const stuck = new RegExp('[A-Za-z0-9' + (ch === '+' ? '\\+' : ch) + ']');
+    const stuck = new RegExp('[A-Za-z0-9' + (ch === '+' ? '\\+' : ch === '-' ? '\\-' : ch) + ']');
     return function (state, silent) {
       const src = state.src, start = state.pos, max = state.posMax;
       if (src.charCodeAt(start) !== code || src.charCodeAt(start + 1) !== code) return false;
@@ -1590,9 +1593,10 @@ body.zen .zen-exit:hover { opacity: 1; }
       },
     });
     for (const p of [window.markdownitFootnote, window.markdownitDeflist]) if (p) md.use(p);
-    // 형광펜 ==글== · 추가 표시 ++글++ : 영문 · 숫자에 붙은 기호(x==1, C++)는 문법으로 보지 않음
+    // 형광펜 ==글== · 추가 표시 ++글++ · 제거 표시 --글-- : 영문 · 숫자에 붙은 기호(x==1, C++, --force)는 문법으로 보지 않음
     md.inline.ruler.before('emphasis', 'mark_safe', pairRule(0x3D, 'mark'));
     md.inline.ruler.before('emphasis', 'ins_safe', pairRule(0x2B, 'ins'));
+    md.inline.ruler.before('emphasis', 'del_safe', pairRule(0x2D, 'del')); // 제거 표시 --글--
     md.inline.ruler.after('escape', 'math_inline', mathInline);
     md.block.ruler.before('fence', 'math_block', mathBlock, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
     md.inline.ruler.before('link', 'wikilink', wikiRule);
@@ -3467,6 +3471,8 @@ body.zen .zen-exit:hover { opacity: 1; }
     h = h.replace(/(^|[^*\w])([*_])(?=[^\s*_])([^*_\n]+?)(?<=[^\s*_])\2(?![*\w])/g, '$1<span class="t-i">$2$3$2</span>');
     h = h.replace(/~~(.+?)~~/g, '<span class="t-s">$&</span>');
     h = h.replace(/(^|[^A-Za-z0-9=])(==(?=[^\s=])(.+?)(?<=\S)==)(?![A-Za-z0-9=])/g, '$1<span class="t-m">$2</span>');
+    h = h.replace(/(^|[^A-Za-z0-9+])(\+\+(?=[^\s+])(.+?)(?<=\S)\+\+)(?![A-Za-z0-9+])/g, '$1<span class="t-ins">$2</span>');
+    h = h.replace(/(^|[^A-Za-z0-9-])(--(?=[^\s-])(.+?)(?<=\S)--)(?![A-Za-z0-9-])/g, '$1<span class="t-del">$2</span>');
     h = h.replace(/(^|[^A-Za-z0-9+])(\+\+(?=[^\s+])(.+?)(?<=\S)\+\+)(?![A-Za-z0-9+])/g, '$1<span class="t-b">$2</span>');
     if (/^\s*\|/.test(s)) h = h.replace(/\|/g, '<span class="t-pipe">|</span>');
     return h.replace(/\u0001(\d+)\u0002/g, (m, i) => keep[+i]);
