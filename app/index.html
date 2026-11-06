@@ -3563,7 +3563,16 @@ ${clone.innerHTML}
      웹 앱: 오프라인 저장, 설치한 앱으로 .md 파일 열기
      ========================================================= */
   if ('serviceWorker' in navigator && !tauriInvoke && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => reg.update()).catch(() => {});
+    // 새 버전이 들어오면: 고치던 내용이 없으면 바로 새로고침, 있으면 알려만 줌
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloading) return;
+      if (state.dirty) { toast('새 버전이 준비됐습니다. 저장한 뒤 새로고침하면 적용됩니다.', 5000); return; }
+      reloading = true;
+      location.reload();
+    });
   }
   if ('launchQueue' in window) {
     window.launchQueue.setConsumer((params) => {

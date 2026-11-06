@@ -69,15 +69,33 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
-  // 우리 앱 파일: 저장해 둔 것을 먼저 보여주고, 뒤에서 새 버전을 받아 둠
   if (url.origin === self.location.origin) {
+    // 화면(index.html)과 안내 문서: 인터넷이 되면 항상 새로 받고, 안 될 때만 저장해 둔 것
+    // (저장본을 먼저 쓰면 새 버전을 올려도 예전 화면이 계속 보이는 문제가 있었음)
+    const fresh = req.mode === 'navigate' || /\/(index\.html|manifest\.webmanifest)?$/.test(url.pathname) || url.pathname.includes('/docs/');
+    if (fresh) {
+      event.respondWith(
+        caches.open(CACHE).then(async (cache) => {
+          try {
+            const res = await fetch(req, { cache: 'no-cache' });
+            if (res.ok) cache.put(req, res.clone());
+            return res;
+          } catch {
+            return (await cache.match(req, { ignoreSearch: true })) ||
+              (req.mode === 'navigate' && (await cache.match('./index.html'))) || Response.error();
+          }
+        })
+      );
+      return;
+    }
+    // 라이브러리 · 글꼴 · 아이콘: 버전마다 바뀌지 않으니 저장해 둔 것을 먼저 씀
     event.respondWith(
       caches.open(CACHE).then(async (cache) => {
         const cached = await cache.match(req, { ignoreSearch: true });
-        const fresh = fetch(req)
-          .then((res) => { if (res.ok) cache.put(req, res.clone()); return res; })
-          .catch(() => cached);
-        return cached || fresh;
+        if (cached) return cached;
+        const res = await fetch(req);
+        if (res.ok) cache.put(req, res.clone());
+        return res;
       })
     );
     return;
