@@ -30,6 +30,7 @@ const APP_FILES = [
   './cjk.js',
   './paste.js',
   './docx.js',
+  './richcopy.js',
   './vendor/highlight.min.js',
   './vendor/hljs-github-dark.min.css',
   './vendor/hljs-github.min.css',

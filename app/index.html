@@ -1407,6 +1407,10 @@ body.zen .zen-exit:hover { opacity: 1; }
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M8.5 12l1.2 5 1.8-4 1.8 4 1.2-5"/></svg>
           Word 파일로 저장 (.docx)
         </button>
+        <button class="menu-item" id="mCopyRich" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/><path d="M12 12h5M12 15.5h5"/></svg>
+          서식 그대로 복사
+        </button>
         <button class="menu-item" id="mPortable" disabled>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 15l2 2 4-4"/></svg>
           다른 뷰어용 마크다운으로 저장
@@ -1753,6 +1757,7 @@ body.zen .zen-exit:hover { opacity: 1; }
 <script src="portable.js"></script>
 <script src="paste.js"></script>
 <script src="docx.js"></script>
+<script src="richcopy.js"></script>
 <script>
 (() => {
   translateStatic(document.body);
@@ -2309,6 +2314,12 @@ body.zen .zen-exit:hover { opacity: 1; }
     }
     return mermaidPromise;
   }
+  const mermaidConfig = (dark) => ({
+    startOnLoad: false, securityLevel: 'strict', theme: 'base',
+    themeVariables: dark
+      ? { primaryColor: '#1c3a31', primaryBorderColor: '#3fb98f', primaryTextColor: '#e4e7ea', lineColor: '#8fd9bf', secondaryColor: '#22262b', tertiaryColor: '#1a1d21', actorBkg: '#1c3a31', actorBorder: '#3fb98f', actorTextColor: '#e4e7ea', signalColor: '#e4e7ea', signalTextColor: '#e4e7ea', noteBkgColor: '#2a2f35', noteTextColor: '#e4e7ea', fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }
+      : { primaryColor: '#d7f5ea', primaryBorderColor: '#3cb995', primaryTextColor: '#1f2328', lineColor: '#3d4a45', secondaryColor: '#eef7f3', tertiaryColor: '#ffffff', actorBkg: '#d7f5ea', actorBorder: '#3cb995', actorTextColor: '#1f2328', signalColor: '#1f2328', signalTextColor: '#1f2328', noteBkgColor: '#fff8d6', fontFamily: 'Pretendard Variable, Pretendard, sans-serif' },
+  });
 
   /* =========================================================
      렌더링
@@ -2731,6 +2742,7 @@ body.zen .zen-exit:hover { opacity: 1; }
         d.className = 'mermaid';
         if (pre.dataset.line || code.dataset.line) d.dataset.line = pre.dataset.line || code.dataset.line;
         d.textContent = code.textContent;
+        d.dataset.src = code.textContent; // 어두운 테마에서 서식 복사 · Word 저장할 때 밝은 색으로 다시 그리려고
         pre.replaceWith(d);
         mermaidBlocks.push(d);
         return;
@@ -2793,13 +2805,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     });
     if (mermaidBlocks.length) {
       loadMermaid().then((m) => {
-        const dark = document.documentElement.dataset.theme === 'dark';
-        m.initialize({
-          startOnLoad: false, securityLevel: 'strict', theme: 'base',
-          themeVariables: dark
-            ? { primaryColor: '#1c3a31', primaryBorderColor: '#3fb98f', primaryTextColor: '#e4e7ea', lineColor: '#8fd9bf', secondaryColor: '#22262b', tertiaryColor: '#1a1d21', actorBkg: '#1c3a31', actorBorder: '#3fb98f', actorTextColor: '#e4e7ea', signalColor: '#e4e7ea', signalTextColor: '#e4e7ea', noteBkgColor: '#2a2f35', noteTextColor: '#e4e7ea', fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }
-            : { primaryColor: '#d7f5ea', primaryBorderColor: '#3cb995', primaryTextColor: '#1f2328', lineColor: '#3d4a45', secondaryColor: '#eef7f3', tertiaryColor: '#ffffff', actorBkg: '#d7f5ea', actorBorder: '#3cb995', actorTextColor: '#1f2328', signalColor: '#1f2328', signalTextColor: '#1f2328', noteBkgColor: '#fff8d6', fontFamily: 'Pretendard Variable, Pretendard, sans-serif' },
-        });
+        m.initialize(mermaidConfig(document.documentElement.dataset.theme === 'dark'));
         return m.run({ nodes: mermaidBlocks });
       }).then(() => { mermaidBlocks.forEach((b) => b.querySelector('svg') && addDgExpand(b)); lineTops = null; }).catch(() => {});
     }
@@ -5639,7 +5645,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     el.editor.value = entry.text;
     el.welcome.hidden = true;
     el.workspace.hidden = false;
-    [el.btnEdit, $('#mZen'), $('#mFoldAll'), $('#mExport'), $('#mPortable'), $('#mPrint'), $('#mFind'), $('#mPresent'), $('#mDocx')].forEach((b) => (b.disabled = false));
+    [el.btnEdit, $('#mZen'), $('#mFoldAll'), $('#mExport'), $('#mPortable'), $('#mPrint'), $('#mFind'), $('#mPresent'), $('#mDocx'), $('#mCopyRich')].forEach((b) => (b.disabled = false));
     document.body.classList.add('has-doc');
     if (!fromHistory) {
       state.hist = state.hist.slice(0, state.histPos + 1);
@@ -7492,15 +7498,46 @@ body.zen .zen-exit:hover { opacity: 1; }
     });
   }
 
-  async function exportHtml() {
-    closeMenus();
-    const clone = el.doc.cloneNode(true);
+  // 내보내기 · 서식 복사 · Word 저장 전에 그린 문서를 정리한 사본: 단추 빼기, 접힌 곳 · 탭 펴기, 찾기 표시 지우기
+  function cleanClone(node) {
+    const clone = node.cloneNode(true);
     clone.querySelectorAll('.copy, .h-tools, .code-head button, .dg-expand').forEach((b) => b.remove());
     clone.querySelectorAll('.code-block.expanded').forEach((b) => b.classList.remove('expanded'));
     clone.querySelectorAll('mark.find-hit').forEach((m) => m.replaceWith(document.createTextNode(m.textContent)));
     clone.querySelectorAll('.fold-hidden, .folded').forEach((n) => n.classList.remove('fold-hidden', 'folded'));
     expandTabs(clone);
     clone.querySelectorAll('input.task').forEach((c) => { c.disabled = true; if (c.checked) c.setAttribute('checked', ''); });
+    return clone;
+  }
+  // 밝은 테마로 그린 숨은 틀 (richcopy.js): 어두운 테마여도 붙여 넣는 곳 · Word 에는 흰 바탕 색으로
+  async function lightFrame(node) {
+    const clone = cleanClone(node);
+    clone.querySelectorAll('details').forEach((d) => (d.open = true));
+    const fr = await MarkRich.frame({
+      css: $('#doc-css').textContent,
+      vars: `:root{--doc-size:${settings.size}px;--doc-width:${WIDTHS[settings.width]};--doc-font:${settings.font === 'serif' ? 'var(--serif)' : 'var(--font)'};}`,
+      width: el.doc.getBoundingClientRect().width,
+      sheets: ['vendor/katex/katex.min.css', 'vendor/hljs-github.min.css'],
+    });
+    fr.root.append(...clone.childNodes);
+    // Mermaid 는 그릴 때 정한 색이 그림 안에 박혀 있어서, 어두운 테마면 밝은 색으로 다시 그림
+    const boxes = document.documentElement.dataset.theme === 'dark' ? [...fr.root.querySelectorAll('.mermaid[data-src]')] : [];
+    if (boxes.length) {
+      try {
+        const m = await loadMermaid();
+        m.initialize(mermaidConfig(false));
+        for (const [i, b] of boxes.entries()) {
+          try { b.innerHTML = (await m.render(`mc-light-${Date.now()}-${i}`, b.dataset.src)).svg; } catch {}
+        }
+      } catch {}
+      finally { window.mermaid?.initialize(mermaidConfig(document.documentElement.dataset.theme === 'dark')); }
+    }
+    return fr;
+  }
+
+  async function exportHtml() {
+    closeMenus();
+    const clone = cleanClone(el.doc);
     for (const m of clone.querySelectorAll('img[src^="blob:"], video[src^="blob:"], audio[src^="blob:"]')) {
       try { m.src = await blobToDataUrl(m.src); } catch {}
     }
@@ -7593,6 +7630,7 @@ ${clone.innerHTML}
       { ko: '다른 뷰어용으로 저장…', en: 'Save for other viewers…', when: cur, run: exportPortable },
       { ko: 'HTML 파일로 저장', en: 'Save as HTML', when: cur, run: exportHtml },
       { ko: 'Word 파일로 저장 (.docx)', en: 'Save as Word (.docx)', when: cur, run: exportDocx },
+      { ko: '서식 그대로 복사 (메일 · 노션 · 구글 문서에 붙여 넣기)', en: 'Copy with formatting (to paste into mail · Notion · Google Docs)', when: cur, run: copyRich },
       { ko: '인쇄 · PDF로 저장', en: 'Print · save as PDF', kbd: 'Ctrl+P', when: cur, run: () => window.print() },
       { ko: '문서에서 찾기', en: 'Find in document', kbd: 'Ctrl+F', when: cur, run: openFind },
       { ko: '모든 문서에서 찾기 (폴더 전체)', en: 'Search all documents (whole folder)', kbd: 'Ctrl+Shift+F', run: openGlobalSearch },
@@ -7768,24 +7806,75 @@ ${clone.innerHTML}
   $('#zenExit').onclick = () => setZen(false);
   $('#mFoldAll').onclick = () => { closeMenus(); foldAllToggle(); };
   $('#mExport').onclick = exportHtml;
-  // Word(.docx): 그려진 문서를 옮김 (docx.js). 숨은 탭도 펼쳐서 넣고, 끝나면 다시 그림
+  // Word(.docx): 그려진 문서를 옮김 (docx.js). 밝은 테마의 숨은 틀에 탭 · 접힌 곳을 다 편 사본을 그려서
   async function exportDocx() {
     closeMenus();
-    if (!state.current || !window.MarkDocx) return;
+    if (!state.current || !window.MarkDocx || !window.MarkRich) return;
     toast(L('Word 파일을 만드는 중…', 'Making the Word file…'), 2000);
-    expandTabs(el.doc);
-    el.doc.querySelectorAll('.fold-hidden').forEach((n) => n.classList.remove('fold-hidden'));
+    let fr = null;
     try {
-      const title = el.doc.querySelector('h1')?.textContent.trim() || state.current.name.replace(MD_EXT, '');
-      const blob = await MarkDocx.build(el.doc, { title, lang: navigator.language });
+      fr = await lightFrame(el.doc);
+      const title = el.doc.querySelector('.print-cover .cover-title')?.textContent.trim() || el.doc.querySelector('h1')?.textContent.trim() || state.current.name.replace(MD_EXT, '');
+      const blob = await MarkDocx.build(fr.root, { title, lang: navigator.language });
       const name = suggestName(state.current).replace(MD_EXT, '') + '.docx';
       download(name, blob, blob.type);
       toast(L('Word 파일을 다운로드 폴더에 저장했습니다: ', 'Saved the Word file to Downloads: ') + name, 3500);
     } catch (e) {
       toast(L('Word 파일을 만들지 못했습니다: ', "Couldn't make the Word file: ") + ((e && e.message) || e), 4000);
-    } finally { render(true); }
+    } finally { fr?.dispose(); }
   }
   $('#mDocx').onclick = exportDocx;
+
+  // 서식 그대로 복사: 메일 · 노션 · 구글 문서 · 블로그에 붙여 넣어도 모양이 남게 (richcopy.js)
+  //  - 문서 안에서 고른 곳이 있으면 그 부분만 (둘레 요소도 함께 옮겨 표 · 목록 · 알림 상자 모양이 남게)
+  //  - 글자만 받는 곳에는 문서 전체면 마크다운 원본, 고른 부분이면 그 글자
+  async function copyRich() {
+    closeMenus();
+    if (!state.current || !window.MarkRich) return;
+    const sel = getSelection();
+    let part = null;
+    if (sel.rangeCount && !sel.isCollapsed && el.doc.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+      const r = sel.getRangeAt(0);
+      let wrap = r.cloneContents();
+      for (let a = r.commonAncestorContainer.nodeType === 1 ? r.commonAncestorContainer : r.commonAncestorContainer.parentElement; a && a !== el.doc; a = a.parentElement) {
+        const sh = a.cloneNode(false);
+        sh.append(wrap);
+        wrap = sh;
+      }
+      part = document.createElement('div');
+      part.append(wrap);
+    }
+    const plain = part ? sel.toString() : source();
+    toast(L('서식을 담는 중…', 'Copying with formatting…'), 1500);
+    const html = (async () => {
+      const fr = await lightFrame(part || el.doc);
+      try {
+        // 알림 상자 아이콘(SVG) → 그림 글자: 붙여 넣는 곳(노션 등)이 작은 그림을 따로 떼어 놓지 않게
+        fr.root.querySelectorAll('.callout-title > svg').forEach((s) => s.replaceWith(EMOJI[s.closest('.callout')?.dataset.callout] || '💡', ' '));
+        return await MarkRich.toHtml(fr);
+      } finally { fr.dispose(); }
+    })();
+    const done = () => toast(L('서식을 그대로 복사했습니다 — 메일 · 노션 · 구글 문서에 붙여 넣으세요', 'Copied with formatting — paste it into mail · Notion · Google Docs'), 3500);
+    try {
+      if (!window.ClipboardItem || !navigator.clipboard?.write) throw new Error('no ClipboardItem');
+      // 그림 바꾸기가 오래 걸려도 누른 순간에 쓰기를 시작해야 Safari 가 막지 않음 (내용은 Promise 로)
+      await navigator.clipboard.write([new ClipboardItem({ 'text/html': html.then((h) => new Blob([h], { type: 'text/html' })), 'text/plain': new Blob([plain], { type: 'text/plain' }) })]);
+      done();
+    } catch {
+      try {
+        const h = await html;
+        const put = (e) => { e.clipboardData.setData('text/html', h); e.clipboardData.setData('text/plain', plain); e.preventDefault(); };
+        document.addEventListener('copy', put, { once: true });
+        const ok = document.execCommand('copy');
+        document.removeEventListener('copy', put);
+        if (!ok) throw new Error('copy blocked');
+        done();
+      } catch (e) {
+        toast(L('서식 복사를 하지 못했습니다: ', "Couldn't copy with formatting: ") + ((e && e.message) || e), 4000);
+      }
+    }
+  }
+  $('#mCopyRich').onclick = copyRich;
   // 인쇄 머리글: 문서 제목 (쪽 번호와 같이 Chrome · Edge 131 이상에서)
   window.addEventListener('beforeprint', () => {
     let st = document.getElementById('printTitleStyle');

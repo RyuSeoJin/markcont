@@ -156,6 +156,7 @@
     '찾을 글': 'Find',
     '발표하기 (단락마다 한 장)': 'Present (one slide per section)',
     'Word 파일로 저장 (.docx)': 'Save as Word (.docx)',
+    '서식 그대로 복사': 'Copy with formatting',
     '이전 (←)': 'Previous (←)',
     '이전 장': 'Previous slide',
     '다음 (→ · Space)': 'Next (→ · Space)',

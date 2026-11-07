@@ -92,6 +92,9 @@
     return inner;
   }
   function image(n) {
+    // markcont 「서식 그대로 복사」의 수식 그림 → 원래 TeX
+    const tex = n.getAttribute('data-tex');
+    if (tex) return n.getAttribute('data-display') ? `$$${tex.trim()}$$` : `$${tex.trim()}$`;
     const src = (n.getAttribute('src') || '').trim();
     if (!src || /^(data|blob|cid|file):/i.test(src)) return ''; // 클립보드 안의 그림 데이터는 넣지 않음
     const alt = collapse(n.getAttribute('alt') || '').trim().replace(/[[\]]/g, '\\$&');
@@ -166,11 +169,12 @@
   const hasBlock = (el) => [...el.children].some((k) => !SKIP.has(k.tagName) && (BLOCK.has(k.tagName) || (k.tagName !== 'A' && hasBlock(k))));
   function block(el, ctx) {
     const tag = el.tagName;
+    if (el.classList && el.classList.contains('code-head')) return ''; // markcont 코드 블록 머리줄(언어 이름 · 단추)
     // 알림 상자: GitHub(markdown-alert) · markcont(data-callout) → > [!NOTE]
     const alertType = el.getAttribute('data-callout') || ((typeof el.className === 'string' && el.className.match(/(?:^|\s)markdown-alert-(\w+)/)) || [])[1];
     if (alertType && !ctx.cell) {
       const titleEl = el.querySelector(':scope > .callout-title, :scope > .markdown-alert-title');
-      const title = el.getAttribute('data-title') && titleEl ? inline(titleEl, ctx).replace(new RegExp(BR, 'g'), ' ').trim() : '';
+      const title = el.getAttribute('data-title') && titleEl ? inline(titleEl, ctx).replace(new RegExp(BR, 'g'), ' ').trim().replace(/^\p{Extended_Pictographic}️?\s*/u, '') : ''; // 아이콘 그림 글자는 뺌
       if (titleEl) titleEl.remove();
       const fold = tag === 'DETAILS' ? (el.hasAttribute('open') ? '+' : '-') : '';
       const inner = blocks(el.querySelector(':scope > .callout-body') || el, ctx).join('\n\n');
@@ -235,7 +239,13 @@
       let task = '';
       const cb = li.querySelector('input[type=checkbox]');
       if (cb && !cb.closest('li ul, li ol')) task = cb.checked || cb.hasAttribute('checked') ? '[x] ' : '[ ] ';
-      items.push({ marker: ordered ? `${n++}. ` : '- ', task, body: blocks(li, ctx) });
+      const body = blocks(li, ctx);
+      // 체크 상자를 글자(☑ · ☐)로 바꿔 둔 곳 (markcont 「서식 그대로 복사」 등): 할 일 목록으로 되살림
+      if (!task && body.length && /^[☑☐✅⬜]️?\s/.test(body[0])) {
+        task = /^[☑✅]/.test(body[0]) ? '[x] ' : '[ ] ';
+        body[0] = body[0].replace(/^\S+\s+/, '').replace(/^~~(.*)~~$/, '$1'); // 끝낸 일의 줄 긋기는 보기 꾸밈이라 뺌
+      }
+      items.push({ marker: ordered ? `${n++}. ` : '- ', task, body });
     }
     const loose = items.some((it) => it.body.filter((b) => !LIST_START.test(b)).length > 1);
     return items.map((it) => {

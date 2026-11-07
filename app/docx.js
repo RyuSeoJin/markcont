@@ -51,8 +51,9 @@
     const copy = svg.cloneNode(true);
     const src = [svg, ...svg.querySelectorAll('*')], dst = [copy, ...copy.querySelectorAll('*')];
     const props = ['fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'opacity', 'fill-opacity', 'stroke-opacity', 'font-family', 'font-size', 'font-weight', 'font-style', 'color', 'text-anchor', 'dominant-baseline', 'visibility', 'display'];
+    const win = svg.ownerDocument.defaultView || window; // 숨은 밝은 틀(iframe) 안의 SVG 면 그 틀의 스타일로
     src.forEach((el, i) => {
-      const cs = getComputedStyle(el), st = dst[i].style;
+      const cs = win.getComputedStyle(el), st = dst[i].style;
       for (const p of props) { const v = cs.getPropertyValue(p); if (v) st.setProperty(p, v); }
     });
     copy.setAttribute('xmlns', 'http://www.w3.org/2000/svg');

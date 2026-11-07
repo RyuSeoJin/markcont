@@ -256,6 +256,7 @@ Open the window with the **History** button in the editing toolbar (<kbd>Ctrl</k
 | As an HTML file | **⋯ → Save as HTML** — a single file that looks just like the screen |
 | As a PDF | In **⋯ → Print · Save as PDF**, choose "Save as PDF" |
 | As a Word file | **⋯ → Save as Word (.docx)** — to send to a company or keep editing in Word · Hancom Office |
+| Somewhere else, looking the same | **⋯ → Copy with formatting**, then paste into mail · Notion · Google Docs · a blog editor — tables · callouts · code colors stay, and math · diagrams go in as images. Select part of the document first to copy just that part |
 
 - Files opened with Open file · Open folder are **saved straight to the original file**.
 - Before saving, markcont **shows you what will change and asks once more** (Cancel · Save as new file · Save). To turn this off, turn off **Aa → Review changes before saving**, or check **Don't ask again** in the confirmation window.
@@ -284,6 +285,7 @@ Open the window with the **History** button in the editing toolbar (<kbd>Ctrl</k
 - To start a new page at a spot of your choice, write `<!-- page break -->` on a line there. On screen it shows only as a dashed line.
 - Write `cover: yes` in the document info at the top, and the first page becomes a **cover** (title · summary · the rest of the info, like the author). The cover has no page number.
 - Word files keep heading levels · lists · tables · code · callouts · images, and diagrams become images. Math goes in as TeX text (`E=mc^2`). The paper size follows your region (Letter for the US · Canada, A4 elsewhere).
+- Save as Word and Copy with formatting use light colors that suit a white background, even in the dark theme.
 
 ---
 
