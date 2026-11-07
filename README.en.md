@@ -6,123 +6,135 @@
 
 # markcont
 
-**A viewer that shows Markdown nicely and lets you edit it right where you read it**<br>
-Web · Windows · macOS · Linux
+A Markdown viewer that turns plain `.md` files into readable documents, and lets you edit them right where you read.<br>
+Runs as a web app and as a desktop app for Windows, macOS and Linux.
 
-[**🌐 Use it now, no install**](https://ryuseojin.github.io/markcont/) &nbsp;·&nbsp;
-[**📥 Download**](https://github.com/RyuSeoJin/markcont/releases/latest) &nbsp;·&nbsp;
-[**📘 User guide**](app/docs/guide.en.md)
+[Use it in the browser](https://ryuseojin.github.io/markcont/) · [Download](https://github.com/RyuSeoJin/markcont/releases/latest) · [User guide](app/docs/guide.en.md) · [Writing rules](app/docs/writing-rules.en.md)
 
-<img src=".github/assets/demo.gif" width="860" alt="markcont demo: folder tree, nicely formatted documents, a markcont flowchart, a preview that updates as you type, dark mode, checking spots that look different in other viewers">
+<img src=".github/assets/demo.gif" width="860" alt="markcont demo: folder tree, formatted documents, a markcont flowchart, live preview, dark mode">
 
 </div>
 
-## ⚡ In 3 seconds
+## Why I made it
 
-- 📖 **View** — `.md` files in GitHub style: callouts, tables, task lists, code highlighting, math · chemical formulas, and even diagrams
-- ✏️ **Edit** — source and result side by side, a preview that updates as you type · saving writes straight to the original file
-- 📁 **Organize** — open a whole folder as a tree, and create · rename · delete documents, all on one screen
+I used to write every planning document in full detail, and it kept falling behind a fast-moving project.
 
-## 📥 Install (one line)
+So I switched to lightweight Markdown: each document only records *what we decided to build, why, and the conditions that must hold*. Everything else gets filled in by talking with the dev team.
 
-**Windows** — paste into PowerShell
+The catch was that opened in Notepad or a code editor, tables, flowcharts and callouts show up as raw symbols. markcont exists to make those lightweight documents comfortable to read.
+
+## Try it
+
+No install: open [ryuseojin.github.io/markcont](https://ryuseojin.github.io/markcont/) and drop a `.md` file or a folder onto the window. Files are read inside your browser and never uploaded.
+
+Desktop app, one line:
 
 ```powershell
+# Windows (PowerShell)
 irm https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.ps1 | iex
 ```
 
-**macOS · Linux** — paste into a terminal
-
 ```bash
+# macOS · Linux
 curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh | sh
 ```
 
-**No install** — open https://ryuseojin.github.io/markcont/ (you can use it like an app with **Add to Home Screen** on a phone, or the **Install** button in the address bar on a PC)
-
-> [!TIP]
-> Files are read only on your own device. Nothing is uploaded anywhere.
-
----
-
-## 📦 Direct download
-
-| Platform | File ([Releases](https://github.com/RyuSeoJin/markcont/releases/latest)) |
-|:---|:---|
-| 🪟 Windows | The file ending in `-setup.exe` |
-| 🍎 macOS | `.dmg` (works on both Intel · Apple chips) |
-| 🐧 Linux | `.AppImage` · `.deb` · `.rpm` |
+Or grab a file from [Releases](https://github.com/RyuSeoJin/markcont/releases/latest): `-setup.exe` for Windows, `.dmg` for macOS, `.AppImage` / `.deb` / `.rpm` for Linux.
 
 > [!NOTE]
-> There's no code-signing certificate, so you may see a warning the first time you run it.
-> On Windows, click **More info → Run anyway**; on macOS, **right-click** the app **→ Open**.
+> The builds aren't code-signed, so you may see a warning the first time. On Windows choose **More info → Run anyway**; on macOS **right-click the app → Open**.
 
----
+## What it does
 
-## ✨ Features
+**Read**
+- GitHub-style tables, callouts (`> [!NOTE]`), task lists, footnotes and code highlighting.
+- Math (`$E=mc^2$`), chemical formulas and Mermaid diagrams.
+- Dark mode, font size and width settings, table of contents, collapsible headings.
 
-- GitHub-style display, dark mode, text size · font · body width settings
-- 11 kinds of callouts `> [!NOTE]` (foldable), tables, task lists (click to check), footnotes, highlight `==text==`
-- Code highlighting · line numbers · copy · enlarge, `diff` coloring
-- Math `$E=mc^2$`, chemical formulas `$\ce{H2O}$`, diagrams: markcont style (markcont-standard flowcharts, message order, state changes, timelines, exposure trees with entry points) and Mermaid, plus workflow writing rules for large flows
-- Wikilinks `[[document#heading]]`, video · YouTube thumbnails
-- A workspace that opens several folders together, folder tree · file search · right-click menu, table of contents, heading folding, find in document, focus mode
-- Live editing: source with line numbers and syntax colors, a marker for where you're editing, scroll sync
-- Auto-reload of changed files, Save as HTML, Print · PDF
-- Save for other viewers: a copy with markcont-only syntax converted to standard markdown (diagrams to Mermaid), plus a marker for spots that look different
-- A first-run tour (tutorial) that walks you through the features
-- PC app: connect to Claude Desktop · Claude Code over MCP to edit documents in your open folders, with highlighting and undo for changes made from outside
+**Edit**
+- Source and result side by side, with a preview that updates as you type.
+- See what will change before you save; undo history is kept.
+- Open whole folders and create, rename or delete documents on one screen.
 
-How to write documents that look good is in the [Markdown writing rules](app/docs/writing-rules.en.md), and how to use the app is in the [User guide](app/docs/guide.en.md).
+**Planning-doc blocks** (markcont only)
+- `flow` flowcharts: write nodes as a table and get a diagram split into user and system zones.
+- `ui` placement: shows where a feature lives and what appears when you enter it, as a tree.
+- `data` definitions: one card per data type, one row per field.
+- Also `sequence`, `state` and `timeline`.
 
----
+**Claude integration** (desktop app)
+- markcont also runs as an MCP server, so Claude Desktop or Claude Code can edit documents in the folder you have open.
+- Claude can only read and edit Markdown / text files inside that folder — no deleting, no running commands. Changes are highlighted on screen.
 
-## 🔌 Connect to Claude (PC app)
+GitHub and Obsidian show the markcont-only blocks as plain code. **Save for other viewers** writes a standard Markdown copy (diagrams become Mermaid).
 
-The PC app also works as an **MCP server**. Ask Claude Desktop · Claude Code something like "Polish the document I'm viewing in markcont," and Claude edits the document in the folder you have open in markcont, and the changes show up in markcont **right away**.
+### A flowchart looks like this
 
-1. In markcont, open the folder you want to work in with **Open folder**.
-2. In **⋯ → Connect to Claude (MCP)**, press **Connect to Claude Desktop**, or copy the Claude Code command and run it.
-3. Restart the Claude app and make your request. You chat **in the Claude app** with your own Claude subscription; markcont doesn't use a subscription or an API key.
+````markdown
+```flow
+| Code | Zone | Shape | Text | Goes to |
+|---|---|---|---|---|
+| S1-01 | user | term | Open app | → S1-02 |
+| S1-02 | system | decision | Signed in? | yes → S1-03 / no → S1-04 |
+| S1-03 | system | output | Home screen | |
+| S1-04 | system | output | Sign-in screen | |
+```
+````
 
-- Claude can read and edit **only Markdown · text files inside the folders you have open**. It can't delete, rename, or run commands.
-- Changes are highlighted in markcont, and you can review them with **View changes · Undo**.
-- If something gets changed by mistake, you can undo it with **View changes · Undo history**, but once it has been saved it cannot be recovered, so please use it with care.
+You can paste the node table from an existing planning doc as is. Shapes, branches and loops are covered in [writing rules 7-2](app/docs/writing-rules.en.md).
 
-## 🔒 Privacy
+## Privacy
 
-- markcont reads and writes documents **only on your own device**. It doesn't collect usage data (telemetry) either.
-- If you use **Connect to Claude**, the content of documents Claude reads is sent to Anthropic for processing (Anthropic's terms · privacy policy apply). If you don't connect, nothing is sent.
-- The web app's settings · recent documents stay only in your browser's storage.
-- It works without the internet, but in the cases below it connects to an external server, and **your IP address is sent to that server**.
-  - When you choose the **Serif** font in View settings: the font is downloaded from Google Fonts.
-  - When a document has a **YouTube link**: the thumbnail is downloaded from YouTube (Google) servers.
-  - When you open a file made with **Save as HTML**: font · math · code highlighting styles are downloaded from CDNs (jsDelivr · cdnjs).
-  - When showing **web images** in a document: they're downloaded from the server hosting them.
+- Documents are read and written only on your device. No telemetry.
+- Document content goes to Anthropic only when you use **Connect to Claude**.
+- Loading the serif font (Google Fonts), YouTube thumbnails, styles in exported HTML (CDN) or images hosted online sends your IP address to those servers. Everything else works offline.
 
-> Claude is a trademark of Anthropic. markcont is an independent open-source program not affiliated with Anthropic.
+> Claude is a trademark of Anthropic. markcont is an independent open-source project, not affiliated with Anthropic.
 
----
+## Make it your own
 
-## 🛠️ How it's built (for developers)
+Feel free to fork it and adapt it to your team's document rules. The viewer is a single HTML app with no build step, so it's easy to poke at.
 
 ```
-app/                Interface (shared by the web app and the PC app)
-  index.html        The whole viewer
-  sw.js             Offline storage
-  docs/             User guide, writing rules, feature examples (also open inside the app)
-  vendor/           Conversion libraries (work without the internet)
-src-tauri/          PC app (Tauri 2)
-.github/workflows/  Deploy the web app, build the PC app
-install.ps1 / .sh   One-line install scripts
+app/                 UI shared by the web app and the desktop app
+  index.html         the viewer (Markdown rendering, editor, workspace)
+  diagram.js         markcont-only blocks (flow · ui · data …)
+  i18n.js            UI string table
+  sw.js              offline cache
+  docs/              user guide, writing rules, feature samples (also open inside the app)
+  vendor/            markdown-it, highlight.js, KaTeX (bundled so it works offline)
+src-tauri/           desktop app (Tauri 2) — main.rs, MCP server (mcp.rs)
+.github/workflows/   web deploy (pages), installers (release), desktop compile check (check)
 ```
 
-- **Web app**: Pushing to the `main` branch publishes it to GitHub Pages automatically.
-- **PC app**: Pushing a tag like `v1.0.0` builds the installers and uploads them to Releases.
-  When releasing a new version, bump the version in `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `package.json`, `VERSION` in `app/sw.js`, and `APP_VERSION` in `app/index.html` together.
-- To build on your own PC, install [Node.js](https://nodejs.org) and [Rust](https://rustup.rs), then run `npm install`, `npm run icons`, `npm run build`.
+**Web app only:** serve `app/` with any static server.
 
-## 📄 License
+```bash
+python -m http.server 8000 --directory app
+# then open http://localhost:8000
+```
+
+**Desktop app:** install [Node.js](https://nodejs.org) and [Rust](https://rustup.rs), then:
+
+```bash
+npm install
+npm run icons
+npm run dev     # run in development
+npm run build   # build installers
+```
+
+Good to know:
+
+- The UI is bilingual (Korean / English). In code, strings are written as `L('한국어', 'English')`; strings in `index.html` live in `app/i18n.js`; docs have `*.en.md` versions.
+- Pushing to `main` deploys the web app to GitHub Pages; pushing a tag like `v1.5.0` builds installers into Releases.
+- When releasing, bump the version in `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `package.json`, plus `VERSION` in `app/sw.js` and `APP_VERSION` in `app/index.html`.
+
+## Contributing
+
+Bug reports and ideas are welcome in [Issues](https://github.com/RyuSeoJin/markcont/issues), and so are PRs. If you change UI text, please include the English string too.
+
+## License
 
 [MIT](LICENSE) © 2026 RyuSeoJin
 
-Licenses for the included libraries are in [Open-source licenses](app/docs/licenses.en.md) and `app/vendor/licenses/`. The list of libraries in the PC app is added automatically when the installers are built, and you can see it in the app under **⋯ → Open-source licenses**.
+Licenses of bundled libraries are in [Open-source licenses](app/docs/licenses.en.md) and `app/vendor/licenses/`.
