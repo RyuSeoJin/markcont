@@ -65,7 +65,7 @@ curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh 
 - Bold · italic that works with Korean, Chinese and Japanese: `**스크립트(script)**는` stays bold even when a character follows a bracket or punctuation
 - Suggestion marks `{++add++}` · `{--cut--}` · `{~~old~>new~~}` · `{>>comment<<}`: click to accept or reject each one (Claude suggestion mode)
 - `:::` blocks: tabs (tabs with the same name switch together and are remembered) · steps (numbered circles) · file tree (folder · file icons)
-- Code highlighting · line numbers · copy · enlarge, `diff` coloring
+- Code highlighting · line numbers · copy · enlarge, `diff` coloring, code block titles · line highlights ```` ```js title="app.js" {2,4-5} ````
 - Math `$E=mc^2$`, chemical formulas `$\ce{H2O}$`, diagrams: markcont style (markcont-standard flowcharts, message order, state changes, timelines, exposure trees with entry points) and Mermaid, plus workflow writing rules for large flows
 - Wikilinks `[[document#heading]]`, link · footnote previews (hover or long-press), video · YouTube thumbnails
 - Embed documents `![[doc#heading]]`: shows another document (or its heading section) right there (keep shared rules · glossaries in one place)

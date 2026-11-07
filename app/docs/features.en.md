@@ -70,7 +70,7 @@ Viewer
 
 ## 6. Code and math
 
-```javascript
+```javascript title="hello.js" {2}
 function hello(name) {
   return `Hello, ${name}!`;
 }

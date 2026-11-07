@@ -296,10 +296,17 @@
 .markdown-body .code-head svg { width: 17px; height: 17px; }
 .markdown-body .code-body { display: flex; overflow: auto; }
 .markdown-body .code-body pre { flex: 1; margin: 0; border: 0; border-radius: 0; background: none; overflow: visible; }
+/* 줄 번호: 코드 줄과 같은 간격(pre 글자 크기의 1.6배)으로, 위 여백도 pre 와 같게 (글자는 .748배라 em 을 나눠 맞춤) */
 .markdown-body .code-lines {
-  flex: none; padding: 1em .2em 1em .9em; text-align: right; user-select: none; color: var(--muted); opacity: .55;
-  font-family: var(--mono); font-size: calc(var(--doc-size, 16.5px) * .86 * .87); line-height: 1.6; white-space: pre;
+  flex: none; padding: 1.337em .2em 1.337em .9em; text-align: right; user-select: none; color: var(--muted); opacity: .55;
+  font-family: var(--mono); font-size: .748em; line-height: 2.139; white-space: pre;
 }
+/* 코드 블록 제목 ```js title="app.js" · 줄 강조 {2,4-5}: 띠는 pre 의 줄 높이(1.6em) · 위 여백(1em)에 맞춰 글자 뒤에 */
+.markdown-body .code-head .code-lang.has-title { text-transform: none; letter-spacing: 0; font-family: var(--mono); color: var(--text); }
+.markdown-body pre .hl-bands { position: absolute; inset: 0; pointer-events: none; }
+.markdown-body pre .hl-band { position: absolute; left: 0; right: 0; top: calc(1em + var(--a) * 1.6em); height: calc(var(--n) * 1.6em); background: color-mix(in srgb, var(--accent) 13%, transparent); box-shadow: inset 3px 0 0 var(--accent); }
+.markdown-body pre.has-hl > code { position: relative; }
+@media print { .markdown-body .code-block.wide .hl-band { display: none; } }
 .markdown-body .code-block.expanded {
   position: fixed; inset: 16px; z-index: 70; margin: 0; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,.35);
 }
@@ -2152,6 +2159,30 @@ body.zen .zen-exit:hover { opacity: 1; }
   }
 
   let md, mdStd = null;
+  // 코드 블록 첫 줄: ```js title="app.js" {2,4-5} → 언어 · 머리줄 제목 · 강조할 줄
+  //  - MkDocs 의 hl_lines="2 4-5", VitePress 식으로 붙여 쓴 js{2} 도 알아들음 (GitHub 은 첫 낱말만 언어로 씀)
+  function codeMeta(info) {
+    const s = String(info || '').trim();
+    const first = s.split(/\s+/)[0] || '';
+    let rest = s.slice(first.length).trim(), lang = first;
+    const glued = first.match(/^([\w+#.-]+)\{([\d,\s-]+)\}$/);
+    if (glued) { lang = glued[1]; rest = `{${glued[2]}} ${rest}`; }
+    let title = '';
+    rest = rest.replace(/(?:^|\s)(?:title|filename)=(?:"([^"]*)"|'([^']*)'|(\S+))/i, (_, a, b, c) => { title = (a ?? b ?? c).trim(); return ' '; });
+    const lines = new Set();
+    const add = (spec) => {
+      for (const part of spec.split(/[\s,]+/)) {
+        const m = part.match(/^(\d+)(?:-(\d+))?$/);
+        if (!m) continue;
+        const a = Math.min(+m[1], +(m[2] || m[1])), b = Math.max(+m[1], +(m[2] || m[1]));
+        for (let i = Math.max(1, a); i <= b && i <= 5000; i++) lines.add(i);
+      }
+    };
+    for (const m of rest.matchAll(/\{([\d,\s-]+)\}/g)) add(m[1]);
+    const hm = rest.match(/(?:^|\s)hl_lines=(?:"([^"]*)"|'([^']*)'|(\S+))/);
+    if (hm) add(hm[1] ?? hm[2] ?? hm[3]);
+    return { lang, title, hl: [...lines].sort((x, y) => x - y) };
+  }
   function buildMd() {
     if (!libsOk) return;
     md = makeMd(true);
@@ -2221,6 +2252,15 @@ body.zen .zen-exit:hover { opacity: 1; }
         return `<div class="md-example"${line}>` +
           `<div class="ex-pane ex-src"><div class="ex-label">${L('✏️ 이렇게 쓰면', '✏️ Write this')}</div><pre><code class="language-markdown">${hl}</code></pre></div>` +
           `<div class="ex-pane ex-out"><div class="ex-label">${L('👀 이렇게 보입니다', '👀 Looks like this')}</div><div class="ex-body">${out}</div></div></div>\n`;
+      }
+      // 제목 · 줄 강조: 언어 이름만 남겨 색을 넣고, 제목 · 강조할 줄은 <pre> 에 적어 둠 (그린 뒤 postProcess 가 머리줄 · 띠로)
+      const cm = codeMeta(t.info);
+      if (cm.title || cm.hl.length || cm.lang !== (t.info.trim().split(/\s+/)[0] || '')) {
+        const info = t.info;
+        t.info = cm.lang;
+        let html = defaultFence(tokens, idx, options, env, self);
+        t.info = info;
+        return html.replace(/^<pre/, `<pre${cm.title ? ` data-title="${escapeHtml(cm.title)}"` : ''}${cm.hl.length ? ` data-hl="${cm.hl.join(',')}"` : ''}`);
       }
       return defaultFence(tokens, idx, options, env, self);
     };
@@ -2785,19 +2825,44 @@ body.zen .zen-exit:hover { opacity: 1; }
       head.className = 'code-head';
       head.innerHTML = `<span class="code-lang"></span><button type="button" class="code-copy" title="${L('복사', 'Copy')}">${COPY_ICON}</button><button type="button" class="code-expand" title="${L('크게 보기', 'Expand')}">${EXPAND_ICON}</button>`;
       head.firstChild.textContent = lang || 'code';
+      // ```js title="app.js" → 머리줄에 파일 이름 (언어 이름은 마우스를 올리면)
+      const title = pre.dataset.title;
+      if (title) { head.firstChild.textContent = title; head.firstChild.classList.add('has-title'); if (lang) head.firstChild.title = lang; }
       const body = document.createElement('div');
       body.className = 'code-body';
       pre.replaceWith(block);
       pre.removeAttribute('data-line');
+      pre.removeAttribute('data-title');
+      // ```js {2,4-5} → 강조 띠: highlight.js 결과는 자르지 않고 줄 높이에 맞춰 뒤에 겹쳐 그림 (여러 줄 주석 · 문자열이 안 깨지게)
+      const total = code.textContent.replace(/\n$/, '').split('\n').length;
+      const hl = (pre.dataset.hl || '').split(',').map(Number).filter((x) => x >= 1 && x <= total);
+      pre.removeAttribute('data-hl');
+      if (hl.length) {
+        block.dataset.hl = hl.join(',');
+        const bands = document.createElement('span');
+        bands.className = 'hl-bands';
+        bands.setAttribute('aria-hidden', 'true');
+        for (let i = 0; i < hl.length; ) {
+          let j = i;
+          while (j + 1 < hl.length && hl[j + 1] === hl[j] + 1) j++;
+          const b = document.createElement('span');
+          b.className = 'hl-band';
+          b.style.setProperty('--a', hl[i] - 1);
+          b.style.setProperty('--n', j - i + 1);
+          bands.append(b);
+          i = j + 1;
+        }
+        pre.prepend(bands);
+        pre.classList.add('has-hl');
+      }
       // 인쇄 · PDF 에서 종이 너비를 넘는 줄이 있으면(한글은 두 칸) 줄을 접고 줄 번호는 숨김 (접으면 번호가 어긋나서)
       const cols = (s) => [...s].reduce((w, ch) => w + (ch === '\t' ? 4 : /[ᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦]/.test(ch) ? 2 : 1), 0);
       if (code.textContent.split('\n').some((l) => l.length > 44 && cols(l) > 88)) block.classList.add('wide');
       if (settings.lines) {
-        const n = code.textContent.replace(/\n$/, '').split('\n').length;
         const ln = document.createElement('div');
         ln.className = 'code-lines';
         ln.setAttribute('aria-hidden', 'true');
-        ln.textContent = Array.from({ length: n }, (_, i) => i + 1).join('\n');
+        ln.textContent = Array.from({ length: total }, (_, i) => i + 1).join('\n');
         body.append(ln);
       }
       body.append(pre);

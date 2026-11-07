@@ -166,6 +166,16 @@ console.log("Hello");
 ```
 ````
 
+- Put a space after the language name and write `title="file name"` to show the **file name** in the header, or `{2,4-5}` to put a **highlight strip** on those lines. The MkDocs form `hl_lines="2 4-5"` works too.
+- Other viewers (GitHub, etc.) read only the first word as the language and skip the rest, so only the title and highlights are missing and the code still shows. `js{2}` written without a space works in markcont, but GitHub loses the colors, so keep the space.
+
+````markdown example
+```js title="app.js" {2}
+const a = 1;
+const b = 2; // this line is highlighted
+```
+````
+
 ---
 
 ## 7️⃣ Images, diagrams, math
@@ -751,6 +761,7 @@ Check **where it works** first, and if the document will be opened elsewhere too
 | Math | `$…$` · `$$…$$` | ✅ | ✅ | ✅ |
 | Math block | ```` ```math ```` | ✅ | ✅ | ❌ |
 | Chemical formula | `$\ce{H2O}$` | ✅ | ❌ | ❌ |
+| Code block title · line highlights | ```` ```js title="app.js" {2,4-5} ```` | ✅ | ⚠️ ignored (code still shows) | ⚠️ ignored (code still shows) |
 | Diagram (Mermaid) | ```` ```mermaid ```` | ✅ | ✅ | ✅ |
 | Diagram (markcont style) | ```` ```flow ```` ```` ```sequence ```` ```` ```state ```` ```` ```timeline ```` | ✅ | ❌ shown as code | ❌ shown as code |
 | Exposure · data definition | ```` ```ui ```` · ```` ```data ```` | ✅ | ❌ shown as code | ❌ shown as code |

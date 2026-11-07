@@ -167,6 +167,7 @@
       if (p.num) pp += `<w:numPr><w:ilvl w:val="${p.num.lvl}"/><w:numId w:val="${p.num.id}"/></w:numPr>`;
       if (p.quote) pp += `<w:pBdr><w:left w:val="single" w:sz="18" w:space="8" w:color="${p.quoteColor || 'C8C8C8'}"/></w:pBdr>`;
       if (p.rule) pp += '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="BFBFBF"/></w:pBdr>';
+      if (p.shd) pp += `<w:shd w:val="clear" w:color="auto" w:fill="${p.shd}"/>`;
       if (p.ind) pp += `<w:ind w:left="${p.ind}"/>`;
       if (p.jc) pp += `<w:jc w:val="${p.jc}"/>`;
       return `<w:p>${pp ? `<w:pPr>${pp}</w:pPr>` : ''}${inner}</w:p>`;
@@ -193,8 +194,14 @@
       if (tag === 'P') return para(await runs(el, ctx.f || {}), p);
       if (tag === 'HR') return para('', { rule: true });
       if (tag === 'PRE') {
-        const lines = el.textContent.replace(/\n$/, '').split('\n');
-        return lines.map((l) => para(run(l || ' ', { code: false }), { style: 'Code', ind: p.ind })).join('');
+        // 코드 블록 제목(```js title="app.js") 은 굵게 한 줄, 강조한 줄({2,4-5})은 노란 바탕
+        const cb = el.closest('.code-block');
+        const title = cb?.querySelector('.code-lang.has-title')?.textContent.trim();
+        const hl = new Set((cb?.dataset.hl || '').split(',').map(Number));
+        const code = el.querySelector('code') || el;
+        const lines = code.textContent.replace(/\n$/, '').split('\n');
+        return (title ? para(run(title, { b: true, code: true }), { keep: true, ind: p.ind }) : '') +
+          lines.map((l, i) => para(run(l || ' ', { code: false }), { style: 'Code', ind: p.ind, shd: hl.has(i + 1) ? 'FFF1B8' : '' })).join('');
       }
       if (tag === 'svg') { try { const s = await svgToPng(el); return para(await picture(s.blob, s.w, s.h), { jc: 'center' }); } catch { return ''; } }
       if (cls.contains('math-block')) return para(await runs(el, {}), { ...p, jc: 'center' });

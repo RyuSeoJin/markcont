@@ -70,7 +70,7 @@ tags:
 
 ## 6. 코드와 수식
 
-```javascript
+```javascript title="hello.js" {2}
 function hello(name) {
   return `안녕하세요, ${name}님!`;
 }
