@@ -27,6 +27,7 @@
     dataTable: () => [L('데이터 정의 블록', 'Data definition block'), L('데이터마다 일반 표로', 'to a normal table per data')],
     cjkEmph: () => [L('조사가 붙은 굵게 · 기울임 **굵게(괄호)**는', 'Bold · italic next to CJK text **bold(note)**는'), L('<strong> · <em> · <del> 태그로', 'to <strong> · <em> · <del> tags')],
     cjkEmphErr: () => [L('조사가 붙은 굵게 (기호가 얽혀 있음)', 'Bold next to CJK text (tangled markers)'), L('바꾸지 않음 — <strong> 태그로 직접 바꾸세요', 'not converted — change it to a <strong> tag by hand')],
+    embedDoc: () => [L('문서 넣기 ![[문서#제목]]', 'Embedded document ![[doc#heading]]'), L('다른 뷰어용으로 저장할 때 내용을 펼쳐 넣음 (못 읽으면 링크로)', 'expanded into the content when saving for other viewers (a link if it can’t be read)')],
     container: () => [L('::: 블록 (탭 · 단계 · 파일 트리)', '::: blocks (tabs · steps · file tree)'), L('탭은 굵은 제목 + 내용, 단계 · 트리는 일반 목록으로', 'tabs to bold titles + content, steps · trees to plain lists')],
     critic: () => [L('교정 표기 {++추가++} 등', 'Suggestion marks {++added++} etc.'), L('다른 뷰어용으로 저장할 때만 <ins> · <del> · <mark> 태그로 (메모는 숨은 주석)', 'to <ins> · <del> · <mark> tags only when saving for other viewers (comments become hidden HTML comments)')],
   };
@@ -57,6 +58,7 @@
   const NAME = () => ({ note: L('참고', 'Note'), info: L('정보', 'Info'), todo: L('할 일', 'To do'), tip: L('팁', 'Tip'), important: L('중요', 'Important'),
     example: L('예시', 'Example'), warning: L('주의', 'Warning'), question: L('질문', 'Question'), faq: 'FAQ', caution: L('경고', 'Caution'), danger: L('위험', 'Danger') });
   const MEDIA = /\.(mp4|webm|ogv|mov|mp3|wav|aac|flac|m4a|oga|ogg)(?=$|[?#])/i;
+  const ASSET_LIKE = /\.(png|jpe?g|gif|svg|webp|bmp|avif|ico|mp4|webm|ogv|mov|mp3|wav|aac|flac|m4a|oga|ogg|pdf)$/i;
   const ghSlug = (h) => h.trim().toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').replace(/\s/g, '-');
   const dest = (u) => (/[\s()<>]/.test(u) ? `<${u}>` : u);
   // 그림 크기: 「설명|300」 · 「300x200」 → { text, w, h } (표 칸 안의 \| 도)
@@ -174,8 +176,14 @@
       return pieces.map((p, k) => {
         if (k % 2) { if (p[0] === '$' && /\\ce\{/.test(p)) note(ln, 'chem', p); return p; }
         let s = p;
-        s = s.replace(/!\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]/g, (m, file, alias) => {
+        s = s.replace(/!\[\[([^\]|#]+)(#[^\]|]*)?(?:\|([^\]]*))?\]\]/g, (m, file, hash, alias) => {
           file = file.trim().replace(/\\$/, ''); // 표 칸 안의 ![[그림.png\|300]]
+          // 문서 넣기 ![[문서#제목]]: 펼치지 못한 것은 링크로 (다른 뷰어용으로 저장할 때는 화면에서 미리 펼쳐 넣음)
+          if (!ASSET_LIKE.test(file)) {
+            note(ln, 'embedDoc', m);
+            const h = hash ? hash.slice(1).trim() : '';
+            return `[${(alias || '').trim() || file + (h ? ' › ' + h : '')}](${dest((/\.(md|markdown)$/i.test(file) ? file : file + '.md') + (h ? '#' + ghSlug(h) : ''))})`;
+          }
           const o = sizeOf(alias);
           if (MEDIA.test(file)) { note(ln, 'media', m); return `[${o.text || file}](${dest(file)})`; }
           if (o.w) { note(ln, 'imgSize', m); return imgTag(file, o.text || file, o); }

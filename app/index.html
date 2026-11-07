@@ -156,6 +156,15 @@
 .markdown-body mark { background: #fff1a8; color: #1f2328; padding: 0 .15em; border-radius: 3px; }
 .markdown-body ins { text-decoration: underline 2px var(--c-green); text-underline-offset: 3px; background: color-mix(in srgb, var(--c-green) 10%, transparent); }
 .markdown-body del { text-decoration: line-through 2px var(--c-red); background: color-mix(in srgb, var(--c-red) 9%, transparent); }
+/* 문서 넣기 ![[문서#제목]] */
+.markdown-body .md-embed { border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 8px; margin: 0 0 1.1em; padding: .4em 1em .2em; background: color-mix(in srgb, var(--accent) 3%, transparent); }
+.markdown-body .md-embed > .emb-head { display: inline-block; font-size: .85em; color: var(--muted); text-decoration: none; border: 0; margin-bottom: .35em; }
+.markdown-body .md-embed > .emb-head:hover { color: var(--accent); }
+.markdown-body .md-embed.missing > .emb-body { color: var(--muted); font-size: .9em; padding-bottom: .4em; }
+.markdown-body .emb-h { font-weight: 700; margin: .8em 0 .45em; line-height: 1.35; }
+.markdown-body .emb-h1, .markdown-body .emb-h2 { font-size: 1.25em; }
+.markdown-body .emb-h3 { font-size: 1.1em; }
+@media print { .markdown-body .md-embed { break-inside: avoid; } }
 /* ::: 블록 — 탭 · 단계 · 파일 트리 */
 .markdown-body .mc-tabs { border: 1px solid var(--border); border-radius: 10px; margin: 0 0 1.1em; overflow: hidden; }
 .markdown-body .mc-tab-bar { display: flex; gap: 2px; overflow-x: auto; padding: 6px 6px 0; background: var(--surface-2, #f3f2ef); border-bottom: 1px solid var(--border); }
@@ -2518,6 +2527,12 @@ body.zen .zen-exit:hover { opacity: 1; }
         return;
       }
       const entry = findEntry(base, file);
+      // 문서 넣기 ![[문서#제목]]: 그 줄에 홀로 있으면 내용을 그 자리에 (읽은 뒤 채움)
+      const p = sp.parentElement;
+      if (entry && p && p.tagName === 'P' && p.childNodes.length === 1 && !p.closest('.md-example')) {
+        p.replaceWith(embedBox(entry, sp.dataset.heading, [state.current.path]));
+        return;
+      }
       if (entry) {
         const a = document.createElement('a');
         a.className = 'wikilink';
@@ -2989,7 +3004,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   }
   const plainInline = (s) => { const d = document.createElement('div'); d.innerHTML = DOMPurify.sanitize(md.renderInline(s)); return d.textContent.trim(); };
   // 원본에서 #제목 단락(없으면 앞부분)만 잘라 냄: 40줄 안팎, 빈 줄에서 끊음
-  function sliceSource(text, hash) {
+  function sliceSource(text, hash, max = 40) {
     const lines = splitFrontMatter(text).body.split('\n');
     const heads = [];
     let fence = null;
@@ -3017,9 +3032,104 @@ body.zen .zen-exit:hover { opacity: 1; }
       }
     }
     while (from < to && !lines[from].trim()) from++;
-    let end = Math.min(to, from + 40);
+    let end = Math.min(to, from + max);
     if (end < to) for (let k = end; k > from + 10; k--) if (!lines[k - 1].trim()) { end = k; break; }
     return { md: lines.slice(from, end).join('\n'), cut: end < to, found };
+  }
+  /* ---------- 문서 넣기 ![[문서#제목]] ----------
+     - 자리를 먼저 그리고, 그 문서를 읽은 뒤 채움 (찾기와 같은 읽기 기억을 써서 칠 때마다 다시 읽지 않음)
+     - 각주 번호가 겹치지 않게 넣는 곳마다 docId 를 달리 줌, 넣은 부분의 제목은 id · 목차에서 빼려고 제목 모양 글로
+     - 넣는 깊이는 두 단계까지, 서로가 서로를 넣는 경우는 막음 */
+  let embedSeq = 0;
+  function embedBox(entry, heading, chain) {
+    const box = document.createElement('div');
+    box.className = 'md-embed';
+    const head = document.createElement('a');
+    head.className = 'emb-head';
+    head.href = '#';
+    head.dataset.path = entry.path;
+    if (heading) head.dataset.hash = slugify(heading);
+    head.textContent = '📄 ' + entry.name.replace(MD_EXT, '') + (heading ? ' › ' + heading : '');
+    head.title = L('원래 문서로 가기', 'Go to the original document');
+    const body = document.createElement('div');
+    body.className = 'emb-body';
+    body.textContent = L('불러오는 중…', 'Loading…');
+    box.append(head, body);
+    fillEmbed(box, entry, heading, chain);
+    return box;
+  }
+  async function fillEmbed(box, entry, heading, chain) {
+    const body = box.querySelector('.emb-body'), fail = (msg) => { body.textContent = msg; box.classList.add('missing'); };
+    if (chain.includes(entry.path)) return fail(L('이 문서를 넣은 문서를 다시 넣을 수 없습니다', "Can't embed a document that embeds this one"));
+    if (chain.length > 2) return fail(L('문서 넣기는 두 단계까지입니다', 'Embeds go only two levels deep'));
+    let text;
+    try { const c = await gsRead(entry); text = c ? c.text : await peekText(entry); } catch { return fail(L('문서를 읽지 못했습니다', "Couldn't read the document")); }
+    const part = sliceSource(text, heading, Infinity);
+    if (heading && !part.found) return fail(L(`「${heading}」 제목을 찾지 못했습니다`, `Heading “${heading}” not found`));
+    body.innerHTML = DOMPurify.sanitize(md.render(part.md, { nested: true, depth: 1, docId: 'emb' + ++embedSeq }), { ADD_ATTR: ['target'], FORBID_TAGS: ['style'] });
+    embedProcess(body, entry, chain.concat(entry.path));
+  }
+  // 다른 뷰어용으로 저장: 한 줄에 홀로 있는 ![[문서#제목]] 을 그 내용으로 펼침 (두 단계까지, 코드 안은 그대로)
+  async function expandEmbeds(text, base, chain) {
+    const out = [];
+    let fence = null;
+    for (const l of text.split('\n')) {
+      const f = l.match(/^ {0,3}(`{3,}|~{3,})/);
+      if (fence) { if (f && f[1][0] === fence[0] && f[1].length >= fence.length) fence = null; out.push(l); continue; }
+      if (f) { fence = f[1]; out.push(l); continue; }
+      const m = l.match(/^\s*!\[\[([^\]|#]+)(?:#([^\]|]*))?(?:\|[^\]]*)?\]\]\s*$/);
+      const entry = m && !ASSET_EXT.test(m[1].trim()) && findEntry(base, m[1].trim());
+      if (!entry || chain.includes(entry.path) || chain.length > 2) { out.push(l); continue; }
+      let t;
+      try { const c = await gsRead(entry); t = c ? c.text : await peekText(entry); } catch { out.push(l); continue; }
+      const part = sliceSource(t, (m[2] || '').trim(), Infinity);
+      if (m[2] && !part.found) { out.push(l); continue; }
+      out.push(...(await expandEmbeds(part.md, entry.path, chain.concat(entry.path))).split('\n'));
+    }
+    return out.join('\n');
+  }
+  // 넣은 내용 안: 그림 · 링크는 넣은 문서 기준으로, 제목은 목차에 안 들어가게, 안에 또 넣은 문서는 한 단계 더
+  function embedProcess(root, entry, chain) {
+    makeCallouts(root);
+    root.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach((h) => {
+      const d = document.createElement('div');
+      d.className = 'emb-h emb-' + h.tagName.toLowerCase();
+      d.setAttribute('role', 'heading');
+      d.setAttribute('aria-level', h.tagName[1]);
+      d.append(...h.childNodes);
+      h.replaceWith(d);
+    });
+    root.querySelectorAll('img[src]').forEach((img) => {
+      const src = img.getAttribute('src');
+      img.loading = 'lazy';
+      if (hasScheme(src) || src.startsWith('data:')) return;
+      img.removeAttribute('src');
+      const key = findAssetKey(entry.path, src);
+      if (key) assetUrl(key).then((u) => (img.src = u)).catch(() => {});
+    });
+    root.querySelectorAll('span.wiki-embed').forEach((sp) => {
+      const f = sp.dataset.file;
+      if (ASSET_EXT.test(f)) { const o = sizeFrom(sp.dataset.alias); const node = document.createElement('img'); node.alt = o.text || f; applySize(node, o); const key = findAssetKey(entry.path, f); if (key) assetUrl(key).then((u) => (node.src = u)).catch(() => {}); sp.replaceWith(node); return; }
+      const t = findEntry(entry.path, f), p = sp.parentElement;
+      if (t && p && p.tagName === 'P' && p.childNodes.length === 1) p.replaceWith(embedBox(t, sp.dataset.heading, chain));
+      else sp.replaceWith(document.createTextNode(sp.dataset.raw));
+    });
+    root.querySelectorAll('a.wikilink').forEach((a) => {
+      const { file, heading } = a.dataset;
+      const t = file ? findEntry(entry.path, file) : entry;
+      if (t) { a.dataset.path = t.path; if (heading) a.dataset.hash = slugify(heading); } else a.classList.add('missing');
+    });
+    root.querySelectorAll('a[href]:not(.wikilink)').forEach((a) => {
+      const href = a.getAttribute('href');
+      if (/^https?:|^mailto:/i.test(href)) { a.target = '_blank'; a.rel = 'noopener noreferrer'; return; }
+      if (hasScheme(href)) return;
+      const [p, hash] = href.split('#');
+      if (!p) { a.dataset.path = entry.path; if (hash) a.dataset.hash = hash; return; }
+      if (!MD_EXT.test(p)) return;
+      const t = findEntry(entry.path, p);
+      a.dataset.path = t ? t.path : '';
+      if (hash) a.dataset.hash = hash;
+    });
   }
   // 미리 보기 안: 알림 상자는 그리고, 링크는 누르지 않게, 그림은 그 문서 기준으로
   function previewProcess(root, base, builtin) {
@@ -7171,7 +7281,9 @@ body.zen .zen-exit:hover { opacity: 1; }
     closeMenus();
     const cur = state.current;
     if (!cur || !window.MarkPortable) return;
-    const { text, changes } = MarkPortable.convert(source());
+    let src = source();
+    try { src = await expandEmbeds(src, cur.path, [cur.path]); } catch {} // 문서 넣기 ![[문서]] 는 내용으로 펼침
+    const { text, changes } = MarkPortable.convert(src);
     const name = suggestName(cur).replace(MD_EXT, '') + L('-표준.md', '-standard.md');
     const critics = changes.filter((c) => c.kind === 'critic').length;
     const done = (where) => toast(L(`다른 뷰어용으로 저장했습니다 (${changes.length}곳 바꿈): `, `Saved for other viewers (${changes.length} change${changes.length === 1 ? '' : 's'}): `) + where +

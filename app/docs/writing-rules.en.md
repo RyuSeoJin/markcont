@@ -756,6 +756,7 @@ Check **where it works** first, and if the document will be opened elsewhere too
 | Exposure · data definition | ```` ```ui ```` · ```` ```data ```` | ✅ | ❌ shown as code | ❌ shown as code |
 | Wikilink | `[[document]]` · `[[document#heading\|alias]]` | ✅ | ❌ | ✅ |
 | Embed image (wiki style) | `![[picture.png]]` | ✅ | ❌ | ✅ |
+| Embed document | `![[doc#heading]]` (on a line of its own) | ✅ | ❌ | ✅ |
 | Image size | `![description\|300](picture.png)` · `![[picture.png\|300]]` | ✅ | ⚠️ size ignored | ✅ |
 | Video · audio | `![description](video.mp4)` | ✅ | ❌ broken image | ✅ |
 | YouTube thumbnail | A YouTube URL alone on a line | ✅ | ❌ link | ❌ link |
@@ -928,7 +929,9 @@ Links that jump straight to another document when you've opened a folder. Leave 
 | `![[picture.png]]` | Embeds an image in the folder by name only |
 | `![[picture.png\|300]]` · `![[picture.png\|300x200]]` | Embeds it with a set width (· height) |
 | `![[picture.png\|description]]` | Adds a description under the image (also with a size, like `![[picture.png\|description\|300]]`) |
+| `![[Glossary]]` · `![[Glossary#Payments]]` | **Embeds the content** of that document (or that heading's section) right there — when written on a line of its own |
 
+- Embedding documents lets you keep shared rules · glossaries in one place and reuse them in many documents. The embedded part has a border; click the name at its top to go to the original. Headings inside it don't go into the table of contents. Embeds go two levels deep, and documents embedding each other are stopped. Save for other viewers expands the content in place.
 - If you write just a document name, markcont looks for **that name across the whole folder**. If several share the name, write a path like `[[docs/Meeting notes]]`.
 - A link to a document that doesn't exist shows as a faint dotted link. A link with no heading, like `[[document]]`, is left as plain text if the document it points to doesn't exist.
 - Regular links like `[text](other-doc.md)` also open right inside markcont.
