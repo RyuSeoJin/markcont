@@ -69,6 +69,7 @@ curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh 
 - Images: click to enlarge (zoom · pan), a description under images that sit on their own line, and sizes with `![description|300](image.png)` · `![[image.png|300]]`
 - Quick open · commands <kbd>Ctrl</kbd>+<kbd>O</kbd>: find files by name or initials (`fp` → feature-proposals, Korean initial consonants `ㄱㅎㅅ` → 기획서), commands with `>`, headings with `#` (accents, full-width letters and kana are matched too)
 - A workspace that opens several folders together, folder tree · file search · right-click menu, table of contents, heading folding, find in document, focus mode
+- Search all documents <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>: searches every open folder, groups matches by document and jumps to the line (match case · whole word · regex, Korean initial consonants)
 - A table of contents inside the text with `[[_TOC_]]` (also in print · PDF), and heading numbers (1 · 1.1 · 1.1.1) shown without changing the source
 - Live editing: source with line numbers and syntax colors, a marker for where you're editing, scroll sync
 - Saved versions that survive closing: a copy is kept on every save and every time Claude or another program edits the file, so you can go back for 14 days

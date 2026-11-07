@@ -91,6 +91,21 @@ Builds a table of contents from the document's headings (`#`). The part you're r
 
 Write `[[_TOC_]]` on a line of its own in the document, and a table of contents appears there too. It's included when you print or save as PDF.
 
+### Search tab (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>)
+
+Searches **every document** in the open folders. Matching lines are grouped by document; click a line to go to that spot (in the view the match is highlighted, and while editing it's selected in the source).
+
+| Button | What it does |
+|:---:|:---|
+| `Aa` | Match case |
+| <code><u>ab</u></code> | Match whole words only (`plan` matches `plan doc` but not `planning`) |
+| `.*` | Search with a regular expression (e.g. `colou?r`) |
+
+- Like quick open, it ignores case, Latin accents, full-width · half-width and hiragana · katakana differences, and finds documents made on a Mac too.
+- Korean consonants (`ㄱㅎ`) also match syllables that start with them (`ㄱㅎ` → 기획).
+- The current document is searched including unsaved edits. Up to 200 lines per document and 3000 lines in total are shown.
+- In the results, move with <kbd>↑</kbd> <kbd>↓</kbd> and open with <kbd>Enter</kbd>. Click a document name to fold its results.
+
 ---
 
 ## 3️⃣ Comfortable reading
@@ -104,6 +119,7 @@ Write `[[_TOC_]]` on a line of its own in the document, and a table of contents 
 | Copy link | **#** button next to a heading | Copies a `[heading](#heading)` link |
 | Link · footnote preview | Hover over a link or a footnote number (long-press on phones) | Shows the start of another document, the section under its heading, or the footnote text in a small window |
 | Find in document | <kbd>Ctrl</kbd>+<kbd>F</kbd> | Highlights matches and steps through them |
+| Search all documents | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>, the sidebar **Search** tab | Searches every document in the open folders (2️⃣ Search tab) |
 | Focus mode | <kbd>Ctrl</kbd>+<kbd>.</kbd> | Leaves only the body text. Press <kbd>Esc</kbd> to exit |
 | Enlarge code | ⤢ in the code block header | Shows the code full screen |
 | Enlarge a diagram | ⤢ at the top right of a diagram | Wheel or pinch to zoom, drag to pan, "Fit to screen" |
@@ -252,7 +268,7 @@ Open **⋯ → [Markdown writing rules](Markdown-Writing-Rules.md)**. Give that 
 ## 🎯 One-page summary
 
 1. Open with **Open file · Open folder · drag and drop**. <kbd>Ctrl</kbd>+<kbd>O</kbd> opens a file by typing its name
-2. In the sidebar, use the **Files · Contents** tabs; right-click for **New document · Rename · Delete**
-3. **Aa** for view settings, <kbd>Ctrl</kbd>+<kbd>F</kbd> to find, <kbd>Ctrl</kbd>+<kbd>.</kbd> for focus mode
+2. In the sidebar, use the **Files · Contents · Search** tabs; right-click for **New document · Rename · Delete**
+3. **Aa** for view settings, <kbd>Ctrl</kbd>+<kbd>F</kbd> to find in the document, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> to search all documents, <kbd>Ctrl</kbd>+<kbd>.</kbd> for focus mode
 4. <kbd>Ctrl</kbd>+<kbd>E</kbd> to edit, <kbd>Ctrl</kbd>+<kbd>S</kbd> to save
 5. From the **⋯** menu: HTML · PDF export, the guide and the writing rules
