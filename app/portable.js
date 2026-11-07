@@ -15,6 +15,7 @@
     wikilink: () => [L('위키링크 [[문서]]', 'Wikilink [[doc]]'), L('일반 링크로', 'to a normal link')],
     embed: () => [L('위키식 그림 ![[그림]]', 'Wiki embed ![[image]]'), L('일반 그림으로', 'to a normal image')],
     imgSize: () => [L('그림 크기 ![[그림|300]] · ![설명|300](그림)', 'Image size ![[image|300]] · ![alt|300](image)'), L('<img width> 태그로', 'to an <img width> tag')],
+    toc: () => [L('문서 안 목차 [[_TOC_]]', 'Table of contents [[_TOC_]]'), L('제목 링크 목록으로', 'to a list of heading links')],
     footnote: () => [L('바로 쓰는 각주 ^[설명]', 'Inline footnote ^[text]'), L('표준 각주로', 'to a standard footnote')],
     deflist: () => [L('정의 목록', 'Definition list'), L('굵은 용어 + 설명으로', 'to bold term + text')],
     media: () => [L('동영상 · 소리', 'Video · audio'), L('링크로', 'to a link')],
@@ -97,11 +98,47 @@
     return { text: res.map((r) => r.text).join('|'), state: 'fixed' };
   }
 
+  // 문서 안 목차 [[_TOC_]] · [toc] · [[toc]] 한 줄
+  const TOC_LINE = /^\s{0,3}(\[\[_toc_\]\]|\[\[toc\]\]|\[toc\])\s*$/i;
+  // 제목 글자에서 마크다운 기호를 뺀 것 (GitHub 이 제목 링크 이름을 만들 때처럼)
+  const plainHeading = (s) => s
+    .replace(/!?\[\[([^\]|#]*)(?:#([^\]|]*))?(?:\|([^\]]*))?\]\]/g, (m, f, h, a) => a || [f, h].filter(Boolean).join(' › '))
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/`([^`]*)`/g, '$1')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\*\*|__|~~|==|\+\+|\*/g, '')
+    .trim();
+  // 목차에 넣을 제목 (# ~ ###, 맨 위 제목이 하나뿐이면 그 제목은 빼고 ## ~ ####) → 링크 목록 줄
+  function tocLines(lines) {
+    const heads = [], used = new Map();
+    let fence = null, inFm = /^---\s*$/.test(lines[0] || '');
+    for (let k = 0; k < lines.length; k++) {
+      const l = lines[k];
+      if (inFm) { if (k > 0 && /^(---|\.\.\.)\s*$/.test(l)) inFm = false; continue; }
+      const f = l.match(/^\s{0,3}(`{3,}|~{3,})/);
+      if (fence) { if (f && f[1][0] === fence[0] && f[1].length >= fence.length && !l.trim().slice(f[1].length).trim()) fence = null; continue; }
+      if (f) { fence = f[1]; continue; }
+      const h = l.match(/^\s{0,3}(#{1,6})\s+(.*?)(?:\s+#+)?\s*$/);
+      if (!h) continue;
+      const text = plainHeading(h[2]);
+      let slug = ghSlug(text);
+      const n = used.get(slug) || 0;
+      used.set(slug, n + 1);
+      if (n) slug += '-' + n;
+      heads.push({ lvl: h[1].length, text, slug });
+    }
+    const one = heads.filter((h) => h.lvl === 1).length === 1;
+    const hs = heads.filter((h) => (one ? h.lvl >= 2 && h.lvl <= 4 : h.lvl <= 3));
+    if (!hs.length) return [];
+    const min = Math.min(...hs.map((h) => h.lvl));
+    return hs.map((h) => '  '.repeat(h.lvl - min) + `- [${h.text.replace(/[[\]]/g, '\\$&')}](#${h.slug})`);
+  }
+
   function convert(src) {
     const lines = String(src).replace(/\r\n?/g, '\n').split('\n');
     const out = [], changes = [], notes = [];
     const note = (ln, kind, text) => changes.push({ line: ln, kind, text: (text || '').trim().slice(0, 80) });
-    let fn = 0;
+    let fn = 0, toc = null;
 
     // 인라인: 코드 · 수식 조각은 그대로 두고 나머지만 바꿈
     function inline(line, ln) {
@@ -157,6 +194,14 @@
     }
     while (i < lines.length) {
       const line = lines[i], ln = i + 1;
+      // 문서 안 목차: 제목 링크 목록으로 펼침 (문단 중간에 붙은 줄은 markcont 에서도 목차가 아니므로 그대로)
+      if (TOC_LINE.test(line) && (i === 0 || !lines[i - 1].trim() || /^\s{0,3}#{1,6}\s/.test(lines[i - 1]))) {
+        toc = toc || tocLines(lines);
+        out.push(...toc);
+        note(ln, 'toc', line);
+        i++;
+        continue;
+      }
       // 코드 블록
       const fm = line.match(/^(\s*)(`{3,}|~{3,})\s*([^`\s]*)\s*(.*)$/);
       if (fm) {

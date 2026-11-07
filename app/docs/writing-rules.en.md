@@ -758,6 +758,7 @@ Check **where it works** first, and if the document will be opened elsewhere too
 | Video · audio | `![description](video.mp4)` | ✅ | ❌ broken image | ✅ |
 | YouTube thumbnail | A YouTube URL alone on a line | ✅ | ❌ link | ❌ link |
 | Document info | `name: value` between `---` lines at the very top | ✅ info box | ⚠️ table | ✅ |
+| Table of contents | `[[_TOC_]]` on a line of its own | ✅ | ❌ plain text | ❌ |
 | Collapsible content | `<details>` | ✅ | ✅ | ✅ |
 | Keyboard keys | `<kbd>Ctrl</kbd>` | ✅ | ✅ | ✅ |
 | Source · result side by side | ```` ```markdown example ```` | ✅ | ❌ shown as code | ❌ shown as code |
@@ -765,7 +766,7 @@ Check **where it works** first, and if the document will be opened elsewhere too
 <sub>The GitHub and Obsidian columns show behavior with default settings as of November 2026. It may differ by version or plugins.</sub>
 
 > [!TIP]
-> Even if you use ❌ syntax, **▾ → Save for other viewers…** makes a standard copy. Bold followed by CJK text and highlight · inserted · deleted text become HTML tags, extra callouts become one of the 5 standard types + a title, foldable callouts become `<details>`, wikilinks become normal links, image sizes become `<img width>`, and markcont diagrams become **Mermaid**. Chemistry `\ce{}` can't be converted, so it's left as is and flagged.
+> Even if you use ❌ syntax, **▾ → Save for other viewers…** makes a standard copy. Bold followed by CJK text and highlight · inserted · deleted text become HTML tags, extra callouts become one of the 5 standard types + a title, foldable callouts become `<details>`, wikilinks become normal links, image sizes become `<img width>`, tables of contents become lists of heading links, and markcont diagrams become **Mermaid**. Chemistry `\ce{}` can't be converted, so it's left as is and flagged.
 
 ### Callouts: 11 types and collapsing
 
@@ -909,6 +910,22 @@ tags:
 |:---|:---|
 | `badges: done=green, pending=orange, open=red` | Table cells that start with those words show as colored badges (blue · green · orange · red · purple · gray) |
 | `viewer: markcont` | A markcont-only document: hides the "⚠ spots look different in other viewers" notice |
+
+### Table of contents · heading numbers
+
+```markdown
+# Spec
+
+[[_TOC_]]
+
+## Overview
+```
+
+- Write `[[_TOC_]]` on a line of its own, with blank lines around it, and a **table of contents** appears right there. It's included when you print, save as PDF or save as HTML.
+- It lists `#` to `###`. If there's only one top `#` heading, it's treated as the document title and left out, and `####` is included instead.
+- It's the same syntax as GitLab and Azure DevOps. Typora's `[toc]` and VitePress's `[[toc]]` work too.
+- Save for other viewers turns it into a list of heading links.
+- To see heading numbers (1 · 1.1 · 1.1.1) without writing them, use **View settings (Aa) → Number the headings**. The source text stays as it is. Headings that already have a number, like `1️⃣`, `1.` or `3-1.`, are skipped, and counting continues from their number.
 
 ### Line breaks
 

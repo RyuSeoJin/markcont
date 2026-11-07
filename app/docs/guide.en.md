@@ -73,13 +73,15 @@ Open and close the sidebar with the <kbd>☰</kbd> button in the top left. Drag 
 
 Builds a table of contents from the document's headings (`#`). The part you're reading is highlighted, and clicking a heading jumps to it.
 
+Write `[[_TOC_]]` on a line of its own in the document, and a table of contents appears there too. It's included when you print or save as PDF.
+
 ---
 
 ## 3️⃣ Comfortable reading
 
 | Feature | Where | Description |
 |:---|:---|:---|
-| View settings | **Aa** button at the top | Text size, Sans · Serif, body width, callout style, code line numbers, review before saving |
+| View settings | **Aa** button at the top | Text size, Sans · Serif, body width, callout style, code line numbers, heading numbers (1 · 1.1), review before saving |
 | Language | View settings (Aa) → Language, or the first screen of the tour | Switch between 한국어 and English |
 | Light · Dark | ☾ / ☀ button at the top | Dark mode |
 | Fold a heading | ⌄ button next to a heading | Folds the content under that heading |

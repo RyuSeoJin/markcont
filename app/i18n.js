@@ -60,6 +60,8 @@
     '알림 상자 모양': 'Callout style',
     'ⓘ 참고': 'ⓘ Note',
     '코드 줄 번호 보기': 'Show code line numbers',
+    '제목에 번호 붙여 보기': 'Number the headings',
+    '1 · 1.1 · 1.1.1 처럼 보여 줍니다. 원본 글은 바뀌지 않고, 이미 번호가 있는 제목은 건너뜁니다': 'Shows them as 1 · 1.1 · 1.1.1. The source text stays as it is, and headings that already have a number are skipped',
     '저장하기 전에 바뀐 내용 확인': 'Review changes before saving',
     '저장할 때 무엇이 바뀌는지 먼저 보여주고 한 번 더 묻습니다': 'Shows what will change and asks once more before saving',
     '편집할 때 스크롤 맞추기': 'Sync scroll while editing',

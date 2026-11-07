@@ -68,6 +68,7 @@ curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh 
 - Wikilinks `[[document#heading]]`, video · YouTube thumbnails
 - Images: click to enlarge (zoom · pan), a description under images that sit on their own line, and sizes with `![description|300](image.png)` · `![[image.png|300]]`
 - A workspace that opens several folders together, folder tree · file search · right-click menu, table of contents, heading folding, find in document, focus mode
+- A table of contents inside the text with `[[_TOC_]]` (also in print · PDF), and heading numbers (1 · 1.1 · 1.1.1) shown without changing the source
 - Live editing: source with line numbers and syntax colors, a marker for where you're editing, scroll sync
 - Auto-reload of changed files, Save as HTML, Print · PDF
 - Save for other viewers: a copy with markcont-only syntax converted to standard markdown (diagrams to Mermaid), plus a marker for spots that look different

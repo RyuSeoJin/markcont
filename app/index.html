@@ -138,6 +138,16 @@
 .markdown-body figure.img-fig { margin: 0 0 16px; }
 .markdown-body figure.img-fig img { display: block; }
 .markdown-body figure.img-fig figcaption { margin-top: 6px; font-size: .88em; line-height: 1.5; color: var(--muted); }
+/* 문서 안 목차 [[_TOC_]] · 제목 번호 */
+.markdown-body nav.toc-inline { margin: 0 0 16px; padding: 12px 18px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); line-height: 1.65; }
+.markdown-body nav.toc-inline .toc-inline-title { margin-bottom: 4px; font-size: .86em; font-weight: 700; color: var(--muted); }
+.markdown-body nav.toc-inline ul { margin: 0; padding-left: 0; list-style: none; }
+.markdown-body nav.toc-inline li > ul { margin: 0; padding-left: 1.25em; border-left: 0; }
+.markdown-body nav.toc-inline li + li { margin-top: 0; }
+.markdown-body nav.toc-inline a { color: var(--text); border-bottom: 0; }
+.markdown-body nav.toc-inline a:hover { color: var(--accent); }
+.markdown-body nav.toc-inline .toc-inline-empty { margin: 0; font-size: .9em; color: var(--muted); }
+.markdown-body .h-num { margin-right: .4em; color: var(--muted); font-variant-numeric: tabular-nums; }
 .markdown-body hr { border: 0; border-top: 1px solid var(--border); margin: 2.2em 0; }
 .markdown-body kbd {
   font-family: var(--mono); font-size: .82em; padding: .1em .45em; border-radius: 5px;
@@ -1017,7 +1027,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   .topbar, .sidebar, .editor-pane, .doc-meta, .toast, .drop-overlay, .scrim, .copy, .h-tools, .zen-exit, .menu, .fab, .find-bar, .code-head button { display: none !important; }
   .layout, .main, .workspace, .preview-pane { display: block !important; height: auto !important; overflow: visible !important; padding: 0 !important; }
   .markdown-body { max-width: none; font-size: 11pt; }
-  .markdown-body pre, .markdown-body .table-wrap, .markdown-body img, .markdown-body figure, .markdown-body .callout { break-inside: avoid; }
+  .markdown-body pre, .markdown-body .table-wrap, .markdown-body img, .markdown-body figure, .markdown-body .callout, .markdown-body nav.toc-inline { break-inside: avoid; }
   .markdown-body h1, .markdown-body h2, .markdown-body h3 { break-after: avoid; }
 }
 </style>
@@ -1108,6 +1118,9 @@ body.zen .zen-exit:hover { opacity: 1; }
         </div>
         <div class="set-row">
           <label class="check-row"><input type="checkbox" id="optLines"><span>코드 줄 번호 보기</span></label>
+        </div>
+        <div class="set-row">
+          <label class="check-row"><input type="checkbox" id="optHeadNum"><span>제목에 번호 붙여 보기<small>1 · 1.1 · 1.1.1 처럼 보여 줍니다. 원본 글은 바뀌지 않고, 이미 번호가 있는 제목은 건너뜁니다</small></span></label>
         </div>
         <div class="set-row">
           <label class="check-row"><input type="checkbox" id="optConfirmSave"><span>저장하기 전에 바뀐 내용 확인<small>저장할 때 무엇이 바뀌는지 먼저 보여주고 한 번 더 묻습니다</small></span></label>
@@ -1498,7 +1511,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   /* =========================================================
      설정 (글자 크기, 글꼴, 폭, 줄바꿈, 스크롤 맞춤)
      ========================================================= */
-  const settings = Object.assign({ size: 16.5, font: 'sans', width: 'normal', sync: true, compatHint: true, callout: 'soft', lines: false, confirmSave: true }, store.json('mdv-settings', {}));
+  const settings = Object.assign({ size: 16.5, font: 'sans', width: 'normal', sync: true, compatHint: true, callout: 'soft', lines: false, headNum: false, confirmSave: true }, store.json('mdv-settings', {}));
   delete settings.breaks; // 없앤 설정 (엔터 한 번도 줄바꿈으로 보기)
   const WIDTHS = { narrow: '680px', normal: '820px', wide: '1060px' };
   let serifLoaded = false;
@@ -1521,6 +1534,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     document.querySelectorAll('#calloutSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === settings.callout));
     document.querySelectorAll('#langSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === LANG));
     $('#optLines').checked = settings.lines;
+    $('#optHeadNum').checked = settings.headNum;
     $('#optConfirmSave').checked = settings.confirmSave;
     $('#optCompat').checked = settings.compatHint !== false;
     $('#optSync').checked = settings.sync;
@@ -1544,6 +1558,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   };
   $('#calloutSeg').onclick = (e) => { const v = e.target.closest('button')?.dataset.v; if (v) { settings.callout = v; applySettings(true); } };
   $('#optLines').onchange = (e) => { settings.lines = e.target.checked; applySettings(true); };
+  $('#optHeadNum').onchange = (e) => { settings.headNum = e.target.checked; applySettings(true); };
   $('#optConfirmSave').onchange = (e) => { settings.confirmSave = e.target.checked; applySettings(); };
   $('#optSync').onchange = (e) => { settings.sync = e.target.checked; applySettings(); };
   $('#optCompat').onchange = (e) => { settings.compatHint = e.target.checked; applySettings(); if (state.current) updateMeta(source()); };
@@ -1678,6 +1693,20 @@ body.zen .zen-exit:hover { opacity: 1; }
     return true;
   }
 
+  // 문서 안 목차: 한 줄에 [[_TOC_]] (GitLab · Azure DevOps), [toc] (Typora), [[toc]] (VitePress)
+  const TOC_LINE = /^(\[\[_toc_\]\]|\[\[toc\]\]|\[toc\])\s*$/i;
+  function tocRule(state, startLine, endLine, silent) {
+    if (state.sCount[startLine] - state.blkIndent >= 4) return false;
+    const line = state.src.slice(state.bMarks[startLine] + state.tShift[startLine], state.eMarks[startLine]);
+    if (!TOC_LINE.test(line)) return false;
+    if (silent) return true;
+    state.line = startLine + 1;
+    const t = state.push('toc_inline', 'nav', 0);
+    t.block = true;
+    t.map = [startLine, state.line];
+    return true;
+  }
+
   // 두 글자 기호로 감싸는 문법(==, ++, --)을 안전하게 찾는 규칙
   //  - 여는 기호 앞, 닫는 기호 뒤가 영문 · 숫자 · 같은 기호면 문법이 아님 (x==1, y==2, C++, a++b, a--b, --force)
   //  - 여는 기호 바로 뒤, 닫는 기호 바로 앞은 빈칸이 아니어야 함 (a == b == c 는 그대로)
@@ -1740,6 +1769,8 @@ body.zen .zen-exit:hover { opacity: 1; }
     md.inline.ruler.after('escape', 'math_inline', mathInline);
     md.block.ruler.before('fence', 'math_block', mathBlock, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
     md.inline.ruler.before('link', 'wikilink', wikiRule);
+    md.block.ruler.before('paragraph', 'toc_inline', tocRule);
+    md.renderer.rules.toc_inline = (t, i) => `<nav class="toc-inline"${t[i].map ? ` data-line="${t[i].map[0]}"` : ''}></nav>\n`;
     md.renderer.rules.math_inline = (t, i) => renderMath(t[i].content, t[i].meta.display);
     md.renderer.rules.math_block = (t, i) => `<div class="math-block" data-line="${t[i].map[0]}">${renderMath(t[i].content, true)}</div>\n`;
     md.renderer.rules.wikilink = (t, i) => {
@@ -2009,6 +2040,9 @@ body.zen .zen-exit:hover { opacity: 1; }
         '<button type="button" class="h-fold" title="' + L('접기 / 펴기', 'Fold / unfold') + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>';
       h.append(tools);
     });
+    const heads = [...doc.querySelectorAll('h1,h2,h3,h4,h5,h6')].filter((h) => !h.closest('.md-example'));
+    if (settings.headNum) numberHeadings(heads);
+    fillInlineToc(heads);
 
     // 체크리스트 [ ] [x] — 클릭하면 원본도 바뀜
     doc.querySelectorAll('li').forEach((li) => {
@@ -2739,6 +2773,88 @@ body.zen .zen-exit:hover { opacity: 1; }
     applyFolds();
   }
 
+  /* ---------- 제목 번호 (보기 설정, 원본 글은 그대로) ---------- */
+  // 맨 위 제목(#)이 하나뿐이면 문서 제목으로 보고 ## 부터 1 · 1.1 · 1.1.1
+  const titleOnly = (heads) => heads.filter((h) => h.tagName === 'H1').length === 1;
+  // 이미 번호가 있는 제목: 1. · 1.2 · 1-1. · 1) · 1️⃣ · 🔟 · ① · 제1장
+  function ownNumber(text) {
+    let m = text.match(/^\s*(\d+(?:[.-]\d+)*)[.)]?(?=\s|$)/);
+    if (m) return m[1].split(/[.-]/).map(Number);
+    if ((m = text.match(/^\s*([0-9])️?⃣/))) return [+m[1]];
+    if (/^\s*\u{1f51f}/u.test(text)) return [10];
+    if ((m = text.match(/^\s*([①-⑳])/))) return [m[1].charCodeAt(0) - 0x245f];
+    if ((m = text.match(/^\s*(?:제\s*)?(\d+)\s*(?:장|절|부|편)(?=[\s.:]|$)/))) return [+m[1]];
+    return null;
+  }
+  function numberHeadings(heads) {
+    if (!heads.length) return;
+    const base = titleOnly(heads) ? 2 : Math.min(...heads.map(headingLevel));
+    const cnt = [];
+    for (const h of heads) {
+      const d = headingLevel(h) - base;
+      if (d < 0) continue;
+      const own = ownNumber(h.dataset.title || '');
+      if (own) { // 그 번호에 맞춰 이어 셈 (2️⃣ 아래 제목은 2.1, 2.2 …)
+        own.forEach((n, k) => { const at = d - (own.length - 1) + k; if (at >= 0) cnt[at] = n; });
+        cnt.length = d + 1;
+        continue;
+      }
+      for (let k = 0; k < d; k++) cnt[k] = cnt[k] || 0;
+      cnt[d] = (cnt[d] || 0) + 1;
+      cnt.length = d + 1;
+      const num = cnt.join('.') + (d ? '' : '.');
+      h.dataset.num = num;
+      const sp = document.createElement('span');
+      sp.className = 'h-num';
+      sp.textContent = num;
+      h.prepend(sp);
+    }
+  }
+  const headLabel = (h) => (h.dataset.num ? h.dataset.num + ' ' : '') + h.dataset.title;
+
+  /* ---------- 문서 안 목차 [[_TOC_]] ---------- */
+  function fillInlineToc(all) {
+    const navs = el.doc.querySelectorAll('nav.toc-inline');
+    if (!navs.length) return;
+    // 사이드바 목차처럼 # ~ ###, 맨 위 제목이 하나뿐이면 그 제목은 빼고 ## ~ ####
+    const one = titleOnly(all);
+    const heads = all.filter((h) => (one ? /^H[234]$/ : /^H[123]$/).test(h.tagName));
+    for (const nav of navs) {
+      nav.innerHTML = '';
+      const title = document.createElement('div');
+      title.className = 'toc-inline-title';
+      title.textContent = L('목차', 'Contents');
+      nav.append(title);
+      if (!heads.length) {
+        const p = document.createElement('p');
+        p.className = 'toc-inline-empty';
+        p.textContent = L('목차에 넣을 제목(#)이 없습니다.', 'No headings (#) to list yet.');
+        nav.append(p);
+        continue;
+      }
+      const root = document.createElement('ul');
+      const stack = [{ lvl: Math.min(...heads.map(headingLevel)), ul: root }];
+      for (const h of heads) {
+        const lvl = headingLevel(h);
+        while (stack.length > 1 && lvl < stack[stack.length - 1].lvl) stack.pop();
+        let top = stack[stack.length - 1];
+        if (lvl > top.lvl) {
+          const holder = top.ul.lastElementChild || top.ul.appendChild(document.createElement('li'));
+          const ul = document.createElement('ul');
+          holder.append(ul);
+          stack.push((top = { lvl, ul }));
+        }
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = '#' + h.id;
+        a.textContent = headLabel(h);
+        li.append(a);
+        top.ul.append(li);
+      }
+      nav.append(root);
+    }
+  }
+
   /* =========================================================
      목차 + 현재 위치 표시
      ========================================================= */
@@ -2753,7 +2869,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       const a = document.createElement('a');
       a.href = '#' + h.id;
       a.dataset.id = h.id;
-      a.textContent = h.dataset.title;
+      a.textContent = headLabel(h);
       a.className = 'l' + (headingLevel(h) - minLevel + 1);
       a.onclick = (e) => { e.preventDefault(); scrollToId(h.id); closeSidebar(); };
       el.toc.append(a);

@@ -10,6 +10,10 @@ tags:
 
 Open this document to see everything the viewer can show, all in one place. Press Edit (`Ctrl+E`) to see it side by side with the source.
 
+The table of contents below comes from a single `[[_TOC_]]` line in the text. Turn on "Number the headings" in View settings (**Aa**) to put 1 · 1.1 numbers in front of the headings.
+
+[[_TOC_]]
+
 ## 1. Text formatting
 
 **Bold**, *italic*, ~~strikethrough~~, `inline code`, ==highlight==, ++inserted text++, --deleted text--, <kbd>Ctrl</kbd>+<kbd>S</kbd>.
