@@ -10,9 +10,17 @@ tags:
 
 Open this document to see everything the viewer can show, all in one place. Press Edit (`Ctrl+E`) to see it side by side with the source.
 
+The table of contents below comes from a single `[[_TOC_]]` line in the text. Turn on "Number the headings" in View settings (**Aa**) to put 1 · 1.1 numbers in front of the headings.
+
+[[_TOC_]]
+
 ## 1. Text formatting
 
 **Bold**, *italic*, ~~strikethrough~~, `inline code`, ==highlight==, ++inserted text++, --deleted text--, <kbd>Ctrl</kbd>+<kbd>S</kbd>.
+
+In Korean, Chinese and Japanese text, bold that ends in a bracket, quote or punctuation still works when a character follows right after it: **스크립트(script)**는, **"인용"**이라고, **10%**의, **「強調」**です.
+
+Suggestion marks: the payment screen is final {~~next week~>this week~~}{>>schedule moved up<<}. Add {++a new item++} and drop the {--needless--} words. Click a mark to accept or reject it.
 
 ## 2. Callouts
 
@@ -62,7 +70,7 @@ Viewer
 
 ## 6. Code and math
 
-```javascript
+```javascript title="hello.js" {2}
 function hello(name) {
   return `Hello, ${name}!`;
 }
@@ -122,6 +130,36 @@ Review: 2d
 
 - To another document: [User guide](User-Guide.md), wikilink [[Markdown-Writing-Rules#7-2. Diagrams (markcont style)|the diagrams chapter of the writing rules]]
 - To a heading in this document: [[#3. Task lists]]
+- Hover over a link or a footnote number to see its content in a small window (long-press on phones)
 - A YouTube link on its own line becomes a thumbnail:
 
 https://youtu.be/SEgHM748yrE?si=HsLb-OZOiQqXq3ng
+
+## 9. Images
+
+Click an image to enlarge it. When an image sits alone on its own line, its description shows under it, and a number at the end of the description, like `|96`, sets the width.
+
+![markcont icon|96](icons/icon-192.png)
+
+## 10. Tabs · steps · file tree
+
+::: tabs
+== Windows
+Run the installer (`-setup.exe`).
+== macOS
+Open the `.dmg` file and move the app.
+:::
+
+::: steps
+1. Download the file
+2. Install it
+3. Run it
+:::
+
+::: tree
+- app/
+  - index.html
+  - docs/
+    - guide.md
+- README.md
+:::

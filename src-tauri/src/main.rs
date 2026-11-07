@@ -2,6 +2,7 @@
 // 화면은 app/index.html 을 그대로 쓰고, 여기서는 파일 읽기 · 저장 · 선택 창만 맡습니다.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod history;
 mod mcp;
 
 use serde::Serialize;
@@ -53,11 +54,38 @@ fn read_file(path: String) -> Result<OpenedFile, String> {
     })
 }
 
+/// keep_history 가 true 면 바뀌기 전 내용과 새 내용을 저장 기록에 남깁니다 (history.rs)
 #[tauri::command]
-fn save_file(path: String, text: String) -> Result<u64, String> {
+fn save_file(path: String, text: String, keep_history: Option<bool>) -> Result<u64, String> {
     let p = PathBuf::from(&path);
-    fs::write(&p, text).map_err(|e| e.to_string())?;
+    if keep_history.unwrap_or(false) {
+        history::write_with_history(&p, &text, "save").map_err(|e| e.to_string())?;
+    } else {
+        fs::write(&p, text).map_err(|e| e.to_string())?;
+    }
     Ok(modified_ms(&p))
+}
+
+// ---------- 저장 기록 ----------
+#[tauri::command]
+fn history_list(path: String) -> Vec<history::Version> {
+    history::list(&PathBuf::from(path))
+}
+#[tauri::command]
+fn history_read(path: String, id: String) -> Result<String, String> {
+    history::read(&PathBuf::from(path), &id)
+}
+#[tauri::command]
+fn history_add(path: String, text: String, kind: String) -> Result<(), String> {
+    history::add(&PathBuf::from(path), &text, &kind)
+}
+#[tauri::command]
+fn history_clear(path: String) -> Result<(), String> {
+    history::clear(&PathBuf::from(path))
+}
+#[tauri::command]
+fn history_prune() {
+    history::prune_all();
 }
 
 #[tauri::command]
@@ -208,6 +236,22 @@ fn create_file(path: String, text: String) -> Result<u64, String> {
     Ok(modified_ms(&p))
 }
 
+/// 붙여 넣은 그림 저장 (폴더가 없으면 만들고, 같은 이름이 있으면 덮어쓰지 않음)
+#[tauri::command]
+fn save_binary(path: String, data: Vec<u8>) -> Result<(), String> {
+    use std::io::Write;
+    let p = PathBuf::from(&path);
+    if let Some(dir) = p.parent() {
+        fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
+    let mut f = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&p)
+        .map_err(|e| if e.kind() == std::io::ErrorKind::AlreadyExists { mcp::tr("같은 이름의 파일이 이미 있습니다", "A file with that name already exists").to_string() } else { e.to_string() })?;
+    f.write_all(&data).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn create_dir(path: String) -> Result<(), String> {
     let p = PathBuf::from(&path);
@@ -223,7 +267,15 @@ fn rename_path(from: String, to: String) -> Result<(), String> {
     if target.exists() {
         return Err(mcp::tr("같은 이름이 이미 있습니다", "That name is already taken").into());
     }
-    fs::rename(&from, &target).map_err(|e| e.to_string())
+    fs::rename(&from, &target).map_err(|e| e.to_string())?;
+    // 저장 기록도 새 이름으로
+    let src = PathBuf::from(&from);
+    if target.is_dir() {
+        history::moved_dir(&src, &target);
+    } else {
+        history::moved(&src, &target);
+    }
+    Ok(())
 }
 
 /// 지운 파일 · 폴더는 휴지통으로 보냅니다 (되살릴 수 있음).
@@ -234,8 +286,8 @@ fn delete_path(path: String) -> Result<(), String> {
 
 // ---------- Claude 연결 (MCP) : 화면에서 쓰는 명령 ----------
 #[tauri::command]
-fn set_mcp_state(roots: Vec<mcp::McpRoot>, current: Option<String>, selection: Option<String>, lang: Option<String>) -> Result<(), String> {
-    mcp::write_state(&mcp::McpState { roots, current, selection, lang })
+fn set_mcp_state(roots: Vec<mcp::McpRoot>, current: Option<String>, selection: Option<String>, lang: Option<String>, suggest_only: Option<bool>) -> Result<(), String> {
+    mcp::write_state(&mcp::McpState { roots, current, selection, lang, suggest_only: suggest_only.unwrap_or(false) })
 }
 /// 화면 언어를 알려줌 (파일 선택 창 제목 · 오류 문구에 씀)
 #[tauri::command]
@@ -279,9 +331,15 @@ fn main() {
             list_dir,
             read_binary,
             create_file,
+            save_binary,
             create_dir,
             rename_path,
-            delete_path
+            delete_path,
+            history_list,
+            history_read,
+            history_add,
+            history_clear,
+            history_prune
         ])
         .run(tauri::generate_context!())
         .expect("markcont를 실행하지 못했습니다");

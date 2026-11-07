@@ -1,6 +1,6 @@
 // 오프라인에서도 열리도록 앱 파일을 저장해 두는 서비스 워커
 // 새 버전을 올릴 때는 아래 VERSION 숫자를 올리세요.
-const VERSION = 'v1.5.0';
+const VERSION = 'v1.9.0';
 // 웹 앱만 고쳐 다시 올릴 때는 BUILD 숫자를 올리세요 (PC 프로그램 버전과 따로)
 const BUILD = 1;
 const CACHE = 'markcont-' + VERSION + '-' + BUILD;
@@ -27,6 +27,10 @@ const APP_FILES = [
   './i18n.js',
   './diagram.js',
   './portable.js',
+  './cjk.js',
+  './paste.js',
+  './docx.js',
+  './richcopy.js',
   './vendor/highlight.min.js',
   './vendor/hljs-github-dark.min.css',
   './vendor/hljs-github.min.css',
@@ -54,6 +58,7 @@ const APP_FILES = [
   './vendor/katex/katex.min.js',
   './vendor/katex/mhchem.min.js',
   './vendor/markdown-it-deflist.min.js',
+  './vendor/markdown-it-emoji-data.js',
   './vendor/markdown-it-footnote.min.js',
   './vendor/markdown-it-ins.min.js',
   './vendor/markdown-it-mark.min.js',

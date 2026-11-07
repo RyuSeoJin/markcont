@@ -50,11 +50,20 @@ Or grab a file from [Releases](https://github.com/RyuSeoJin/markcont/releases/la
 - GitHub-style tables, callouts (`> [!NOTE]`), task lists, footnotes and code highlighting.
 - Math (`$E=mc^2$`), chemical formulas and Mermaid diagrams.
 - Dark mode, font size and width settings, table of contents, collapsible headings.
+- Embed another document with `![[doc#heading]]`, organize long documents with `:::` tabs · steps · file trees, and present sections as slides.
 
 **Edit**
 - Source and result side by side, with a preview that updates as you type.
 - See what will change before you save; undo history is kept.
 - Open whole folders and create, rename or delete documents on one screen.
+- A copy is kept on every save, so you can go back to earlier content for 14 days, even after closing the document.
+- Type `[[` to pick a document or heading, or `/` to insert blocks like tables, callouts and flowcharts. New documents can start from a template.
+- Paste a screenshot, Excel cells or text from the web or Notion and get an image file, a table or Markdown.
+
+**Find and export**
+- Find files by name or Korean initials (`ㄱㅎㅅ` → 기획서) with <kbd>Ctrl</kbd>+<kbd>O</kbd>, and search every document with <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>.
+- See what links to a document and which links are broken; renaming a file also fixes the links that point to it.
+- Save as HTML, Word (.docx) or PDF, or copy with formatting to paste into mail, Notion or Google Docs.
 
 **Planning-doc blocks** (markcont only)
 - `flow` flowcharts: write nodes as a table and get a diagram split into user and system zones.
@@ -65,6 +74,7 @@ Or grab a file from [Releases](https://github.com/RyuSeoJin/markcont/releases/la
 **Claude integration** (desktop app)
 - markcont also runs as an MCP server, so Claude Desktop or Claude Code can edit documents in the folder you have open.
 - Claude can only read and edit Markdown / text files inside that folder — no deleting, no running commands. Changes are highlighted on screen.
+- Turn on **Only suggest changes** and Claude leaves suggestion marks (`{~~old~>new~~}`) instead of editing the text; you accept or reject each one in markcont.
 
 GitHub and Obsidian show the markcont-only blocks as plain code. **Save for other viewers** writes a standard Markdown copy (diagrams become Mermaid).
 
@@ -86,6 +96,7 @@ You can paste the node table from an existing planning doc as is. Shapes, branch
 ## Privacy
 
 - Documents are read and written only on your device. No telemetry.
+- Saved versions (copies of a document, 14 days, up to 50 per file) also stay on your device: in the app's settings folder for the desktop app, in browser storage for the web app.
 - Document content goes to Anthropic only when you use **Connect to Claude**.
 - Loading the serif font (Google Fonts), YouTube thumbnails, styles in exported HTML (CDN) or images hosted online sends your IP address to those servers. Everything else works offline.
 

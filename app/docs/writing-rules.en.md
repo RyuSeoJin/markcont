@@ -110,6 +110,7 @@ Save with <kbd>Ctrl</kbd>+<kbd>S</kbd>.
 
 - Use the highlight **only once** per section.
 - Don't bold a whole sentence. Bold just the words.
+- In Korean, Chinese and Japanese text you can put the next character right after bold · italic · strikethrough. Even when the bold ends in a bracket, quote or punctuation, like `**스크립트(script)**는`, markcont shows it bold. GitHub and VS Code show the `**` as plain text, so use **Save for other viewers** for documents that will be read elsewhere. Only those spots become `<strong>` tags.
 
 ---
 
@@ -165,6 +166,17 @@ console.log("Hello");
 ```
 ````
 
+- Put a space after the language name and write `title="file name"` to show the **file name** in the header, or `{2,4-5}` to put a **highlight strip** on those lines. The MkDocs form `hl_lines="2 4-5"` works too.
+- Other viewers (GitHub, etc.) read only the first word as the language name and skip the rest. The code still shows there, just without the title and highlights.
+- `js{2}` written without a space works in markcont, but GitHub then loses the colors, so keep the space.
+
+````markdown example
+```js title="app.js" {2}
+const a = 1;
+const b = 2; // this line is highlighted
+```
+````
+
 ---
 
 ## 7️⃣ Images, diagrams, math
@@ -177,10 +189,10 @@ console.log("Hello");
 | A title that shows on mouse hover | `![description](picture.png "Title")` |
 | A file name with spaces | `![description](<my picture.png>)` |
 | An image from the web | `![description](https://example.com/picture.png)` |
-| Set the size | `<img src="picture.png" width="300">` |
+| Set the size | `![description\|300](picture.png)` · `![description\|300x200](picture.png)` (markcont · Obsidian), or `<img src="picture.png" width="300">`, which works everywhere |
 | Center it | `<p align="center"><img src="picture.png" width="300"></p>` |
 | An image you can click to go somewhere | `[![description](picture.png)](https://example.com)` |
-| Add by name only (wiki style) | `![[picture.png]]` |
+| Add by name only (wiki style) | `![[picture.png]]` · with a width `![[picture.png\|300]]` |
 | Video · audio | `![description](video.mp4)` · `![description](sound.mp3)` |
 
 **How to write paths**: start from the folder the current document is in.
@@ -194,10 +206,13 @@ console.log("Hello");
 ```markdown example
 ![markcont icon](icons/icon-192.png "markcont")
 
+![A smaller icon|64](icons/icon-192.png)
+
 <p align="center"><img src="icons/icon-192.png" width="64"></p>
 ```
 
 - **Always** write the description inside `[ ]`. It shows when the image can't load, and screen readers read it aloud.
+- When an image sits alone on its own line, markcont shows the description **under the image** in small text. Click an image to enlarge it (wheel or pinch to zoom).
 - Keeping images together in an `images/` folder inside the document folder makes them easy to manage.
 - Images in a folder only show in documents opened with **Open folder**. If you open a single file, it can't read images in the same folder.
 
@@ -479,7 +494,7 @@ Write `mermaid` as the code block language, and put the **diagram type** on the 
 | `A --- B` | Line only |
 | `A -.-> B` | Dotted arrow (optional · exception) |
 | `A ==> B` | Thick arrow (main path) |
-| `A -->|yes| B` | Text on the arrow |
+| `A -->\|yes\| B` | Text on the arrow |
 | `A --> B & C` | To several places at once |
 
 #### Branches: splitting by condition
@@ -735,23 +750,33 @@ Check **where it works** first, and if the document will be opened elsewhere too
 | 6 extra callout types | `> [!INFO]` `> [!TODO]` … | ✅ | ❌ | ✅ |
 | Collapsible callouts | `> [!NOTE]-` · `> [!NOTE]+` | ✅ | ❌ | ✅ |
 | Custom callout title | `> [!TIP] My title` | ✅ | ❌ | ✅ |
+| Bold · italic followed by CJK text | `**bold(note)**는` | ✅ | ❌ symbols shown | ⚠️ reading view only |
 | Highlight | `==text==` | ✅ | ❌ plain text | ✅ |
 | Inserted text | `++text++` | ✅ | ❌ plain text | ❌ |
 | Deleted text | `--text--` | ✅ | ❌ plain text | ❌ |
+| Suggestion marks | `{++add++}` `{--cut--}` `{~~old~>new~~}` `{>>comment<<}` | ✅ accept · reject | ❌ plain text | ❌ plain text |
+| Tabs · steps · file tree | `::: tabs` · `::: steps` · `::: tree` | ✅ | ❌ plain text | ❌ plain text |
 | Footnote | `text[^1]` + `[^1]: explanation` | ✅ | ✅ | ✅ |
 | Inline footnote | `text^[explanation]` | ✅ | ❌ | ✅ |
 | Definition list | `term` + next line `: definition` | ✅ | ❌ | ❌ |
 | Math | `$…$` · `$$…$$` | ✅ | ✅ | ✅ |
 | Math block | ```` ```math ```` | ✅ | ✅ | ❌ |
 | Chemical formula | `$\ce{H2O}$` | ✅ | ❌ | ❌ |
+| Code block title · line highlights | ```` ```js title="app.js" {2,4-5} ```` | ✅ | ⚠️ ignored (code still shows) | ⚠️ ignored (code still shows) |
 | Diagram (Mermaid) | ```` ```mermaid ```` | ✅ | ✅ | ✅ |
 | Diagram (markcont style) | ```` ```flow ```` ```` ```sequence ```` ```` ```state ```` ```` ```timeline ```` | ✅ | ❌ shown as code | ❌ shown as code |
 | Exposure · data definition | ```` ```ui ```` · ```` ```data ```` | ✅ | ❌ shown as code | ❌ shown as code |
 | Wikilink | `[[document]]` · `[[document#heading\|alias]]` | ✅ | ❌ | ✅ |
 | Embed image (wiki style) | `![[picture.png]]` | ✅ | ❌ | ✅ |
+| Embed document | `![[doc#heading]]` (on a line of its own) | ✅ | ❌ | ✅ |
+| Image size | `![description\|300](picture.png)` · `![[picture.png\|300]]` | ✅ | ⚠️ size ignored | ✅ |
 | Video · audio | `![description](video.mp4)` | ✅ | ❌ broken image | ✅ |
 | YouTube thumbnail | A YouTube URL alone on a line | ✅ | ❌ link | ❌ link |
 | Document info | `name: value` between `---` lines at the very top | ✅ info box | ⚠️ table | ✅ |
+| Table of contents | `[[_TOC_]]` on a line of its own | ✅ | ❌ plain text | ❌ |
+| Page break | `<!-- page break -->` on a line of its own | ✅ print · PDF · Word | ⚠️ hidden (no break) | ⚠️ hidden (no break) |
+| Hidden note | `%%note%%` | ✅ hidden | ❌ plain text | ✅ hidden |
+| Emoji code | `:rocket:` | ✅ GitHub's full list | ✅ | ❌ plain text |
 | Collapsible content | `<details>` | ✅ | ✅ | ✅ |
 | Keyboard keys | `<kbd>Ctrl</kbd>` | ✅ | ✅ | ✅ |
 | Source · result side by side | ```` ```markdown example ```` | ✅ | ❌ shown as code | ❌ shown as code |
@@ -759,7 +784,13 @@ Check **where it works** first, and if the document will be opened elsewhere too
 <sub>The GitHub and Obsidian columns show behavior with default settings as of November 2026. It may differ by version or plugins.</sub>
 
 > [!TIP]
-> Even if you use ❌ syntax, **▾ → Save for other viewers…** makes a standard copy. Highlight · inserted · deleted text become HTML tags, extra callouts become one of the 5 standard types + a title, foldable callouts become `<details>`, wikilinks become normal links, and markcont diagrams become **Mermaid**. Chemistry `\ce{}` can't be converted, so it's left as is and flagged.
+> Even if you use ❌ syntax, **▾ → Save for other viewers…** makes a standard copy. Here's what changes in the copy.
+>
+> - Bold followed by CJK text, highlight · inserted · deleted text, and suggestion marks → HTML tags
+> - Extra callouts → one of the 5 standard types + a title, foldable callouts → `<details>`
+> - Wikilinks → normal links, image sizes → `<img width>`
+> - Tables of contents → lists of heading links, markcont diagrams → **Mermaid**
+> - Chemistry `\ce{}` can't be converted, so it's left as is and flagged.
 
 ### Callouts: 11 types and collapsing
 
@@ -828,6 +859,59 @@ Check whether x==1 and y==2
 > [!WARNING]
 > **On GitHub, a single tilde** `~text~` also becomes strikethrough. If the document will go on GitHub too, write ranges like `10:00-12:00` or `10:00 ~ 12:00` (with spaces), or use `\~`. For subscripts, write `H<sub>2</sub>O`.
 
+### Tabs · steps · file tree (`:::` blocks)
+
+Wrap them in `:::` lines. Names work in English and Korean (`::: tabs` = `::: 탭`, `::: steps` = `::: 단계`, `::: tree` = `::: 트리`).
+
+```markdown example
+::: tabs
+== Windows
+Run the installer (`-setup.exe`).
+== macOS
+Open the `.dmg` file and move the app.
+:::
+
+::: steps
+1. Download the file
+2. Install it
+3. Run it
+:::
+
+::: tree
+- app/
+  - index.html
+  - docs/
+    - guide.md
+- README.md
+:::
+```
+
+- **Tabs**: each `== name` line starts a tab. Tabs with the same name switch together across the document, and your choice is remembered. Print · PDF · HTML export show every tab with its name.
+- **Steps**: draws the numbered list inside as numbered circles joined by a line.
+- **File tree**: draws the list inside with folder · file icons. An item with a list inside, or a name ending in `/`, is a folder.
+- Save for other viewers turns tabs into bold titles + content, and steps · trees into plain lists.
+
+### Suggestion marks: suggest, then accept
+
+Use them when someone (or Claude) leaves a **suggestion** instead of changing the text directly. This is CriticMarkup syntax.
+
+| Write | Meaning |
+|:---|:---|
+| `{++text to add++}` | Suggested addition |
+| `{--text to cut--}` | Suggested deletion |
+| `{~~old text~>new text~~}` | Suggested change |
+| `{>>comment<<}` | Comment |
+| `{==look again==}` | Highlight (add `{>>comment<<}` right after it to comment on that spot) |
+
+```markdown example
+The payment screen is final {~~next week~>this week~~}{>>schedule moved up<<}.
+Add {++a new item++} and drop the {--needless--} words. Look at {==this part==} again.
+```
+
+- In the view, click a mark to **Accept · Reject** it. The **✎ N suggestions** line at the top of the document accepts or rejects them all at once. Save to write it to the file.
+- Use them within a single paragraph. Inside code blocks · `code` they stay as plain text.
+- If you save with marks left, markcont tells you. GitHub · Git show `{++ ++}` as is; **Save for other viewers** turns them into `<ins>` · `<del>` · `<mark>` tags (comments become hidden HTML comments).
+
 ### Inline footnotes · definition lists
 
 ```markdown example
@@ -864,10 +948,15 @@ Links that jump straight to another document when you've opened a folder. Leave 
 | `[[Meeting notes#Decisions\|See decisions]]` | Shows the link text as "See decisions" |
 | `[[#3️⃣ Text formatting]]` | Goes to a heading in this document |
 | `![[picture.png]]` | Embeds an image in the folder by name only |
+| `![[picture.png\|300]]` · `![[picture.png\|300x200]]` | Embeds it with a set width (· height) |
+| `![[picture.png\|description]]` | Adds a description under the image (also with a size, like `![[picture.png\|description\|300]]`) |
+| `![[Glossary]]` · `![[Glossary#Payments]]` | **Embeds the content** of that document (or that heading's section) right there — when written on a line of its own |
 
+- Embedding documents lets you keep shared rules · glossaries in one place and reuse them in many documents. The embedded part has a border; click the name at its top to go to the original. Headings inside it don't go into the table of contents. Embeds go two levels deep, and documents embedding each other are stopped. Save for other viewers expands the content in place.
 - If you write just a document name, markcont looks for **that name across the whole folder**. If several share the name, write a path like `[[docs/Meeting notes]]`.
 - A link to a document that doesn't exist shows as a faint dotted link. A link with no heading, like `[[document]]`, is left as plain text if the document it points to doesn't exist.
 - Regular links like `[text](other-doc.md)` also open right inside markcont.
+- Hover over a link to preview the start of that document (or the section under its `#heading`) in a small window.
 
 ### Video · audio · YouTube
 
@@ -901,6 +990,51 @@ tags:
 |:---|:---|
 | `badges: done=green, pending=orange, open=red` | Table cells that start with those words show as colored badges (blue · green · orange · red · purple · gray) |
 | `viewer: markcont` | A markcont-only document: hides the "⚠ spots look different in other viewers" notice |
+| `cover: yes` | Makes the first page of print · PDF · Word a cover: title (`title`) · summary (`summary`) · the rest of the info. The cover has no page number |
+
+### Table of contents · heading numbers
+
+```markdown
+# Spec
+
+[[_TOC_]]
+
+## Overview
+```
+
+- Write `[[_TOC_]]` on a line of its own, with blank lines around it, and a **table of contents** appears right there. It's included when you print, save as PDF or save as HTML.
+- It lists `#` to `###`. If there's only one top `#` heading, it's treated as the document title and left out, and `####` is included instead.
+- It's the same syntax as GitLab and Azure DevOps. Typora's `[toc]` and VitePress's `[[toc]]` work too.
+- Save for other viewers turns it into a list of heading links.
+- To see heading numbers (1 · 1.1 · 1.1.1) without writing them, use **View settings (Aa) → Number the headings**. The source text stays as it is. Headings that already have a number, like `1️⃣`, `1.` or `3-1.`, are skipped, and counting continues from their number.
+
+### Page break (print · PDF · Word)
+
+```markdown
+## Chapter 1
+
+…
+
+<!-- page break -->
+
+## Chapter 2
+```
+
+- Write `<!-- page break -->` on a line of its own, with blank lines around it, and print · PDF · Word start a new page from there. On screen it shows only as a dashed line.
+- `<!-- pagebreak -->` · `<!-- page-break -->` · `<!-- newpage -->` · `<!-- 쪽 나눔 -->` work too.
+- It's an HTML comment, so other viewers show nothing (and don't break the page).
+- To make the first page a cover, write `cover: yes` in the document info at the top instead of a page break.
+
+### Hidden notes · emoji codes
+
+```markdown example
+Visible text %%a note just for me%% more text :rocket:
+```
+
+- Text wrapped in `%%` is a **hidden note** (same as Obsidian), and it can span lines. It stays only in the source: it isn't shown, printed, saved as HTML or Word, or copied with formatting, and **Save for other viewers** removes it (GitHub shows it as plain text).
+- `%%` inside code or math, `%%` right after a number (`50%%`) and a `%%` with no closing pair aren't treated as notes.
+- GitHub **emoji codes** like `:rocket:` become emoji using the same list as GitHub (1,903 codes, including every gitmoji commit emoji). Codes not on the list stay as text, and emoticons like `:)` or `<3` aren't converted (same as GitHub).
+- A code with a letter or digit right before or after it isn't converted. This keeps `10:100:5`, `a:b:c` and IPv6 addresses (`fe80::a:b`) from turning into emoji. Korean, Chinese or Japanese text right next to it is fine (`完了:tada:`).
 
 ### Line breaks
 
@@ -934,7 +1068,7 @@ Write **bold** and add a ==highlight== too.
 | `<style>` · `<script>` | Removed (for security) | Format with Markdown syntax |
 | `~subscript~` | Plain text (strikethrough on GitHub) | `<sub>…</sub>` |
 | `^superscript^` | Plain text | `<sup>…</sup>` |
-| `:smile:` emoji codes | Plain text | Type the 😄 emoji directly |
+| GitHub-only image emoji (`:octocat:` and others) · codes not on the list | Plain text | Type the 😄 emoji directly |
 
 ---
 
