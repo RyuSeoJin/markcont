@@ -140,3 +140,26 @@ https://youtu.be/SEgHM748yrE?si=HsLb-OZOiQqXq3ng
 그림을 누르면 크게 볼 수 있습니다. 그림만 한 줄에 쓰면 설명이 그림 아래에 나오고, 설명 끝에 `|96` 처럼 숫자를 붙이면 폭이 정해집니다.
 
 ![markcont 아이콘|96](icons/icon-192.png)
+
+## 10. 탭 · 단계 · 파일 트리
+
+::: tabs
+== Windows
+설치 파일(`-setup.exe`)을 실행합니다.
+== macOS
+`.dmg` 파일을 열어 앱을 옮깁니다.
+:::
+
+::: steps
+1. 파일을 받습니다
+2. 설치합니다
+3. 실행합니다
+:::
+
+::: tree
+- app/
+  - index.html
+  - docs/
+    - guide.md
+- README.md
+:::

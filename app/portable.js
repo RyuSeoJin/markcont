@@ -27,8 +27,21 @@
     dataTable: () => [L('데이터 정의 블록', 'Data definition block'), L('데이터마다 일반 표로', 'to a normal table per data')],
     cjkEmph: () => [L('조사가 붙은 굵게 · 기울임 **굵게(괄호)**는', 'Bold · italic next to CJK text **bold(note)**는'), L('<strong> · <em> · <del> 태그로', 'to <strong> · <em> · <del> tags')],
     cjkEmphErr: () => [L('조사가 붙은 굵게 (기호가 얽혀 있음)', 'Bold next to CJK text (tangled markers)'), L('바꾸지 않음 — <strong> 태그로 직접 바꾸세요', 'not converted — change it to a <strong> tag by hand')],
+    container: () => [L('::: 블록 (탭 · 단계 · 파일 트리)', '::: blocks (tabs · steps · file tree)'), L('탭은 굵은 제목 + 내용, 단계 · 트리는 일반 목록으로', 'tabs to bold titles + content, steps · trees to plain lists')],
     critic: () => [L('교정 표기 {++추가++} 등', 'Suggestion marks {++added++} etc.'), L('다른 뷰어용으로 저장할 때만 <ins> · <del> · <mark> 태그로 (메모는 숨은 주석)', 'to <ins> · <del> · <mark> tags only when saving for other viewers (comments become hidden HTML comments)')],
   };
+  // ::: 블록 (탭 · 단계 · 파일 트리)
+  const CONTAINER_OPEN = /^\s{0,3}:::\s*(tabs|탭|steps|단계|tree|트리)\s*$/i;
+  const CONTAINER_CLOSE = /^\s{0,3}:::\s*$/;
+  // 줄 i 가 ::: tabs 안인지 (위로 올라가며 짝을 셈)
+  function inTabs(lines, i) {
+    let depth = 0;
+    for (let k = i - 1; k >= 0; k--) {
+      if (CONTAINER_CLOSE.test(lines[k])) depth++;
+      else { const m = lines[k].match(CONTAINER_OPEN); if (m) { if (!depth) return /^(tabs|탭)$/i.test(m[1]); depth--; } }
+    }
+    return false;
+  }
   // 교정 표기 (CriticMarkup) 한 줄 안: {++추가++} {--삭제--} {~~옛~>새~~} {>>메모<<} {==표시==}
   const CRITIC_LINE = /(\{\+\+.+?\+\+\}|\{--.+?--\}|\{~~.*?~>.*?~~\}|\{>>.+?<<\}|\{==.+?==\})/;
   function criticHtml(m) {
@@ -216,6 +229,16 @@
         toc = toc || tocLines(lines);
         out.push(...toc);
         note(ln, 'toc', line);
+        i++;
+        continue;
+      }
+      // ::: 블록 (탭 · 단계 · 파일 트리): 감싼 줄을 빼고, 탭 이름(== 이름)은 굵은 제목 줄로
+      if (CONTAINER_OPEN.test(line)) { note(ln, 'container', line); i++; continue; }
+      if (CONTAINER_CLOSE.test(line)) { i++; continue; }
+      const tabHead = line.match(/^\s{0,3}==\s+(\S.*?)\s*$/);
+      if (tabHead && inTabs(lines, i)) {
+        if (out.length && out[out.length - 1].trim()) out.push('');
+        out.push(`**${tabHead[1]}**`, '');
         i++;
         continue;
       }

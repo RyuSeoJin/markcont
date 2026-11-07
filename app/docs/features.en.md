@@ -140,3 +140,26 @@ https://youtu.be/SEgHM748yrE?si=HsLb-OZOiQqXq3ng
 Click an image to enlarge it. When an image sits alone on its own line, its description shows under it, and a number at the end of the description, like `|96`, sets the width.
 
 ![markcont icon|96](icons/icon-192.png)
+
+## 10. Tabs · steps · file tree
+
+::: tabs
+== Windows
+Run the installer (`-setup.exe`).
+== macOS
+Open the `.dmg` file and move the app.
+:::
+
+::: steps
+1. Download the file
+2. Install it
+3. Run it
+:::
+
+::: tree
+- app/
+  - index.html
+  - docs/
+    - guide.md
+- README.md
+:::

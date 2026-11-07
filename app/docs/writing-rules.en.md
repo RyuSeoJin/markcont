@@ -744,6 +744,7 @@ Check **where it works** first, and if the document will be opened elsewhere too
 | Inserted text | `++text++` | ✅ | ❌ plain text | ❌ |
 | Deleted text | `--text--` | ✅ | ❌ plain text | ❌ |
 | Suggestion marks | `{++add++}` `{--cut--}` `{~~old~>new~~}` `{>>comment<<}` | ✅ accept · reject | ❌ plain text | ❌ plain text |
+| Tabs · steps · file tree | `::: tabs` · `::: steps` · `::: tree` | ✅ | ❌ plain text | ❌ plain text |
 | Footnote | `text[^1]` + `[^1]: explanation` | ✅ | ✅ | ✅ |
 | Inline footnote | `text^[explanation]` | ✅ | ❌ | ✅ |
 | Definition list | `term` + next line `: definition` | ✅ | ❌ | ❌ |
@@ -835,6 +836,38 @@ Check whether x==1 and y==2
 
 > [!WARNING]
 > **On GitHub, a single tilde** `~text~` also becomes strikethrough. If the document will go on GitHub too, write ranges like `10:00-12:00` or `10:00 ~ 12:00` (with spaces), or use `\~`. For subscripts, write `H<sub>2</sub>O`.
+
+### Tabs · steps · file tree (`:::` blocks)
+
+Wrap them in `:::` lines. Names work in English and Korean (`::: tabs` = `::: 탭`, `::: steps` = `::: 단계`, `::: tree` = `::: 트리`).
+
+```markdown example
+::: tabs
+== Windows
+Run the installer (`-setup.exe`).
+== macOS
+Open the `.dmg` file and move the app.
+:::
+
+::: steps
+1. Download the file
+2. Install it
+3. Run it
+:::
+
+::: tree
+- app/
+  - index.html
+  - docs/
+    - guide.md
+- README.md
+:::
+```
+
+- **Tabs**: each `== name` line starts a tab. Tabs with the same name switch together across the document, and your choice is remembered. Print · PDF · HTML export show every tab with its name.
+- **Steps**: draws the numbered list inside as numbered circles joined by a line.
+- **File tree**: draws the list inside with folder · file icons. An item with a list inside, or a name ending in `/`, is a folder.
+- Save for other viewers turns tabs into bold titles + content, and steps · trees into plain lists.
 
 ### Suggestion marks: suggest, then accept
 

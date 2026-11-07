@@ -156,6 +156,37 @@
 .markdown-body mark { background: #fff1a8; color: #1f2328; padding: 0 .15em; border-radius: 3px; }
 .markdown-body ins { text-decoration: underline 2px var(--c-green); text-underline-offset: 3px; background: color-mix(in srgb, var(--c-green) 10%, transparent); }
 .markdown-body del { text-decoration: line-through 2px var(--c-red); background: color-mix(in srgb, var(--c-red) 9%, transparent); }
+/* ::: 블록 — 탭 · 단계 · 파일 트리 */
+.markdown-body .mc-tabs { border: 1px solid var(--border); border-radius: 10px; margin: 0 0 1.1em; overflow: hidden; }
+.markdown-body .mc-tab-bar { display: flex; gap: 2px; overflow-x: auto; padding: 6px 6px 0; background: var(--surface-2, #f3f2ef); border-bottom: 1px solid var(--border); }
+.markdown-body .mc-tab { border: 0; border-bottom: 2px solid transparent; background: none; padding: 7px 12px; font: inherit; font-size: .92em; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.markdown-body .mc-tab:hover { color: var(--text); }
+.markdown-body .mc-tab.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.markdown-body .mc-tab-panel { padding: .9em 1.1em .1em; }
+.markdown-body .mc-tab-panel[hidden] { display: none; }
+.markdown-body .mc-steps > ol { list-style: none; padding-left: 0; counter-reset: mcstep; }
+.markdown-body .mc-steps > ol > li { position: relative; counter-increment: mcstep; padding: 0 0 1em 2.7em; margin: 0; }
+.markdown-body .mc-steps > ol > li::before {
+  content: counter(mcstep); position: absolute; left: 0; top: -.1em; width: 1.8em; height: 1.8em; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: .88em; font-weight: 700;
+  color: var(--accent); background: var(--accent-soft, #e8eefb); border: 1.5px solid var(--accent);
+}
+.markdown-body .mc-steps > ol > li::after { content: ''; position: absolute; left: .82em; top: 1.75em; bottom: .15em; width: 2px; background: var(--border); }
+.markdown-body .mc-steps > ol > li:last-child::after { display: none; }
+.markdown-body .mc-tree { font-family: var(--mono); font-size: .9em; border: 1px solid var(--border); border-radius: 10px; padding: .7em 1em; margin: 0 0 1.1em; background: var(--surface-2, #f6f5f2); }
+.markdown-body .mc-tree ul, .markdown-body .mc-tree ol { list-style: none; margin: 0; padding-left: 1.4em; }
+.markdown-body .mc-tree > ul, .markdown-body .mc-tree > ol { padding-left: 0; }
+.markdown-body .mc-tree ul ul, .markdown-body .mc-tree ol ol { border-left: 1px dashed var(--border); margin-left: .5em; padding-left: 1.1em; }
+.markdown-body .mc-tree li { margin: .12em 0; }
+.markdown-body .mc-tree li p { display: inline; margin: 0; }
+.markdown-body .mc-tree li::before { content: '📄'; margin-right: .45em; }
+.markdown-body .mc-tree li.dir::before { content: '📁'; }
+@media print {
+  .markdown-body .mc-tab-bar { display: none; }
+  .markdown-body .mc-tab-panel[hidden] { display: block; }
+  .markdown-body .mc-tab-panel::before { content: attr(data-tab); display: block; font-weight: 700; margin-bottom: .4em; }
+  .markdown-body .mc-tabs, .markdown-body .mc-tree { break-inside: avoid; }
+}
 /* 교정 표기 (CriticMarkup) */
 .markdown-body .critic { border-radius: 3px; cursor: pointer; }
 .markdown-body ins.critic-add, .markdown-body .critic-sub > ins { text-decoration: underline 2px var(--c-green); text-underline-offset: 3px; background: color-mix(in srgb, var(--c-green) 16%, transparent); }
@@ -1966,6 +1997,56 @@ body.zen .zen-exit:hover { opacity: 1; }
     return true;
   }
 
+  // ::: 블록 — 탭 · 단계 · 파일 트리 (VitePress 꼴, 한국어 이름도: ::: 탭 · ::: 단계 · ::: 트리)
+  //  - 탭: 안쪽의 「== 이름」 줄로 나눔 (그 줄은 앞뒤 글과 한 문단으로 붙지 않게 따로 읽음)
+  const CONTAINER = { tabs: 'tabs', '탭': 'tabs', steps: 'steps', '단계': 'steps', tree: 'tree', '트리': 'tree' };
+  function containerRule(state, startLine, endLine, silent) {
+    if (state.sCount[startLine] - state.blkIndent >= 4) return false;
+    const lineAt = (k) => state.src.slice(state.bMarks[k] + state.tShift[k], state.eMarks[k]);
+    const m = lineAt(startLine).match(/^:::\s*([^\s:]+)\s*$/);
+    const kind = m && CONTAINER[m[1].toLowerCase()];
+    if (!kind) return false;
+    if (silent) return true;
+    // 닫는 ::: (안쪽의 다른 ::: 블록과 짝을 맞추고, 코드 울타리 안은 건너뜀)
+    let depth = 1, close = startLine, fence = null;
+    const heads = [];
+    while (++close < endLine) {
+      if (state.sCount[close] < state.blkIndent && lineAt(close).trim()) break;
+      const l = lineAt(close), f = l.match(/^(`{3,}|~{3,})/);
+      if (fence) { if (f && f[1][0] === fence[0] && f[1].length >= fence.length && !l.slice(f[1].length).trim()) fence = null; continue; }
+      if (f) { fence = f[1]; continue; }
+      if (/^:::\s*[^\s:]+\s*$/.test(l)) depth++;
+      else if (/^:::\s*$/.test(l) && --depth === 0) break;
+      else if (kind === 'tabs' && depth === 1 && state.sCount[close] - state.blkIndent < 4 && /^==\s+\S/.test(l)) heads.push({ line: close, title: l.replace(/^==\s+/, '').trim() });
+    }
+    const closed = close < endLine;
+    const oldParent = state.parentType, oldMax = state.lineMax;
+    state.parentType = 'container';
+    state.lineMax = close;
+    const open = state.push('mc_' + kind + '_open', 'div', 1);
+    open.block = true;
+    open.map = [startLine, close];
+    if (kind === 'tabs' && heads.length) {
+      open.meta = { titles: heads.map((h) => h.title) };
+      if (heads[0].line > startLine + 1) state.md.block.tokenize(state, startLine + 1, heads[0].line); // 첫 탭 앞의 글
+      heads.forEach((h, i) => {
+        const t = state.push('mc_tab_open', 'div', 1);
+        t.block = true;
+        t.meta = { title: h.title, index: i };
+        state.md.block.tokenize(state, h.line + 1, i + 1 < heads.length ? heads[i + 1].line : close);
+        state.push('mc_tab_close', 'div', -1).block = true;
+      });
+    } else {
+      if (kind === 'tabs') open.meta = { titles: [] };
+      state.md.block.tokenize(state, startLine + 1, close);
+    }
+    state.push('mc_' + kind + '_close', 'div', -1).block = true;
+    state.parentType = oldParent;
+    state.lineMax = oldMax;
+    state.line = close + (closed ? 1 : 0);
+    return true;
+  }
+
   let md, mdStd = null;
   function buildMd() {
     if (!libsOk) return;
@@ -1984,6 +2065,12 @@ body.zen .zen-exit:hover { opacity: 1; }
       },
     });
     for (const p of [window.markdownitFootnote, window.markdownitDeflist]) if (p) md.use(p);
+    // 「README.md」 · 「guide.md」 같은 파일 이름이 인터넷 주소(.md 는 몰도바 도메인)로 이어지지 않게 (http:// · www. 가 붙은 것만)
+    if (md.linkify) {
+      const lmatch = md.linkify.match.bind(md.linkify);
+      // (test 는 그대로 둠: match 안에서 test 를 부름. 다 걸러지면 빈 목록 → 글자 그대로)
+      md.linkify.match = (text) => (lmatch(text) || []).filter((x) => x.schema || /^www\./i.test(x.raw) || !/\.(md|markdown|txt)$/i.test(x.raw.replace(/[/?#].*$/, '')));
+    }
     // `**스크립트(script)**는` 처럼 문장부호로 끝나는 굵게 뒤에 조사가 붙어도 굵게로
     if (window.markdownitCjk) md.use(window.markdownitCjk, { relax: cjk });
     // 형광펜 ==글== · 추가 표시 ++글++ · 제거 표시 --글-- : 영문 · 숫자에 붙은 기호(x==1, C++, --force)는 문법으로 보지 않음
@@ -1995,6 +2082,14 @@ body.zen .zen-exit:hover { opacity: 1; }
     md.block.ruler.before('fence', 'math_block', mathBlock, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
     md.inline.ruler.before('link', 'wikilink', wikiRule);
     md.block.ruler.before('paragraph', 'toc_inline', tocRule);
+    md.block.ruler.before('fence', 'mc_container', containerRule, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
+    const attrs = (t, self) => self.renderAttrs(t);
+    md.renderer.rules.mc_tabs_open = (t, i, o, env, self) => `<div class="mc-tabs"${attrs(t[i], self)}><div class="mc-tab-bar" role="tablist">` +
+      (t[i].meta.titles || []).map((x, k) => `<button type="button" role="tab" class="mc-tab${k ? '' : ' on'}" data-tab="${escapeHtml(x)}">${escapeHtml(x)}</button>`).join('') + '</div>\n';
+    md.renderer.rules.mc_tab_open = (t, i) => `<div class="mc-tab-panel" role="tabpanel" data-tab="${escapeHtml(t[i].meta.title)}"${t[i].meta.index ? ' hidden' : ''}>\n`;
+    md.renderer.rules.mc_steps_open = (t, i, o, env, self) => `<div class="mc-steps"${attrs(t[i], self)}>\n`;
+    md.renderer.rules.mc_tree_open = (t, i, o, env, self) => `<div class="mc-tree"${attrs(t[i], self)}>\n`;
+    for (const k of ['mc_tabs_close', 'mc_tab_close', 'mc_steps_close', 'mc_tree_close']) md.renderer.rules[k] = () => '</div>\n';
     md.renderer.rules.toc_inline = (t, i) => `<nav class="toc-inline"${t[i].map ? ` data-line="${t[i].map[0]}"` : ''}></nav>\n`;
     md.renderer.rules.math_inline = (t, i) => renderMath(t[i].content, t[i].meta.display);
     md.renderer.rules.math_block = (t, i) => `<div class="math-block" data-line="${t[i].map[0]}">${renderMath(t[i].content, true)}</div>\n`;
@@ -2255,6 +2350,12 @@ body.zen .zen-exit:hover { opacity: 1; }
     const base = state.current.path;
 
     makeCallouts(doc);
+    initTabs(doc);
+    // ::: tree — 안에 목록이 있거나 이름이 / 로 끝나면 폴더
+    doc.querySelectorAll('.mc-tree li').forEach((li) => {
+      const own = [...li.childNodes].filter((n) => !(n.nodeType === 1 && /^(UL|OL)$/.test(n.tagName))).map((n) => n.textContent).join('').trim();
+      if (li.querySelector(':scope > ul, :scope > ol') || own.endsWith('/')) li.classList.add('dir');
+    });
 
     // 제목: id, 링크 복사, 접기 단추
     const used = new Map();
@@ -3132,9 +3233,33 @@ body.zen .zen-exit:hover { opacity: 1; }
     unfoldTo(m.closest('.markdown-body > *') || m);
     const det = m.closest('details');
     if (det) det.open = true;
+    const panel = m.closest('.mc-tab-panel[hidden]'); // 숨은 탭 안에서 찾았으면 그 탭을 엶
+    if (panel) showTab(panel.closest('.mc-tabs'), panel.dataset.tab);
     m.scrollIntoView({ block: 'center' });
     $('#findCount').textContent = `${find.now + 1}/${find.hits.length}`;
   }
+  /* ---------- ::: tabs — 같은 이름의 탭은 문서 전체에서 같이 바뀌고, 고른 탭을 기억 ---------- */
+  const tabPref = () => store.json('mdv-tab-pref', []);
+  function showTab(box, title) {
+    if (!box) return false;
+    const has = [...box.querySelectorAll(':scope > .mc-tab-bar > .mc-tab')].some((b) => b.dataset.tab === title);
+    if (!has) return false;
+    box.querySelectorAll(':scope > .mc-tab-bar > .mc-tab').forEach((b) => { b.classList.toggle('on', b.dataset.tab === title); b.setAttribute('aria-selected', String(b.dataset.tab === title)); });
+    box.querySelectorAll(':scope > .mc-tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== title; });
+    return true;
+  }
+  function initTabs(root) {
+    const pref = tabPref();
+    root.querySelectorAll('.mc-tabs').forEach((box) => { for (const t of pref) if (showTab(box, t)) break; });
+  }
+  el.doc.addEventListener('click', (e) => {
+    const b = e.target.closest('.mc-tab');
+    if (!b) return;
+    const title = b.dataset.tab, keep = el.preview.scrollTop, top = b.getBoundingClientRect().top;
+    el.doc.querySelectorAll('.mc-tabs').forEach((box) => showTab(box, title));
+    store.set('mdv-tab-pref', JSON.stringify([title, ...tabPref().filter((x) => x !== title)].slice(0, 20)));
+    el.preview.scrollTop = keep + (b.getBoundingClientRect().top - top); // 누른 탭이 화면에서 움직이지 않게
+  });
   function openFind() {
     if (!state.current) return;
     closeMenus();
@@ -7128,7 +7253,23 @@ body.zen .zen-exit:hover { opacity: 1; }
     }
     let best = null;
     el.doc.querySelectorAll('[data-line]').forEach((x) => { const l = +x.dataset.line; if (l <= n - 1 && (!best || l >= +best.dataset.line)) best = x; });
+    const panel = best && best.closest('.mc-tab-panel[hidden]');
+    if (panel) showTab(panel.closest('.mc-tabs'), panel.dataset.tab);
     if (best) { unfoldTo(best); best.scrollIntoView({ block: 'center' }); best.classList.add('flash-line'); setTimeout(() => best.classList.remove('flash-line'), 1500); }
+  }
+  // 내보내기 · 서식 복사용: 탭은 모두 펼쳐 탭 이름과 함께 (인쇄 CSS 와 같음)
+  function expandTabs(root) {
+    root.querySelectorAll('.mc-tabs').forEach((box) => {
+      box.querySelector(':scope > .mc-tab-bar')?.remove();
+      box.querySelectorAll(':scope > .mc-tab-panel').forEach((p) => {
+        p.hidden = false;
+        p.removeAttribute('hidden');
+        const label = document.createElement('p');
+        label.innerHTML = '<strong></strong>';
+        label.firstChild.textContent = p.dataset.tab;
+        p.prepend(label);
+      });
+    });
   }
 
   async function exportHtml() {
@@ -7138,6 +7279,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     clone.querySelectorAll('.code-block.expanded').forEach((b) => b.classList.remove('expanded'));
     clone.querySelectorAll('mark.find-hit').forEach((m) => m.replaceWith(document.createTextNode(m.textContent)));
     clone.querySelectorAll('.fold-hidden, .folded').forEach((n) => n.classList.remove('fold-hidden', 'folded'));
+    expandTabs(clone);
     clone.querySelectorAll('input.task').forEach((c) => { c.disabled = true; if (c.checked) c.setAttribute('checked', ''); });
     for (const m of clone.querySelectorAll('img[src^="blob:"], video[src^="blob:"], audio[src^="blob:"]')) {
       try { m.src = await blobToDataUrl(m.src); } catch {}
