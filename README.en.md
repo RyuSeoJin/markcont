@@ -63,6 +63,7 @@ curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh 
 - GitHub-style display, dark mode, text size · font · body width settings
 - 11 kinds of callouts `> [!NOTE]` (foldable), tables, task lists (click to check), footnotes, highlight `==text==`
 - Bold · italic that works with Korean, Chinese and Japanese: `**스크립트(script)**는` stays bold even when a character follows a bracket or punctuation
+- Suggestion marks `{++add++}` · `{--cut--}` · `{~~old~>new~~}` · `{>>comment<<}`: click to accept or reject each one (Claude suggestion mode)
 - Code highlighting · line numbers · copy · enlarge, `diff` coloring
 - Math `$E=mc^2$`, chemical formulas `$\ce{H2O}$`, diagrams: markcont style (markcont-standard flowcharts, message order, state changes, timelines, exposure trees with entry points) and Mermaid, plus workflow writing rules for large flows
 - Wikilinks `[[document#heading]]`, link · footnote previews (hover or long-press), video · YouTube thumbnails
@@ -95,6 +96,7 @@ The PC app also works as an **MCP server**. Ask Claude Desktop · Claude Code so
 3. Restart the Claude app and make your request. You chat **in the Claude app** with your own Claude subscription; markcont doesn't use a subscription or an API key.
 
 - Claude can read and edit **only Markdown · text files inside the folders you have open**. It can't delete, rename, or run commands.
+- Turn on **Only suggest changes** and Claude leaves suggestion marks (`{~~old~>new~~}`) instead of changing the text; you accept or reject each one in markcont.
 - Changes are highlighted in markcont, and you can review them with **View changes · Undo**.
 - If something gets changed by mistake, you can undo it with **View changes · Undo history**, and even after it has been saved to the file you can go back to the content before the edit in **Saved versions** (14 days, up to 50 per file). Still, keep backups of important documents.
 

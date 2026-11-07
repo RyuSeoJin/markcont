@@ -297,6 +297,9 @@ You can let Claude Desktop · Claude Code edit your markcont documents directly 
 | **View changes** in the notification | A −/+ comparison and **Undo this change** |
 | "Claude edited" in the **History** window | A point you can go back to |
 | "Before the change" · "Edited by Claude" in **History → Saved versions** | The file content before and after Claude's edit. Edits made while markcont was closed are kept too, and you can go back for 14 days |
+| Green underlines · red strikethroughs and **✎ N suggestions** | Suggestions Claude left. Click to accept or reject |
+
+**Make Claude only suggest**: turn on **Only suggest changes** in **⋯ → Connect to Claude (MCP)**, and Claude leaves suggestion marks (`{~~old~>new~~}` · `{++add++}` · `{--cut--}`) instead of changing the text. Click a mark in the view to **Accept · Reject** it, or use **✎ N suggestions** at the top of the document for all of them. The original text stays until you accept. Even when it's off, asking "suggest changes" works the same way. (Inside code blocks · the document info, suggestions aren't possible, so Claude edits directly and the previous content is kept in saved versions.)
 
 > [!NOTE]
 > Once connected, the content of documents Claude reads is sent to Anthropic for processing. The Claude app asks for permission before it uses a tool. markcont doesn't use a subscription or an API key.

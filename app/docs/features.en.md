@@ -20,6 +20,8 @@ The table of contents below comes from a single `[[_TOC_]]` line in the text. Tu
 
 In Korean, Chinese and Japanese text, bold that ends in a bracket, quote or punctuation still works when a character follows right after it: **스크립트(script)**는, **"인용"**이라고, **10%**의, **「強調」**です.
 
+Suggestion marks: the payment screen is final {~~next week~>this week~~}{>>schedule moved up<<}. Add {++a new item++} and drop the {--needless--} words. Click a mark to accept or reject it.
+
 ## 2. Callouts
 
 > [!NOTE]

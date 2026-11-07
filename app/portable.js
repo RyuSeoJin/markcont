@@ -1,5 +1,5 @@
 // markcont 전용 문법을 다른 뷰어(GitHub · VS Code · Obsidian 등)에서도 통하는 표준 마크다운으로 바꿉니다.
-// - convert(src): 바꾼 글과 바꾼 곳 목록
+// - convert(src, { keepCritic }): 바꾼 글과 바꾼 곳 목록
 // - 코드 블록 · 인라인 코드 · 수식 안은 건드리지 않습니다.
 (function () {
   const L = (ko, en) => (window.L ? window.L(ko, en) : ko);
@@ -27,7 +27,18 @@
     dataTable: () => [L('데이터 정의 블록', 'Data definition block'), L('데이터마다 일반 표로', 'to a normal table per data')],
     cjkEmph: () => [L('조사가 붙은 굵게 · 기울임 **굵게(괄호)**는', 'Bold · italic next to CJK text **bold(note)**는'), L('<strong> · <em> · <del> 태그로', 'to <strong> · <em> · <del> tags')],
     cjkEmphErr: () => [L('조사가 붙은 굵게 (기호가 얽혀 있음)', 'Bold next to CJK text (tangled markers)'), L('바꾸지 않음 — <strong> 태그로 직접 바꾸세요', 'not converted — change it to a <strong> tag by hand')],
+    critic: () => [L('교정 표기 {++추가++} 등', 'Suggestion marks {++added++} etc.'), L('다른 뷰어용으로 저장할 때만 <ins> · <del> · <mark> 태그로 (메모는 숨은 주석)', 'to <ins> · <del> · <mark> tags only when saving for other viewers (comments become hidden HTML comments)')],
   };
+  // 교정 표기 (CriticMarkup) 한 줄 안: {++추가++} {--삭제--} {~~옛~>새~~} {>>메모<<} {==표시==}
+  const CRITIC_LINE = /(\{\+\+.+?\+\+\}|\{--.+?--\}|\{~~.*?~>.*?~~\}|\{>>.+?<<\}|\{==.+?==\})/;
+  function criticHtml(m) {
+    const inner = m.slice(3, -3);
+    if (m.startsWith('{++')) return `<ins>${inner}</ins>`;
+    if (m.startsWith('{--')) return `<del>${inner}</del>`;
+    if (m.startsWith('{~~')) { const i = inner.indexOf('~>'), a = inner.slice(0, i), b = inner.slice(i + 2); return (a ? `<del>${a}</del>` : '') + (b ? `<ins>${b}</ins>` : ''); }
+    if (m.startsWith('{>>')) return `<!-- ${inner.replace(/--/g, '- -')} -->`;
+    return `<mark>${inner}</mark>`;
+  }
   const STD = { note: 1, tip: 1, important: 1, warning: 1, caution: 1 };
   const MAP = { info: 'NOTE', todo: 'NOTE', example: 'NOTE', question: 'NOTE', faq: 'NOTE', danger: 'CAUTION' };
   const NAME = () => ({ note: L('참고', 'Note'), info: L('정보', 'Info'), todo: L('할 일', 'To do'), tip: L('팁', 'Tip'), important: L('중요', 'Important'),
@@ -134,7 +145,8 @@
     return hs.map((h) => '  '.repeat(h.lvl - min) + `- [${h.text.replace(/[[\]]/g, '\\$&')}](#${h.slug})`);
   }
 
-  function convert(src) {
+  // opts.keepCritic: 교정 표기는 그대로 둠 (이 문서를 표준 문법으로 바꿀 때 — 받아들이기 전의 제안을 지우지 않게)
+  function convert(src, opts = {}) {
     const lines = String(src).replace(/\r\n?/g, '\n').split('\n');
     const out = [], changes = [], notes = [];
     const note = (ln, kind, text) => changes.push({ line: ln, kind, text: (text || '').trim().slice(0, 80) });
@@ -177,11 +189,16 @@
           note(ln, 'media', m);
           return `[${/\.(mp3|wav|aac|flac|m4a|oga|ogg)/i.test(url) ? '🔊' : '🎬'} ${alt || url}](${url})`;
         });
-        const pair = (re, tag, kind) => { s = s.replace(re, (m, pre, inner) => { note(ln, kind, m.slice(pre.length)); return `${pre}<${tag}>${inner}</${tag}>`; }); };
-        pair(/(^|[^A-Za-z0-9=])==(?=[^\s=])(.+?)(?<=\S)==(?![A-Za-z0-9=])/g, 'mark', 'mark');
-        pair(/(^|[^A-Za-z0-9+])\+\+(?=[^\s+])(.+?)(?<=\S)\+\+(?![A-Za-z0-9+])/g, 'ins', 'ins');
-        pair(/(^|[^A-Za-z0-9-])--(?=[^\s-])(.+?)(?<=\S)--(?![A-Za-z0-9-])/g, 'del', 'del');
-        return s;
+        // 교정 표기는 ==, ++, -- 보다 먼저 떼어 둠 ({++추가++} 가 {<ins>추가</ins>} 가 되지 않게)
+        return s.split(CRITIC_LINE).map((part, k) => {
+          if (k % 2) { note(ln, 'critic', part); return opts.keepCritic ? part : criticHtml(part); }
+          let t = part;
+          const pair = (re, tag, kind) => { t = t.replace(re, (m, pre, inner) => { note(ln, kind, m.slice(pre.length)); return `${pre}<${tag}>${inner}</${tag}>`; }); };
+          pair(/(^|[^A-Za-z0-9=])==(?=[^\s=])(.+?)(?<=\S)==(?![A-Za-z0-9=])/g, 'mark', 'mark');
+          pair(/(^|[^A-Za-z0-9+])\+\+(?=[^\s+])(.+?)(?<=\S)\+\+(?![A-Za-z0-9+])/g, 'ins', 'ins');
+          pair(/(^|[^A-Za-z0-9-])--(?=[^\s-])(.+?)(?<=\S)--(?![A-Za-z0-9-])/g, 'del', 'del');
+          return t;
+        }).join('');
       }).join('');
     }
 
@@ -304,6 +321,6 @@
     convert,
     describe(kind) { return (KINDS[kind] || (() => [kind, '']))(); },
     // 바꿀 수 없어 경고만 하는 종류
-    warnOnly: (kind) => kind === 'chem' || kind === 'diagramErr' || kind === 'cjkEmphErr',
+    warnOnly: (kind) => kind === 'chem' || kind === 'diagramErr' || kind === 'cjkEmphErr' || kind === 'critic',
   };
 })();

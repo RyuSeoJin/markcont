@@ -156,6 +156,16 @@
 .markdown-body mark { background: #fff1a8; color: #1f2328; padding: 0 .15em; border-radius: 3px; }
 .markdown-body ins { text-decoration: underline 2px var(--c-green); text-underline-offset: 3px; background: color-mix(in srgb, var(--c-green) 10%, transparent); }
 .markdown-body del { text-decoration: line-through 2px var(--c-red); background: color-mix(in srgb, var(--c-red) 9%, transparent); }
+/* 교정 표기 (CriticMarkup) */
+.markdown-body .critic { border-radius: 3px; cursor: pointer; }
+.markdown-body ins.critic-add, .markdown-body .critic-sub > ins { text-decoration: underline 2px var(--c-green); text-underline-offset: 3px; background: color-mix(in srgb, var(--c-green) 16%, transparent); }
+.markdown-body del.critic-del, .markdown-body .critic-sub > del { text-decoration: line-through 2px var(--c-red); background: color-mix(in srgb, var(--c-red) 13%, transparent); }
+.markdown-body .critic-sub > del { margin-right: .15em; }
+.markdown-body mark.critic-hl { background: color-mix(in srgb, var(--c-amber) 28%, transparent); color: inherit; }
+.markdown-body .critic-cmt { font-size: .86em; color: var(--c-purple); background: color-mix(in srgb, var(--c-purple) 10%, transparent); padding: .05em .4em; margin: 0 .15em; }
+.markdown-body .critic-cmt::before { content: '💬 '; }
+.markdown-body .critic:hover { outline: 1.5px solid var(--c-blue); outline-offset: 1px; }
+.markdown-body .critic.picked { outline: 2px solid var(--c-blue); outline-offset: 1px; }
 .markdown-body .math-block { overflow-x: auto; overflow-y: hidden; margin: 0 0 1.1em; }
 .markdown-body .katex-display { margin: .4em 0; }
 .markdown-body .mermaid { text-align: center; margin: 0 0 1.1em; }
@@ -769,6 +779,16 @@ body.resizing { cursor: col-resize; user-select: none; }
 /* 그림을 누르면 크게 보기 (나란히 편집 중에는 원본으로 이동하므로 빼고) */
 .workspace:is(:not(.editing), .mode-preview) .markdown-body img:not(.broken, a img, .ex-src img) { cursor: zoom-in; }
 /* 링크 · 각주 미리 보기 */
+.critic-pop {
+  position: fixed; z-index: 96; display: flex; flex-direction: column; gap: 8px; max-width: min(360px, calc(100vw - 24px)); padding: 10px 12px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.16); font-size: 13px;
+}
+.critic-pop[hidden] { display: none; }
+.critic-pop .cp-what { color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; }
+.critic-pop .cp-what b { color: var(--text); }
+.critic-pop .cp-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.critic-pop .btn { height: 30px; font-size: 12.5px; }
+.meta-critic { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--c-purple); font-weight: 600; }
 .link-preview {
   position: fixed; z-index: 90; width: min(440px, calc(100vw - 16px)); max-height: min(340px, 60vh); overflow: auto;
   padding: 10px 14px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
@@ -1132,7 +1152,7 @@ body.zen .zen-exit:hover { opacity: 1; }
 
 @media print {
   body { overflow: visible; background: #fff; }
-  .topbar, .sidebar, .editor-pane, .doc-meta, .toast, .drop-overlay, .scrim, .copy, .h-tools, .zen-exit, .menu, .fab, .find-bar, .code-head button, .link-preview, .qo { display: none !important; }
+  .topbar, .sidebar, .editor-pane, .doc-meta, .toast, .drop-overlay, .scrim, .copy, .h-tools, .zen-exit, .menu, .fab, .find-bar, .code-head button, .link-preview, .qo, .critic-pop { display: none !important; }
   .layout, .main, .workspace, .preview-pane { display: block !important; height: auto !important; overflow: visible !important; padding: 0 !important; }
   .markdown-body { max-width: none; font-size: 11pt; }
   .markdown-body pre, .markdown-body .table-wrap, .markdown-body img, .markdown-body figure, .markdown-body .callout, .markdown-body nav.toc-inline { break-inside: avoid; }
@@ -1668,7 +1688,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   /* =========================================================
      설정 (글자 크기, 글꼴, 폭, 줄바꿈, 스크롤 맞춤)
      ========================================================= */
-  const settings = Object.assign({ size: 16.5, font: 'sans', width: 'normal', sync: true, compatHint: true, callout: 'soft', lines: false, headNum: false, confirmSave: true }, store.json('mdv-settings', {}));
+  const settings = Object.assign({ size: 16.5, font: 'sans', width: 'normal', sync: true, compatHint: true, callout: 'soft', lines: false, headNum: false, confirmSave: true, mcpSuggest: false }, store.json('mdv-settings', {}));
   delete settings.breaks; // 없앤 설정 (엔터 한 번도 줄바꿈으로 보기)
   const WIDTHS = { narrow: '680px', normal: '820px', wide: '1060px' };
   let serifLoaded = false;
@@ -1899,6 +1919,39 @@ body.zen .zen-exit:hover { opacity: 1; }
     };
   }
 
+  // 교정 표기 (CriticMarkup): {++추가++} {--삭제--} {~~옛 글~>새 글~~} {>>메모<<} {==표시==}
+  //  - ==, ++, --, ~~ 규칙보다 먼저 봄 ({++추가++} 가 {<ins>추가</ins>} 가 되지 않게)
+  //  - data-raw 에 원본 글자를 그대로 남김 (받아들이기 · 버리기에서 원본의 그 자리를 찾을 때)
+  const CRITIC = { '++': ['++}', 'add', 'ins'], '--': ['--}', 'del', 'del'], '~~': ['~~}', 'sub', 'span'], '>>': ['<<}', 'cmt', 'span'], '==': ['==}', 'hl', 'mark'] };
+  function criticRule(state, silent) {
+    const src = state.src, pos = state.pos, max = state.posMax;
+    if (src.charCodeAt(pos) !== 0x7B /* { */) return false;
+    const c = CRITIC[src.slice(pos + 1, pos + 3)];
+    if (!c) return false;
+    const end = src.indexOf(c[0], pos + 3);
+    if (end < 0 || end + 3 > max) return false;
+    const inner = src.slice(pos + 3, end), split = c[1] === 'sub' ? inner.indexOf('~>') : -1;
+    if (c[1] === 'sub' ? split < 0 : !inner.trim()) return false;
+    if (!silent) {
+      const open = state.push('critic_open', c[2], 1);
+      open.attrs = [['class', 'critic critic-' + c[1]], ['data-kind', c[1]], ['data-raw', src.slice(pos, end + 3)]];
+      const part = (from, to, tag) => {
+        if (tag) state.push('critic_part_open', tag, 1);
+        const oldMax = state.posMax;
+        state.pos = from;
+        state.posMax = to;
+        state.md.inline.tokenize(state);
+        state.posMax = oldMax;
+        if (tag) state.push('critic_part_close', tag, -1);
+      };
+      if (c[1] === 'sub') { part(pos + 3, pos + 3 + split, 'del'); part(pos + 5 + split, end, 'ins'); }
+      else part(pos + 3, end, null);
+      state.push('critic_close', c[2], -1);
+    }
+    state.pos = end + 3;
+    return true;
+  }
+
   let md, mdStd = null;
   function buildMd() {
     if (!libsOk) return;
@@ -1923,6 +1976,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     md.inline.ruler.before('emphasis', 'mark_safe', pairRule(0x3D, 'mark'));
     md.inline.ruler.before('emphasis', 'ins_safe', pairRule(0x2B, 'ins'));
     md.inline.ruler.before('emphasis', 'del_safe', pairRule(0x2D, 'del')); // 제거 표시 --글--
+    md.inline.ruler.before('mark_safe', 'critic', criticRule); // 교정 표기 {++ ++} 는 ==, ++, -- 보다 먼저
     md.inline.ruler.after('escape', 'math_inline', mathInline);
     md.block.ruler.before('fence', 'math_block', mathBlock, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
     md.inline.ruler.before('link', 'wikilink', wikiRule);
@@ -3342,6 +3396,8 @@ body.zen .zen-exit:hover { opacity: 1; }
       facts.append(sp);
     }
     el.docMeta.append(facts);
+    // 교정 표기가 있으면 「✎ 제안 N개 · 모두 받아들이기 · 모두 버리기」
+    paintCriticBar(src);
     // 문서 점검 (깨진 링크 · 다른 뷰어에서 다르게 보이는 곳 …): 지난 결과를 바로 보이고, 잠시 뒤 다시 셈
     if (chk.for !== cur) chk.res = null;
     paintCheckBadge();
@@ -4301,6 +4357,131 @@ body.zen .zen-exit:hover { opacity: 1; }
         linkIndex().then(() => { if (state.current === cur) scheduleCheck(0); }).catch(() => {});
       }
     }, ms);
+  }
+
+  /* =========================================================
+     교정 표기 받아들이기 · 버리기 — 표기를 누르면 작은 창, 문서 위에 「제안 N개 · 모두 받아들이기 · 모두 버리기」
+     ========================================================= */
+  // 코드 블록 · `코드` · 맨 위 문서 정보를 같은 길이의 빈칸으로 (그 안의 {++ ++} 는 글자 그대로라서)
+  function maskCode(src) {
+    const fm = src.match(/^---\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/);
+    const fmLines = fm ? (fm[0].match(/\n/g) || []).length : 0;
+    let fence = null;
+    return src.split('\n').map((l, i) => {
+      if (i < fmLines) return ' '.repeat(l.length);
+      const f = l.match(/^ {0,3}(`{3,}|~{3,})/);
+      if (fence) { if (f && f[1][0] === fence[0] && f[1].length >= fence.length && /^ {0,3}(`+|~+)\s*$/.test(l)) fence = null; return ' '.repeat(l.length); }
+      if (f) { fence = f[1]; return ' '.repeat(l.length); }
+      return l.replace(/(`+)[\s\S]*?(?<!`)\1(?!`)/g, (m) => ' '.repeat(m.length));
+    }).join('\n');
+  }
+  const CRITIC_RE = /\{\+\+([\s\S]+?)\+\+\}|\{--([\s\S]+?)--\}|\{~~([\s\S]*?)~>([\s\S]*?)~~\}|\{>>([\s\S]+?)<<\}|\{==([\s\S]+?)==\}/g;
+  // 원본의 교정 표기 → [{ start, end, raw, kind }]
+  function criticMarks(src) {
+    const out = [];
+    if (!src || !src.includes('{')) return out;
+    for (const m of maskCode(src).matchAll(CRITIC_RE)) {
+      const raw = src.slice(m.index, m.index + m[0].length);
+      if (/\n[ \t]*\n/.test(raw)) continue; // 문단을 넘지 않음
+      const kind = m[1] != null ? 'add' : m[2] != null ? 'del' : m[3] != null ? 'sub' : m[5] != null ? 'cmt' : 'hl';
+      if (kind !== 'sub' && !raw.slice(3, -3).trim()) continue;
+      out.push({ start: m.index, end: m.index + m[0].length, raw, kind });
+    }
+    return out;
+  }
+  // 받아들이면 / 버리면 남는 글
+  function criticResult(raw, kind, accept) {
+    const inner = raw.slice(3, -3);
+    if (kind === 'add') return accept ? inner : '';
+    if (kind === 'del') return accept ? '' : inner;
+    if (kind === 'sub') { const i = inner.indexOf('~>'); return accept ? inner.slice(i + 2) : inner.slice(0, i); }
+    if (kind === 'hl') return inner;
+    return ''; // 메모는 지움
+  }
+  // 고른 표기들을 원본에 적용 (한 번의 Ctrl+Z 로 되돌림). 지운 자리 앞뒤에 빈칸이 겹치면 하나로
+  function applyCritic(marks, accept) {
+    if (!marks.length) return 0;
+    let v = source();
+    for (const m of marks.slice().sort((a, b) => b.start - a.start)) {
+      const rep = typeof accept === 'function' ? accept(m) : criticResult(m.raw, m.kind, accept);
+      let end = m.end;
+      if (!rep && v[m.start - 1] === ' ' && (v[end] === ' ' || /[.,!?)\]」』]/.test(v[end] || ''))) end += v[end] === ' ' ? 1 : 0;
+      if (!rep && v[m.start - 1] === ' ' && /[.,!?)\]」』]/.test(v[end] || '')) v = v.slice(0, m.start - 1) + v.slice(end);
+      else v = v.slice(0, m.start) + rep + v.slice(end);
+    }
+    applyText(v);
+    return marks.length;
+  }
+  const cpop = document.createElement('div');
+  cpop.className = 'critic-pop';
+  cpop.hidden = true;
+  cpop.setAttribute('role', 'dialog');
+  document.body.append(cpop);
+  let cpopFor = null;
+  function hideCriticPop() { cpop.hidden = true; cpopFor?.classList.remove('picked'); cpopFor = null; }
+  function showCriticPop(node) {
+    hideCriticPop();
+    const kind = node.dataset.kind, raw = node.dataset.raw, E = escapeHtml;
+    const inner = raw.slice(3, -3), at = inner.indexOf('~>');
+    const what = {
+      add: L(`<b>더하기 제안</b> · ${E(inner)}`, `<b>Suggested addition</b> · ${E(inner)}`),
+      del: L(`<b>지우기 제안</b> · ${E(inner)}`, `<b>Suggested deletion</b> · ${E(inner)}`),
+      sub: L(`<b>바꾸기 제안</b> · ${E(inner.slice(0, at))} → ${E(inner.slice(at + 2))}`, `<b>Suggested change</b> · ${E(inner.slice(0, at))} → ${E(inner.slice(at + 2))}`),
+      hl: L(`<b>표시</b> · ${E(inner)}`, `<b>Highlight</b> · ${E(inner)}`),
+      cmt: L(`<b>메모</b> · ${E(inner)}`, `<b>Comment</b> · ${E(inner)}`),
+    }[kind];
+    const btns = kind === 'hl' ? `<button class="btn" data-a="1">${L('표시 지우기', 'Remove highlight')}</button>`
+      : kind === 'cmt' ? `<button class="btn" data-a="1">${L('메모 지우기', 'Remove comment')}</button>`
+      : `<button class="btn primary" data-a="1">✓ ${L('받아들이기', 'Accept')}</button><button class="btn" data-a="0">✕ ${L('버리기', 'Reject')}</button>`;
+    cpop.innerHTML = `<div class="cp-what">${what}</div><div class="cp-btns">${btns}</div>`;
+    cpop.hidden = false;
+    cpopFor = node;
+    node.classList.add('picked');
+    const r = node.getBoundingClientRect(), w = cpop.offsetWidth, h = cpop.offsetHeight;
+    cpop.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left)) + 'px';
+    cpop.style.top = (r.bottom + h + 12 < window.innerHeight ? r.bottom + 6 : Math.max(8, r.top - h - 6)) + 'px';
+    cpop.querySelectorAll('[data-a]').forEach((b) => (b.onclick = () => {
+      const accept = b.dataset.a === '1';
+      // 그 표기가 원본의 몇 번째인지: 같은 글자의 표기 가운데 몇 번째인지로 찾음
+      const same = [...el.doc.querySelectorAll('.critic[data-raw]')].filter((x) => !x.closest('.md-example') && x.dataset.raw === raw);
+      const nth = same.indexOf(node);
+      const mark = criticMarks(source()).filter((m) => m.raw === raw)[Math.max(0, nth)];
+      hideCriticPop();
+      if (!mark) { toast(L('원본에서 이 표기를 찾지 못했습니다', "Couldn't find this mark in the source")); return; }
+      applyCritic([mark], accept);
+      toast(kind === 'hl' || kind === 'cmt' ? L('지웠습니다 (Ctrl+Z 로 취소)', 'Removed (Ctrl+Z to undo)') : accept ? L('받아들였습니다 (Ctrl+Z 로 취소) · 저장해야 파일에 반영됩니다', 'Accepted (Ctrl+Z to undo) · save to write it to the file') : L('버렸습니다 (Ctrl+Z 로 취소) · 저장해야 파일에 반영됩니다', 'Rejected (Ctrl+Z to undo) · save to write it to the file'), 3200);
+    }));
+  }
+  el.doc.addEventListener('click', (e) => {
+    const node = e.target.closest('.critic[data-raw]');
+    if (!node || node.closest('.md-example') || e.target.closest('a')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (cpopFor === node) { hideCriticPop(); return; }
+    showCriticPop(node);
+  });
+  document.addEventListener('pointerdown', (e) => { if (!cpop.hidden && !cpop.contains(e.target) && !e.target.closest('.critic')) hideCriticPop(); });
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !cpop.hidden) { e.preventDefault(); e.stopImmediatePropagation(); hideCriticPop(); } }, true);
+  el.preview.addEventListener('scroll', () => { if (!cpop.hidden) hideCriticPop(); }, { passive: true });
+  // 문서 위: 「✎ 제안 N개 · 모두 받아들이기 · 모두 버리기」
+  function paintCriticBar(src) {
+    const marks = criticMarks(src), n = marks.filter((m) => m.kind === 'add' || m.kind === 'del' || m.kind === 'sub').length, c = marks.length - n;
+    if (!marks.length || state.current.builtin) return;
+    const row = document.createElement('div');
+    row.className = 'meta-critic';
+    row.innerHTML = `<span>✎ ${n ? L(`제안 ${n}개`, `${n} suggestion${n === 1 ? '' : 's'}`) : ''}${n && c ? ' · ' : ''}${c ? L(`메모 · 표시 ${c}개`, `${c} comment${c === 1 ? '' : 's'} · highlight${c === 1 ? '' : 's'}`) : ''}</span>` +
+      (n ? `<button type="button" class="meta-btn" data-all="1">${L('모두 받아들이기', 'Accept all')}</button><button type="button" class="meta-btn" data-all="0">${L('모두 버리기', 'Reject all')}</button>` : '') +
+      (c ? `<button type="button" class="meta-btn" data-all="c">${L('메모 · 표시 모두 지우기', 'Remove comments · highlights')}</button>` : '');
+    row.querySelectorAll('[data-all]').forEach((b) => (b.onclick = () => {
+      const k = b.dataset.all, all = criticMarks(source());
+      const pick = k === 'c' ? all.filter((m) => m.kind === 'cmt' || m.kind === 'hl') : all.filter((m) => m.kind !== 'cmt' && m.kind !== 'hl');
+      if (!pick.length) return;
+      const label = k === '1' ? L(`제안 ${pick.length}개를 모두 받아들일까요?`, `Accept all ${pick.length} suggestions?`) : k === '0' ? L(`제안 ${pick.length}개를 모두 버릴까요?`, `Reject all ${pick.length} suggestions?`) : L(`메모 · 표시 ${pick.length}개를 모두 지울까요?`, `Remove all ${pick.length} comments · highlights?`);
+      if (!confirm(label + L('\n(Ctrl+Z 로 되돌릴 수 있고, 저장해야 파일에 반영됩니다)', '\n(Ctrl+Z undoes it; save to write it to the file)'))) return;
+      applyCritic(pick, k !== '0');
+      toast(L('바꿨습니다 (Ctrl+Z 로 취소) · 저장해야 파일에 반영됩니다', 'Done (Ctrl+Z to undo) · save to write it to the file'), 3200);
+    }));
+    el.docMeta.append(row);
   }
 
   // 폴더 목록 → 트리 구조
@@ -6640,7 +6821,12 @@ body.zen .zen-exit:hover { opacity: 1; }
     cur.text = text;
     state.dirty = false;
     gs.cache.delete(cur);
-    if (!quiet) offerHeadingFix(cur, prevSaved, text).catch(() => {}); // 제목을 바꿨으면 그 제목을 가리키던 링크도
+    if (!quiet) {
+      // 받아들이지 않은 제안이 남아 있으면: 다른 뷰어 · Git 에서는 {++ ++} 가 글자 그대로 보임
+      const left = criticMarks(text).length;
+      if (left) toast(L(`저장했습니다 · 남은 교정 표기 ${left}개는 다른 뷰어 · Git에서 {++ ++} 그대로 보입니다`, `Saved · ${left} suggestion mark${left === 1 ? '' : 's'} left will show as {++ ++} in other viewers and Git`), 4500);
+      offerHeadingFix(cur, prevSaved, text).catch(() => {}); // 제목을 바꿨으면 그 제목을 가리키던 링크도
+    }
     snapshot(L('저장', 'Saved'), { saved: true });
     applyChangeMarks();
     updateTitle();
@@ -6699,7 +6885,9 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (!cur || !window.MarkPortable) return;
     const { text, changes } = MarkPortable.convert(source());
     const name = suggestName(cur).replace(MD_EXT, '') + L('-표준.md', '-standard.md');
-    const done = (where) => toast(L(`다른 뷰어용으로 저장했습니다 (${changes.length}곳 바꿈): `, `Saved for other viewers (${changes.length} change${changes.length === 1 ? '' : 's'}): `) + where, 4000);
+    const critics = changes.filter((c) => c.kind === 'critic').length;
+    const done = (where) => toast(L(`다른 뷰어용으로 저장했습니다 (${changes.length}곳 바꿈): `, `Saved for other viewers (${changes.length} change${changes.length === 1 ? '' : 's'}): `) + where +
+      (critics ? L(` · 받아들이지 않은 교정 표기 ${critics}개는 <ins> · <del> 태그로 들어갔습니다`, ` · ${critics} unresolved suggestion mark${critics === 1 ? '' : 's'} went in as <ins> · <del> tags`) : ''), critics ? 6000 : 4000);
     try {
       if (isTauri()) {
         const startDir = cur.tauriPath ? cur.tauriPath.replace(/[\\/][^\\/]*$/, '') : null;
@@ -6753,7 +6941,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     const fx = $('#compatFix');
     if (fx) fx.onclick = () => {
       if (!confirm(L('이 문서의 markcont 전용 문법을 표준 문법으로 바꿀까요?\n원래 모양이 바뀌지만, 저장하기 전에는 Ctrl+Z 나 되돌리기 기록으로 되돌릴 수 있습니다.', 'Convert markcont-only syntax in this document to standard syntax?\nThe look will change, but until you save you can undo with Ctrl+Z or the undo history.'))) return;
-      const { text } = MarkPortable.convert(source());
+      const { text } = MarkPortable.convert(source(), { keepCritic: true }); // 받아들이기 전의 제안은 그대로
       closeCompat();
       if (!state.editing) setEditing(true);
       replaceAll(text, L('표준 문법으로 바꿈', 'Converted to standard syntax'));
@@ -7368,6 +7556,7 @@ ${clone.innerHTML}
         current: currentAbsPath(),
         selection: currentSelection().slice(0, 8000) || null,
         lang: LANG,
+        suggestOnly: !!settings.mcpSuggest, // 「Claude는 제안으로만 고치기」
       };
       const key = JSON.stringify(payload);
       if (key === mcpLastSent) return;
@@ -7436,6 +7625,8 @@ ${clone.innerHTML}
     const folders = state.roots.filter((r) => r.kind === 'tauri').map((r) => escapeHtml(r.key));
     body.innerHTML = privacy +
       `<div class="mcp-section"><h4>📁 ${L('Claude가 다룰 수 있는 폴더', 'Folders Claude can work with')}</h4><p>${folders.length ? folders.join(' · ') : L('아직 없습니다. <b>폴더 열기</b>로 폴더를 먼저 여세요.', 'None yet. Open a folder with <b>Open folder</b> first.')}</p></div>` +
+      `<div class="mcp-section"><h4>✍️ ${L('Claude가 고치는 방법', 'How Claude edits')}</h4>
+        <label class="check-row"><input type="checkbox" id="mcpSuggest"${settings.mcpSuggest ? ' checked' : ''}><span>${L('제안으로만 고치기', 'Only suggest changes')}<small>${L('Claude가 글을 바로 바꾸지 않고 교정 표기(<code>{~~옛 글~>새 글~~}</code>)로 남깁니다. 문서에서 표기를 눌러 하나씩 받아들이거나 버리고, 받아들이기 전까지 원래 글은 그대로입니다. 꺼 두어도 "제안으로 고쳐 줘"라고 하면 같은 방식으로 고칩니다.', 'Claude leaves suggestion marks (<code>{~~old~>new~~}</code>) instead of changing the text. Click a mark in the document to accept or reject it; the original stays until you accept. Even when this is off, asking "suggest changes" works the same way.')}</small></span></label></div>` +
       `<div class="mcp-section"><h4>Claude Desktop <span class="mcp-badge ${info.added ? 'ok' : 'no'}">${info.added ? L('연결됨', 'Connected') : L('연결 안 됨', 'Not connected')}</span></h4>
         <p>${L('단추를 누르면 Claude Desktop 설정에 markcont를 더합니다 (기존 설정은 <code>.bak</code> 으로 백업, 다른 항목은 그대로).', "This button adds markcont to Claude Desktop's settings (the old settings are backed up as <code>.bak</code>; other entries are left alone).")}</p>
         <button class="btn primary" id="mcpAdd">${info.added ? L('다시 연결하기', 'Reconnect') : L('Claude Desktop에 연결', 'Connect to Claude Desktop')}</button>
@@ -7447,6 +7638,12 @@ ${clone.innerHTML}
       `<div class="mcp-section"><h4>💬 ${L('이렇게 요청해 보세요', 'Try asking')}</h4><ul>${L('<li>"markcont에서 보고 있는 문서를 작성 규칙에 맞게 다듬어 줘"</li><li>"회의록 폴더의 문서들을 한 장으로 요약해서 새 문서로 만들어 줘"</li><li>"선택한 부분을 표로 바꿔 줘"</li>', `<li>"Polish the document I'm viewing in markcont to follow the writing rules"</li><li>"Summarize the documents in the meeting-notes folder into one new document"</li><li>"Turn the selected part into a table"</li>`)}</ul></div>` + legal;
     $('#mcpCc').textContent = ccCmd;
     $('#mcpJson').textContent = json;
+    $('#mcpSuggest').onchange = (e) => {
+      settings.mcpSuggest = e.target.checked;
+      applySettings();
+      syncMcpState();
+      toast(e.target.checked ? L('이제 Claude는 제안으로만 고칩니다', 'Claude now only suggests changes') : L('Claude가 다시 바로 고칠 수 있습니다', 'Claude can edit directly again'));
+    };
     $('#mcpCopyCc').onclick = () => copyText(ccCmd).then(() => toast(L('명령을 복사했습니다', 'Command copied')));
     $('#mcpCopyJson').onclick = () => copyText(json).then(() => toast(L('설정 내용을 복사했습니다', 'Settings copied')));
     $('#mcpAdd').onclick = async () => {

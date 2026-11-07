@@ -286,8 +286,8 @@ fn delete_path(path: String) -> Result<(), String> {
 
 // ---------- Claude 연결 (MCP) : 화면에서 쓰는 명령 ----------
 #[tauri::command]
-fn set_mcp_state(roots: Vec<mcp::McpRoot>, current: Option<String>, selection: Option<String>, lang: Option<String>) -> Result<(), String> {
-    mcp::write_state(&mcp::McpState { roots, current, selection, lang })
+fn set_mcp_state(roots: Vec<mcp::McpRoot>, current: Option<String>, selection: Option<String>, lang: Option<String>, suggest_only: Option<bool>) -> Result<(), String> {
+    mcp::write_state(&mcp::McpState { roots, current, selection, lang, suggest_only: suggest_only.unwrap_or(false) })
 }
 /// 화면 언어를 알려줌 (파일 선택 창 제목 · 오류 문구에 씀)
 #[tauri::command]

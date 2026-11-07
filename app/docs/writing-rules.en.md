@@ -743,6 +743,7 @@ Check **where it works** first, and if the document will be opened elsewhere too
 | Highlight | `==text==` | ✅ | ❌ plain text | ✅ |
 | Inserted text | `++text++` | ✅ | ❌ plain text | ❌ |
 | Deleted text | `--text--` | ✅ | ❌ plain text | ❌ |
+| Suggestion marks | `{++add++}` `{--cut--}` `{~~old~>new~~}` `{>>comment<<}` | ✅ accept · reject | ❌ plain text | ❌ plain text |
 | Footnote | `text[^1]` + `[^1]: explanation` | ✅ | ✅ | ✅ |
 | Inline footnote | `text^[explanation]` | ✅ | ❌ | ✅ |
 | Definition list | `term` + next line `: definition` | ✅ | ❌ | ❌ |
@@ -766,7 +767,7 @@ Check **where it works** first, and if the document will be opened elsewhere too
 <sub>The GitHub and Obsidian columns show behavior with default settings as of November 2026. It may differ by version or plugins.</sub>
 
 > [!TIP]
-> Even if you use ❌ syntax, **▾ → Save for other viewers…** makes a standard copy. Bold followed by CJK text and highlight · inserted · deleted text become HTML tags, extra callouts become one of the 5 standard types + a title, foldable callouts become `<details>`, wikilinks become normal links, image sizes become `<img width>`, tables of contents become lists of heading links, and markcont diagrams become **Mermaid**. Chemistry `\ce{}` can't be converted, so it's left as is and flagged.
+> Even if you use ❌ syntax, **▾ → Save for other viewers…** makes a standard copy. Bold followed by CJK text and highlight · inserted · deleted text · suggestion marks become HTML tags, extra callouts become one of the 5 standard types + a title, foldable callouts become `<details>`, wikilinks become normal links, image sizes become `<img width>`, tables of contents become lists of heading links, and markcont diagrams become **Mermaid**. Chemistry `\ce{}` can't be converted, so it's left as is and flagged.
 
 ### Callouts: 11 types and collapsing
 
@@ -834,6 +835,27 @@ Check whether x==1 and y==2
 
 > [!WARNING]
 > **On GitHub, a single tilde** `~text~` also becomes strikethrough. If the document will go on GitHub too, write ranges like `10:00-12:00` or `10:00 ~ 12:00` (with spaces), or use `\~`. For subscripts, write `H<sub>2</sub>O`.
+
+### Suggestion marks: suggest, then accept
+
+Use them when someone (or Claude) leaves a **suggestion** instead of changing the text directly. This is CriticMarkup syntax.
+
+| Write | Meaning |
+|:---|:---|
+| `{++text to add++}` | Suggested addition |
+| `{--text to cut--}` | Suggested deletion |
+| `{~~old text~>new text~~}` | Suggested change |
+| `{>>comment<<}` | Comment |
+| `{==look again==}` | Highlight (add `{>>comment<<}` right after it to comment on that spot) |
+
+```markdown example
+The payment screen is final {~~next week~>this week~~}{>>schedule moved up<<}.
+Add {++a new item++} and drop the {--needless--} words. Look at {==this part==} again.
+```
+
+- In the view, click a mark to **Accept · Reject** it. The **✎ N suggestions** line at the top of the document accepts or rejects them all at once. Save to write it to the file.
+- Use them within a single paragraph. Inside code blocks · `code` they stay as plain text.
+- If you save with marks left, markcont tells you. GitHub · Git show `{++ ++}` as is; **Save for other viewers** turns them into `<ins>` · `<del>` · `<mark>` tags (comments become hidden HTML comments).
 
 ### Inline footnotes · definition lists
 
