@@ -173,6 +173,33 @@ Press **Edit** at the top (<kbd>Ctrl</kbd>+<kbd>E</kbd>) to see the source on th
 - Switch layouts with **Editor · Split · Preview** at the top.
 - Clicking a checkbox in the preview also changes `[ ]` to `[x]` in the source.
 
+### New document · templates
+
+**⋯ → New document** (or right-click a folder → New document) first asks you to choose a **template**. Just press <kbd>Enter</kbd> for a blank document.
+
+| Template | What's inside |
+|:---|:---|
+| Feature spec | Goal · feature (screens · behavior) · flowchart · exceptions · checklist |
+| Meeting notes | Attendees · agenda · decisions · to-dos (today's date in the name) |
+| Flowchart | A ```` ```flow ```` chart + a node table |
+| Data definition · exposure | ```` ```data ```` cards + a ```` ```ui ```` tree |
+
+- They all follow the [writing rules](writing-rules.en.md) (one top title, an emoji on each `##` section, `---` between sections).
+- Documents in a **`templates`** folder inside an open folder show up in the template list too. Write `{{title}}` · `{{date}}` · `{{time}}` in them and they become the new document's name · today's date · the current time. Dates go in as `2026-11-07`, not `11/7`, since countries read the day and month in different orders.
+
+### Autocomplete · the `/` menu
+
+| Type this | What pops up |
+|:---|:---|
+| `[[` | The **documents** in your open folders. Pick one to get `[[document]]` |
+| `[[document#` · `[[#` | The **headings** of that document (`[[#` = this document) |
+| `/` at the start of a line or after a space | The **block menu**: table · callouts · checklist · code block · flowchart · sequence · exposure tree · data definition · math · tabs · steps · file tree · collapsible · table of contents · page break · divider · embed a document · today's date |
+
+- Keep typing to narrow the list (Korean initial consonants work too). Move with <kbd>↑</kbd> <kbd>↓</kbd> and insert with <kbd>Enter</kbd> · <kbd>Tab</kbd>.
+- Close it with <kbd>Esc</kbd> and what you typed stays as it is.
+- The menu doesn't open for a `/` stuck to other text, like `11/7`, `and/or` or a web address, or inside code.
+- While an input method (Korean · Chinese · Japanese) is composing, <kbd>Enter</kbd> and the arrow keys belong to it, so pick after you finish the word.
+
 ### Editing shortcuts
 
 | Shortcut | What it does |

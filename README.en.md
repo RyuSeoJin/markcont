@@ -76,6 +76,7 @@ curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh 
 - Links tab: what links here (backlinks) · what this links to · broken links (including links that open only in markcont); renaming a file · folder · heading also fixes the links that pointed to it
 - A table of contents inside the text with `[[_TOC_]]` (also in print · PDF), and heading numbers (1 · 1.1 · 1.1.1) shown without changing the source
 - Live editing: source with line numbers and syntax colors, a marker for where you're editing, scroll sync
+- New document templates (feature spec · meeting notes · flowchart · data definition, plus a `templates/` folder), autocomplete for documents · headings when you type `[[` in the source, and a block menu (table · callout · flowchart …) when you type `/`
 - Editor basics: find and replace <kbd>Ctrl</kbd>+<kbd>H</kbd> (match case · whole word · regex), move lines <kbd>Alt</kbd>+<kbd>↑</kbd><kbd>↓</kbd>, raise · lower heading levels, renumber numbered lists
 - Table editing: move between cells with <kbd>Tab</kbd>, align columns (measuring Korean character widths), add · delete · move rows and columns, sort by a column
 - Paste as markdown: screenshots become image files in an `images` folder next to the document, Excel cells become tables, text from the web · Notion · Google Docs · Word keeps its headings · lists · links, and a URL pasted over selected text becomes a link

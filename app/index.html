@@ -921,6 +921,16 @@ body.resizing { cursor: col-resize; user-select: none; }
 .qo-foot kbd { margin-right: 2px; }
 .qo-other { margin-left: auto; padding: 3px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font: inherit; font-size: 12px; cursor: pointer; }
 .qo-other:hover { background: var(--surface-2); }
+.qo.custom .qo-foot > span:nth-child(n+3), .qo.custom .qo-other { display: none; }
+/* 편집기 자동 완성: [[ 문서 · 제목, / 블록 메뉴 */
+.ac-pop { position: fixed; z-index: 96; width: 300px; max-width: calc(100vw - 16px); max-height: 280px; overflow-y: auto; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 12px 36px rgba(0, 0, 0, .22); font-family: var(--font); }
+.ac-pop[hidden] { display: none; }
+.ac-item { display: flex; align-items: baseline; gap: 8px; padding: 6px 9px; border-radius: 7px; cursor: pointer; color: var(--text); font-size: 13.5px; }
+.ac-item.on { background: var(--accent-soft); }
+.ac-item .ac-name { flex: none; max-width: 68%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac-item .ac-sub { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--muted); font-family: var(--mono); }
+.ac-item mark { background: none; color: var(--accent); font-weight: 700; }
+.ac-head { padding: 4px 9px 2px; font-size: 11px; color: var(--muted); }
 @media (max-width: 600px) { .qo { padding-top: 64px; } .qo-foot span { display: none; } .qo-main { flex-direction: column; gap: 0; } .qo-name { max-width: 100%; } }
 /* 보기 방식: 편집만 / 나란히 / 미리보기만 */
 #viewSeg { width: 210px; flex: none; }
@@ -5499,14 +5509,16 @@ body.zen .zen-exit:hover { opacity: 1; }
   }
   function openDirInTree(dir) { let p = dir, ch = false; while (p) { if (side.collapsed.delete(p)) ch = true; p = parentOf(p); } if (ch) saveCollapsed(); }
 
-  async function fsNewFile(dir) {
-    let name = askName(L('새 문서 이름', 'New document name'), L('새 문서.md', 'Untitled.md'));
+  async function fsNewFile(dir, tpl) {
+    tpl = tpl || await pickTemplate();
+    if (!tpl) return;
+    let name = askName(L('새 문서 이름', 'New document name'), tpl.name + '.md');
     if (!name) return;
     if (!/\.[A-Za-z0-9]+$/.test(name)) name += '.md';
     const rel = joinRel(dir, name);
     const root = rootOf(dir);
     if (!writable(root)) return;
-    const text = `# ${name.replace(MD_EXT, '')}\n\n`;
+    const text = fillTemplate(tpl.text, name.replace(MD_EXT, ''));
     try {
       if (!(await ensureWrite(root))) return;
       if (await exists(dir, name)) { toast(L('같은 이름이 이미 있습니다', 'That name is already taken')); return; }
@@ -5850,19 +5862,86 @@ body.zen .zen-exit:hover { opacity: 1; }
     await addRoot(root, { files, assets, dirs });
   };
 
-  function newDoc() {
+  /* ---------- 새 문서 템플릿 ---------- */
+  // 작성 규칙(맨 위 제목 하나 · ## 단락마다 이모지 · 단락 사이 ---)을 따르는 뼈대 + 열어 둔 폴더의 templates/ · 템플릿/ 안 문서
+  //  - {{title}} · {{date}} · {{time}} 을 채움 (한국어 {{제목}} · {{날짜}} · {{시간}} 도). 날짜는 나라마다 읽는 순서가 다른 11/7 대신 2026-11-07
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
+  const nowTime = () => { const d = new Date(); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+  const fillTemplate = (text, title) => text
+    .replace(/\{\{\s*(?:title|제목)\s*\}\}/gi, () => title)
+    .replace(/\{\{\s*(?:date|날짜)\s*\}\}/gi, today)
+    .replace(/\{\{\s*(?:time|시간)\s*\}\}/gi, nowTime);
+  function builtinTemplates() {
+    const F = '```', ko = LANG === 'ko';
+    const flow = ko
+      ? ['A-01 | 유저 | 시작·종료 | 시작 | → A-02', 'A-02 | 유저 | 입력 | 버튼 누르기 | → A-03', 'A-03 | 시스템 | 조건 | 조건을 적으세요 | 예 → A-04 / 아니오 → A-05', 'A-04 | 시스템 | 출력 | 결과 화면 | → A-06', 'A-05 | 시스템 | 출력 | 안내 창 | → A-02', 'A-06 | 유저 | 시작·종료 | 끝 | —']
+      : ['A-01 | user | start | Start | → A-02', 'A-02 | user | input | Press the button | → A-03', 'A-03 | system | decision | Write the condition | yes → A-04 / no → A-05', 'A-04 | system | output | Result screen | → A-06', 'A-05 | system | output | Notice | → A-02', 'A-06 | user | end | End | —'];
+    const fm = (more) => ['---', 'title: {{title}}', ...more, '---', ''];
+    return [
+      { ko: '빈 문서', en: 'Blank document', sub: L('제목만', 'Title only'), name: L('새 문서', 'Untitled'), text: '# {{title}}\n\n' },
+      { ko: '기능 기획서', en: 'Feature spec', sub: L('목표 · 기능 · 흐름 · 예외 · 확인 목록', 'Goal · feature · flow · exceptions · checklist'), name: L('기능 기획서', 'Feature spec'), text: [
+        ...fm(['author: ', 'date: {{date}}']),
+        '# 📝 {{title}}', '', L('이 기능이 무엇이고 왜 만드는지 한두 줄로 적습니다.', 'Say in a line or two what this feature is and why we build it.'), '',
+        L('## 🎯 목표', '## 🎯 Goal'), '', L('- 사용자가 무엇을 할 수 있게 되는지 적습니다.', '- What users will be able to do.'), '', '---', '',
+        L('## ✨ 기능', '## ✨ Feature'), '', L('### 화면', '### Screens'), '', L('- 어떤 화면에 무엇이 보이는지', '- What shows on which screen'), '',
+        L('### 동작', '### Behavior'), '', L('| 상황 | 동작 |', '| When | What happens |'), '|:---|:---|', '|  |  |', '', '---', '',
+        L('## 🔀 흐름', '## 🔀 Flow'), '', F + 'flow', ...flow, F, '', '---', '',
+        L('## ⚠️ 예외 · 주의', '## ⚠️ Exceptions'), '', '> [!WARNING]', L('> 놓치기 쉬운 예외를 적습니다.', '> Write down the exceptions that are easy to miss.'), '', '---', '',
+        L('## ✅ 확인 목록', '## ✅ Checklist'), '', L('- [ ] 확인할 것', '- [ ] Something to check'), ''].join('\n') },
+      { ko: '회의록', en: 'Meeting notes', sub: L('참석 · 안건 · 정한 것 · 할 일', 'Attendees · agenda · decisions · to-dos'), name: `${today()} ${L('회의록', 'Meeting notes')}`, text: [
+        ...fm(['date: {{date}}']),
+        '# 🗓️ {{title}}', '', L('{{date}} 회의에서 나눈 이야기와 정한 것을 적습니다.', 'What we discussed and decided in the meeting on {{date}}.'), '',
+        L('## 👥 참석', '## 👥 Attendees'), '', L('- 이름', '- Name'), '', '---', '',
+        L('## 💬 안건', '## 💬 Agenda'), '', L('### 1. 첫 안건', '### 1. First item'), '', L('- 나온 이야기', '- What was said'), '', '---', '',
+        L('## ✅ 정한 것', '## ✅ Decisions'), '', L('- 정한 것', '- Decision'), '', '---', '',
+        L('## 🎯 할 일', '## 🎯 To-dos'), '', L('- [ ] 담당 · 할 일 · 기한', '- [ ] Owner · task · due date'), ''].join('\n') },
+      { ko: '흐름도', en: 'Flowchart', sub: L('```flow 흐름도 + 도형 설명 표', '```flow chart + node table'), name: L('흐름도', 'Flowchart'), text: [
+        '# 🔀 {{title}}', '', L('이 흐름이 무엇을 하는지 한두 줄로 적습니다.', 'Say in a line or two what this flow does.'), '',
+        L('## 🔀 흐름도', '## 🔀 Flowchart'), '', F + 'flow', ...flow, F, '', '---', '',
+        L('## 📊 도형 설명', '## 📊 Nodes'), '', L('| 코드 | 설명 |', '| Code | Notes |'), '|:---|:---|', L('| A-03 | 판정 기준을 적습니다 |', '| A-03 | How the condition is decided |'), ''].join('\n') },
+      { ko: '데이터 정의 · 노출 위치', en: 'Data definition · exposure', sub: L('```데이터 카드 + ```노출 나무', '```data cards + ```ui tree'), name: L('데이터 정의', 'Data definition'), text: [
+        '# 📊 {{title}}', '', L('이 데이터가 어디에 쓰이는지 한두 줄로 적습니다.', 'Say in a line or two where this data is used.'), '',
+        L('## 📊 데이터', '## 📊 Data'), '', F + L('데이터', 'data'),
+        L('# 데이터 이름 (data_id)', '# Data name (data_id)'), L('> 설명', '> Description'),
+        L('필드 | 형식 | 필수 | 설명 | 예시', 'Field | Type | Required | Description | Example'),
+        L('이름 | 글자(40) | 필수 | 화면에 보이는 이름 | 예시', 'Name | Text(40) | Required | Name shown on screen | Sample'), F, '', '---', '',
+        L('## 📍 노출 위치', '## 📍 Where it shows'), '', F + L('노출', 'ui'),
+        L('- 화면 이름', '- Screen name'), L('  - 버튼 [열기] (들어오는 곳: 메뉴)', '  - [Open] button (entry: menu)'), L('    - 보이는 것', '    - What shows'), F, ''].join('\n') },
+    ];
+  }
+  // 템플릿 고르기 → { text, name } (닫으면 null). 빠른 열기 창을 빌려 씀
+  async function pickTemplate() {
+    const items = builtinTemplates().map((t) => ({ kind: 'tpl', label: L(t.ko, t.en), alt: L(t.en, t.ko), sub: t.sub, value: t }));
+    for (const f of state.files) {
+      if (f.builtin || !MD_EXT.test(f.name) || !/(^|\/)(templates|템플릿)\//i.test(f.path)) continue;
+      items.push({ kind: 'tpl', label: f.name.replace(MD_EXT, ''), sub: L('폴더 템플릿 · ', 'Folder template · ') + parentOf(f.path), value: { file: f, name: f.name.replace(MD_EXT, '') } });
+    }
+    const t = await new Promise((resolve) => openQuick('', {
+      items: items.map((it) => ({ ...it, run: () => resolve(it.value) })),
+      placeholder: L('새 문서 — 템플릿 고르기 (이름으로 찾기)', 'New document — choose a template (type to filter)'),
+      onCancel: () => resolve(null),
+    }));
+    if (!t) return null;
+    if (!t.file) return { text: t.text, name: t.name };
+    try { return { text: await peekText(t.file), name: t.name }; }
+    catch (e) { toast(L('템플릿을 읽지 못했습니다: ', "Couldn't read the template: ") + ((e && e.message) || e), 3500); return null; }
+  }
+  async function newDoc() {
+    const tpl = await pickTemplate();
+    if (!tpl) return;
     const target = (state.current && !state.current.loose && writable(rootOf(state.current.path)))
       ? parentOf(state.current.path) : (state.roots.find(writable) || {}).key;
-    if (target) { fsNewFile(target); return; }
+    if (target) { fsNewFile(target, tpl); return; }
     let n = 1;
-    const base = L('새 문서', 'Untitled');
+    const base = tpl.name;
     while (state.files.some((f) => f.path === (n === 1 ? base + '.md' : `${base} ${n}.md`))) n++;
     const name = n === 1 ? base + '.md' : `${base} ${n}.md`;
     const entry = { name, path: name, text: '', loose: true, isNew: true };
     state.files.push(entry);
     openEntry(entry).then((ok) => {
       if (!ok) return;
-      el.editor.value = L('# 새 문서\n\n여기에 내용을 쓰세요.\n', '# Untitled\n\nStart writing here.\n');
+      el.editor.value = fillTemplate(tpl.text, name.replace(MD_EXT, ''));
       markDirty();
       setEditing(true);
     });
@@ -7206,6 +7285,202 @@ body.zen .zen-exit:hover { opacity: 1; }
     const i = Math.max(0, Math.min(Math.floor(line), lineTops.length - 2));
     return lineTops[i] + (line - i) * (lineTops[i + 1] - lineTops[i]);
   }
+
+  /* ---------- 편집기 자동 완성: [[ 를 치면 문서 · 제목, / 를 치면 블록 메뉴 ---------- */
+  //  - / 는 한국어 글에 자주 나와서(11/7 · 및/또는 · 경로 · 주소) 줄 맨 앞이나 빈칸 바로 뒤에서만, 코드 안에서는 띄우지 않음
+  //  - Esc 로 닫으면 친 글자는 그대로 둠. 한글을 입력하는 중에도 바로 걸러 보여 주되, 입력 중의 Enter · 화살표는 입력기에 넘김
+  const ac = { box: null, kind: '', start: 0, shown: [], cur: 0, seq: 0, dismissed: -1 };
+  function acBox() {
+    if (ac.box) return ac.box;
+    const b = document.createElement('div');
+    b.className = 'ac-pop';
+    b.hidden = true;
+    b.setAttribute('role', 'listbox');
+    b.addEventListener('mousedown', (e) => { e.preventDefault(); const r = e.target.closest('.ac-item'); if (r) acChoose(+r.dataset.i); }); // 편집기 커서를 잃지 않게
+    b.addEventListener('mousemove', (e) => { const r = e.target.closest('.ac-item'); if (r && +r.dataset.i !== ac.cur) acMark(+r.dataset.i, false); });
+    document.body.append(b);
+    return (ac.box = b);
+  }
+  function acClose() { if (ac.box) ac.box.hidden = true; ac.kind = ''; ac.shown = []; }
+  // 커서 자리(화면 좌표): 편집기 거울(lineTops)로 줄 위치를, 그 줄을 커서까지 따로 그려 줄 안 위치를 잼
+  function caretPoint() {
+    const ta = el.editor, v = ta.value, pos = ta.selectionStart, cs = getComputedStyle(ta);
+    if (!lineTops) measureLines();
+    const ls = v.lastIndexOf('\n', pos - 1) + 1;
+    const lineNo = (v.slice(0, ls).match(/\n/g) || []).length;
+    const probe = document.createElement('div');
+    probe.style.cssText = `position:absolute;left:-99999px;top:0;visibility:hidden;white-space:pre-wrap;overflow-wrap:break-word;box-sizing:border-box;width:${ta.clientWidth}px`;
+    for (const p of ['fontFamily', 'fontSize', 'lineHeight', 'letterSpacing', 'paddingLeft', 'paddingRight', 'tabSize']) probe.style[p] = cs[p];
+    probe.textContent = v.slice(ls, pos);
+    const mk = document.createElement('span');
+    mk.textContent = '​';
+    probe.append(mk);
+    document.body.append(probe);
+    const x = mk.offsetLeft, y = mk.offsetTop, h = mk.offsetHeight || parseFloat(cs.lineHeight) || 20;
+    probe.remove();
+    const r = ta.getBoundingClientRect();
+    return { x: r.left + x - ta.scrollLeft, y: r.top + (lineTops[lineNo] ?? 0) + y - ta.scrollTop, h };
+  }
+  function acPlace() {
+    const b = ac.box, p = caretPoint();
+    const w = b.offsetWidth, h = b.offsetHeight;
+    let top = p.y + p.h + 4;
+    if (top + h > innerHeight - 8 && p.y - h - 4 > 8) top = p.y - h - 4; // 아래 자리가 없으면 위로
+    b.style.left = Math.max(8, Math.min(p.x - 10, innerWidth - w - 8)) + 'px';
+    b.style.top = Math.max(8, top) + 'px';
+  }
+  function acMark(i, scroll) {
+    if (!ac.shown.length) return;
+    ac.cur = (i + ac.shown.length) % ac.shown.length;
+    ac.box.querySelectorAll('.ac-item.on').forEach((r) => r.classList.remove('on'));
+    const r = ac.box.querySelector(`.ac-item[data-i="${ac.cur}"]`);
+    if (r) { r.classList.add('on'); if (scroll) r.scrollIntoView({ block: 'nearest' }); }
+  }
+  // 후보를 걸러 보여 줌 (빠른 열기와 같은 찾기: 초성 · 띄어쓰기 무시)
+  function acShow(kind, start, items, query, head) {
+    const q = prepText(query.trim());
+    let rows = items.map((it) => ({ it }));
+    if (q.length) {
+      rows = [];
+      for (const it of items) {
+        let best = null;
+        for (const [text, pen] of [[it.label, 0], [it.alt, 40]]) {
+          if (!text) continue;
+          const t = prepName(text), m = textMatch(q, t);
+          if (m && (!best || m.score - pen > best.score)) best = { score: m.score - pen, t, at: m.at, label: text === it.label };
+        }
+        if (best) rows.push({ it, m: best });
+      }
+      rows.sort((a, b) => b.m.score - a.m.score);
+    }
+    ac.shown = rows.slice(0, 40);
+    if (!ac.shown.length) { acClose(); return; }
+    const b = acBox();
+    ac.kind = kind;
+    ac.start = start;
+    b.innerHTML = (head ? `<div class="ac-head">${escapeHtml(head)}</div>` : '') + ac.shown.map(({ it, m }, i) =>
+      `<div class="ac-item" role="option" data-i="${i}"><span class="ac-name">${m && m.label ? markText(m.t, m.at) : escapeHtml(it.label)}</span>${it.sub ? `<span class="ac-sub">${escapeHtml(it.sub)}</span>` : ''}</div>`).join('');
+    b.hidden = false;
+    acMark(0, true);
+    acPlace();
+  }
+  // 문서 후보: 열어 둔 폴더의 마크다운 (이름이 겹치면 폴더 경로까지)
+  function acDocs() {
+    const docs = state.files.filter((f) => !f.builtin && MD_EXT.test(f.name) && f !== state.current);
+    const count = new Map();
+    for (const f of docs) { const k = nfc(f.name).toLowerCase(); count.set(k, (count.get(k) || 0) + 1); }
+    return docs.map((f) => {
+      const n = f.name.replace(MD_EXT, '');
+      const dup = count.get(nfc(f.name).toLowerCase()) > 1;
+      return { label: n, sub: parentOf(f.path), insert: dup ? (relOf(f.path) || f.path).replace(MD_EXT, '') : n };
+    }).sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
+  }
+  async function acHeads(docName) {
+    let text;
+    if (!docName) text = source();
+    else {
+      const key = nfc(docName).toLowerCase();
+      const f = state.files.find((x) => !x.builtin && MD_EXT.test(x.name) && (nfc(x.name.replace(MD_EXT, '')).toLowerCase() === key || nfc((relOf(x.path) || x.path).replace(MD_EXT, '')).toLowerCase() === key));
+      if (!f) return [];
+      try { text = await peekText(f); } catch { return []; }
+    }
+    return scanDoc(text).heads.map((h) => ({ label: h.title, sub: '#'.repeat(h.level), insert: (docName ? docName : '') + '#' + h.title }));
+  }
+  function slashItems() {
+    const F = '```', ko = LANG === 'ko';
+    const it = (k, e, sub, text, alt, inline) => ({ label: L(k, e), alt: L(e, k) + (alt ? ' ' + alt : ''), sub, text, inline });
+    return [
+      it('표', 'Table', '| |', L('| 항목 | 내용 |\n|:---|:---|\n| ¦ |  |', '| Item | Details |\n|:---|:---|\n| ¦ |  |'), 'table'),
+      it('알림 상자 · 참고', 'Callout · note', '> [!NOTE]', '> [!NOTE]\n> ¦', 'callout alert'),
+      it('알림 상자 · 팁', 'Callout · tip', '> [!TIP]', '> [!TIP]\n> ¦', 'callout alert'),
+      it('알림 상자 · 중요', 'Callout · important', '> [!IMPORTANT]', '> [!IMPORTANT]\n> ¦', 'callout alert'),
+      it('알림 상자 · 주의', 'Callout · warning', '> [!WARNING]', '> [!WARNING]\n> ¦', 'callout alert'),
+      it('알림 상자 · 위험', 'Callout · caution', '> [!CAUTION]', '> [!CAUTION]\n> ¦', 'callout alert'),
+      it('체크리스트', 'Checklist', '- [ ]', '- [ ] ¦', 'todo task'),
+      it('코드 블록', 'Code block', F, F + '¦\n\n' + F, 'code'),
+      it('흐름도', 'Flowchart', F + 'flow', [F + 'flow', ko ? 'A-01 | 유저 | 시작·종료 | ¦시작 | → A-02' : 'A-01 | user | start | ¦Start | → A-02', ko ? 'A-02 | 시스템 | 조건 | 조건? | 예 → A-03 / 아니오 → A-01' : 'A-02 | system | decision | Condition? | yes → A-03 / no → A-01', ko ? 'A-03 | 유저 | 시작·종료 | 끝 | —' : 'A-03 | user | end | End | —', F].join('\n'), 'flow diagram'),
+      it('주고받는 순서', 'Sequence', F + 'sequence', [F + 'sequence', ko ? '나 -> 앱: ¦요청' : 'Me -> App: ¦Request', ko ? '앱 --> 나: 응답' : 'App --> Me: Response', F].join('\n'), 'sequence diagram'),
+      it('노출 위치', 'Exposure tree', F + L('노출', 'ui'), [F + L('노출', 'ui'), L('- ¦화면 이름', '- ¦Screen name'), L('  - 버튼 [열기] (들어오는 곳: 메뉴)', '  - [Open] button (entry: menu)'), L('    - 보이는 것', '    - What shows'), F].join('\n'), 'ui exposure'),
+      it('데이터 정의', 'Data definition', F + L('데이터', 'data'), [F + L('데이터', 'data'), L('# ¦데이터 이름 (data_id)', '# ¦Data name (data_id)'), L('필드 | 형식 | 필수 | 설명 | 예시', 'Field | Type | Required | Description | Example'), L('이름 | 글자(40) | 필수 | 화면에 보이는 이름 | 예시', 'Name | Text(40) | Required | Name shown on screen | Sample'), F].join('\n'), 'data schema'),
+      it('수식 블록', 'Math block', '$$', '$$\n¦\n$$', 'math'),
+      it('탭', 'Tabs', '::: tabs', ['::: tabs', L('== 첫째', '== First'), '¦', L('== 둘째', '== Second'), L('내용', 'Content'), ':::'].join('\n'), 'tabs'),
+      it('단계', 'Steps', '::: steps', ['::: steps', L('1. ¦첫 단계', '1. ¦First step'), L('2. 다음 단계', '2. Next step'), ':::'].join('\n'), 'steps'),
+      it('파일 트리', 'File tree', '::: tree', ['::: tree', '- ¦folder/', '  - file.md', ':::'].join('\n'), 'tree'),
+      it('접는 내용', 'Collapsible', '<details>', ['<details>', L('<summary>¦제목</summary>', '<summary>¦Title</summary>'), '', L('내용', 'Content'), '', '</details>'].join('\n'), 'details fold'),
+      it('목차', 'Table of contents', '[[_TOC_]]', '[[_TOC_]]¦', 'toc'),
+      it('쪽 나눔', 'Page break', L('<!-- 쪽 나눔 -->', '<!-- page break -->'), L('<!-- 쪽 나눔 -->¦', '<!-- page break -->¦'), 'page break print'),
+      it('구분선', 'Divider', '---', '---\n¦', 'hr line'),
+      it('문서 넣기', 'Embed a document', '![[', '![[¦', 'embed'),
+      it('오늘 날짜', "Today's date", today(), today() + '¦', 'date today', true),
+    ];
+  }
+  function acCheck() {
+    const ta = el.editor;
+    if (!state.editing || ta.selectionStart !== ta.selectionEnd || document.activeElement !== ta) { acClose(); return; }
+    const v = ta.value, pos = ta.selectionStart;
+    const ls = v.lastIndexOf('\n', pos - 1) + 1, line = v.slice(ls, pos);
+    const w = line.match(/\[\[([^[\]|\n]*)$/), s = !w && line.match(/(^|[\s>])\/([^\s/]*)$/);
+    if (!w && !s) { ac.dismissed = -1; acClose(); return; }
+    if (((line.match(/`/g) || []).length % 2) || fenceBefore(v, ls)) { acClose(); return; } // `코드` · 코드 블록 안
+    if (w) {
+      const start = ls + w.index + 2, q = w[1];
+      if (start === ac.dismissed) { acClose(); return; }
+      const hash = q.indexOf('#');
+      if (hash < 0) { acShow('wiki', start, acDocs(), q, L('문서', 'Documents')); return; }
+      const seq = ++ac.seq, doc = q.slice(0, hash);
+      acHeads(doc).then((heads) => { if (seq === ac.seq) acShow('wiki', start, heads, q.slice(hash + 1), doc ? L(`「${doc}」의 제목`, `Headings in "${doc}"`) : L('이 문서의 제목', 'Headings here')); });
+      return;
+    }
+    const start = ls + s.index + s[1].length;
+    if (start === ac.dismissed) { acClose(); return; }
+    acShow('slash', start, slashItems(), s[2], L('넣기', 'Insert'));
+  }
+  function acChoose(i) {
+    const row = ac.shown[i];
+    if (!row) return;
+    const ta = el.editor, v = ta.value, pos = ta.selectionStart, kind = ac.kind, start = ac.start;
+    acClose();
+    if (kind === 'wiki') {
+      const close = v.slice(pos, pos + 2) === ']]';
+      insertText(row.it.insert + (close ? '' : ']]'), start, pos);
+      const at = start + row.it.insert.length + 2;
+      ta.setSelectionRange(at, at);
+      return;
+    }
+    // / 블록 메뉴: 「/찾는 말」을 넣을 것으로 바꿈. 블록은 앞뒤를 빈 줄로 띄우고, 들여쓰기 · 인용(>) 안이면 줄마다 같은 머리를 붙임
+    const ls = v.lastIndexOf('\n', start - 1) + 1, lead = v.slice(ls, start);
+    let text = row.it.text;
+    let a = start;
+    if (!row.it.inline && /^[\s>]*$/.test(lead)) {
+      text = text.split('\n').map((l, k) => (k ? lead + l : l)).join('\n');
+      if (!/>/.test(lead)) {
+        const before = v.slice(0, ls), after = v.slice(pos);
+        const pre = !before || /\n\n$/.test(before) || /^\s*$/.test(before) ? '' : '\n';
+        const post = !after || /^\n\n/.test(after) ? '' : /^\n/.test(after) ? '\n' : '\n\n';
+        text = pre + text + post;
+      }
+    } else if (!row.it.inline) {
+      text = '\n\n' + text + '\n\n'; // 글 중간의 / 뒤에 블록을 넣으면 다음 줄로
+    }
+    const caret = text.indexOf('¦');
+    text = text.replace('¦', '');
+    insertText(text, a, pos);
+    const at = a + (caret < 0 ? text.length : caret);
+    ta.setSelectionRange(at, at);
+    if (row.it.text.startsWith('![[')) acCheck(); // 문서 넣기: 바로 문서 후보
+  }
+  el.editor.addEventListener('keydown', (e) => {
+    if (!ac.kind || !ac.box || ac.box.hidden) return;
+    if (e.isComposing || e.keyCode === 229) return; // 한글 입력 중의 Enter · 화살표는 입력기 것
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); e.stopImmediatePropagation(); acMark(ac.cur + (e.key === 'ArrowDown' ? 1 : -1), true); }
+    else if ((e.key === 'Enter' || e.key === 'Tab') && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); e.stopImmediatePropagation(); acChoose(ac.cur); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); ac.dismissed = ac.start; acClose(); }
+  }, true);
+  el.editor.addEventListener('input', acCheck);
+  el.editor.addEventListener('keyup', (e) => { if (ac.kind && /^(ArrowLeft|ArrowRight|Home|End)$/.test(e.key)) acCheck(); });
+  el.editor.addEventListener('mousedown', () => setTimeout(() => { if (ac.kind) acCheck(); }));
+  el.editor.addEventListener('blur', () => acClose());
+  el.editor.addEventListener('scroll', () => { if (ac.kind) acPlace(); });
   function previewAnchors() {
     const base = el.preview.getBoundingClientRect().top - el.preview.scrollTop;
     const out = [];
@@ -7676,9 +7951,10 @@ ${clone.innerHTML}
   /* ---------- 빠른 열기 · 명령 (Ctrl+O): 파일 이름 · 이 문서의 제목 · 명령을 한 창에서 ---------- */
   //  - 그냥 치면 파일(이름 → 경로 순), 「>」로 시작하면 명령만, 「#」으로 시작하면 이 문서의 제목만
   //  - 창이 열린 채 Ctrl+O 를 한 번 더 누르면 「다른 파일 열기…」
-  const qo = { box: null, input: null, list: null, items: [], shown: [], cur: 0, back: null };
+  const qo = { box: null, input: null, list: null, items: [], shown: [], cur: 0, back: null, custom: null };
   const ICON_QO = {
     file: ICON.md,
+    tpl: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',
     head: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 4v16M19 4v16M5 12h14"/></svg>',
     cmd: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 4 4-4 4M12 16h7"/></svg>',
   };
@@ -7785,14 +8061,19 @@ ${clone.innerHTML}
     b.addEventListener('pointerdown', (e) => { if (e.target === b) closeQuick(); });
     return b;
   }
-  function openQuick(prefix = '') {
-    if (!$('#tour').hidden) return;
+  // custom: { items, placeholder, onCancel } — 같은 창으로 다른 것을 고를 때 (템플릿 고르기)
+  function openQuick(prefix = '', custom = null) {
+    if (!$('#tour').hidden) { custom?.onCancel?.(); return; }
     closeMenus();
     hidePreview();
     if (!$('#dgViewer').hidden) closeDiagramViewer();
     const b = quickBox();
     if (b.hidden) qo.back = document.activeElement;
-    qo.items = quickItems();
+    if (qo.custom && qo.custom !== custom) { const c = qo.custom; qo.custom = null; c.onCancel?.(); }
+    qo.custom = custom;
+    qo.items = custom ? { files: custom.items, heads: [], cmds: [] } : quickItems();
+    b.classList.toggle('custom', !!custom);
+    qo.input.placeholder = custom ? custom.placeholder : L('파일 이름 · 초성(ㄱㅎㅅ)으로 찾기   > 명령   # 제목', 'Find a file by name   > commands   # headings');
     b.hidden = false;
     qo.input.value = prefix;
     quickFilter();
@@ -7801,12 +8082,13 @@ ${clone.innerHTML}
   function closeQuick(keepFocus) {
     if (!qo.box || qo.box.hidden) return;
     qo.box.hidden = true;
+    if (qo.custom) { const c = qo.custom; qo.custom = null; c.onCancel?.(); }
     if (!keepFocus && qo.back && qo.back.isConnected && qo.back !== document.body) qo.back.focus({ preventScroll: true });
     qo.back = null;
   }
   function quickFilter() {
     const raw = qo.input.value;
-    const mode = raw[0] === '>' ? 'cmd' : raw[0] === '#' ? 'head' : '';
+    const mode = qo.custom ? '' : raw[0] === '>' ? 'cmd' : raw[0] === '#' ? 'head' : '';
     const q = prepText(raw.slice(mode ? 1 : 0).trim());
     const { files, heads, cmds } = qo.items;
     let rows = [];
@@ -7815,7 +8097,7 @@ ${clone.innerHTML}
       rows = rows.map((it) => ({ it }));
     } else {
       const pool = mode === 'cmd' ? cmds : mode === 'head' ? heads : [...files, ...heads, ...cmds];
-      const weight = { file: 0, head: -250, cmd: -300 };
+      const weight = { file: 0, head: -250, cmd: -300, tpl: 0 };
       for (const it of pool) {
         let best = null;
         const tryOn = (text, where, penalty) => {
@@ -7838,7 +8120,7 @@ ${clone.innerHTML}
       else if (m && m.where === 'alt' && it.altShow) sub = markText(m.t, m.at); // 명령은 다른 언어 이름으로도 찾음
       return `<div class="qo-item" role="option" data-i="${i}">${ICON_QO[it.kind] || ICON_QO.file}<span class="qo-main"><span class="qo-name">${name}</span>${sub ? `<span class="qo-sub">${sub}</span>` : ''}</span>${it.kbd ? `<kbd class="qo-kbd">${escapeHtml(it.kbd)}</kbd>` : ''}</div>`;
     }).join('');
-    qo.list.innerHTML = html || `<div class="qo-empty">${mode === 'head' && !state.current ? L('문서를 열면 그 문서의 제목을 찾을 수 있습니다.', 'Open a document to find its headings.') : L('맞는 것이 없습니다. Ctrl+O 를 한 번 더 누르면 다른 파일을 열 수 있어요.', 'Nothing matches. Press Ctrl+O again to open another file.')}</div>`;
+    qo.list.innerHTML = html || `<div class="qo-empty">${qo.custom ? L('맞는 것이 없습니다.', 'Nothing matches.') : mode === 'head' && !state.current ? L('문서를 열면 그 문서의 제목을 찾을 수 있습니다.', 'Open a document to find its headings.') : L('맞는 것이 없습니다. Ctrl+O 를 한 번 더 누르면 다른 파일을 열 수 있어요.', 'Nothing matches. Press Ctrl+O again to open another file.')}</div>`;
     quickMark(0, true);
   }
   function quickMark(i, scroll) {
@@ -7857,6 +8139,7 @@ ${clone.innerHTML}
   function quickChoose(i) {
     const row = qo.shown[i];
     if (!row) return;
+    qo.custom = null; // 고른 것이므로 「닫음(취소)」 이 아님
     closeQuick(true);
     row.it.run();
   }
