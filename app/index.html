@@ -695,6 +695,21 @@ body.resizing { cursor: col-resize; user-select: none; }
 .workspace.editing .markdown-body :is(a, button, input, summary) { cursor: pointer; }
 /* 그림을 누르면 크게 보기 (나란히 편집 중에는 원본으로 이동하므로 빼고) */
 .workspace:is(:not(.editing), .mode-preview) .markdown-body img:not(.broken, a img, .ex-src img) { cursor: zoom-in; }
+/* 링크 · 각주 미리 보기 */
+.link-preview {
+  position: fixed; z-index: 90; width: min(440px, calc(100vw - 16px)); max-height: min(340px, 60vh); overflow: auto;
+  padding: 10px 14px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 12px 32px color-mix(in srgb, #000 18%, transparent);
+}
+.link-preview[hidden] { display: none; }
+.link-preview .lp-head { margin-bottom: 6px; font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.link-preview .lp-body.markdown-body { max-width: none; margin: 0; font-size: 14px; line-height: 1.65; }
+.link-preview .lp-body > div > :first-child { margin-top: 0; }
+.link-preview .lp-body > div > :last-child { margin-bottom: 0; }
+.link-preview .lp-body :is(h1, h2, h3, h4, h5, h6) { margin: .7em 0 .35em; font-size: 1.08em; }
+.link-preview .lp-body h1 { font-size: 1.3em; }
+.link-preview .lp-body .lp-more { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+.markdown-body :is(a.wikilink, a[data-path], .footnote-ref a) { -webkit-touch-callout: none; }
 /* 보기 방식: 편집만 / 나란히 / 미리보기만 */
 #viewSeg { width: 210px; flex: none; }
 #viewSeg button { padding: 5px 0; font-size: 12.5px; }
@@ -1971,6 +1986,7 @@ body.zen .zen-exit:hover { opacity: 1; }
 
   function render(keepScroll = false) {
     if (!libsOk || !state.current) return;
+    hidePreview();
     const scroll = el.preview.scrollTop;
     const src = source();
     find.hits = []; find.now = -1;
@@ -1991,12 +2007,9 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (state.editing) { paintEditor(); cursorBlock = null; updateCursor(); }
   }
 
-  function postProcess() {
-    const doc = el.doc;
-    const base = state.current.path;
-
-    // 알림 상자 > [!NOTE]
-    doc.querySelectorAll('blockquote').forEach((bq) => {
+  // 알림 상자 > [!NOTE] (본문과 링크 미리 보기에서 같이 씀)
+  function makeCallouts(root) {
+    root.querySelectorAll('blockquote').forEach((bq) => {
       const p = bq.firstElementChild;
       if (!p || p.tagName !== 'P') return;
       const m = p.innerHTML.match(/^\s*\[!(\w+)\]([+-]?)[ \t]*([^\n<]*?)[ \t]*(?:<br>\s*|\n|$)/i);
@@ -2022,6 +2035,13 @@ body.zen .zen-exit:hover { opacity: 1; }
       if (bodyEl.textContent.trim() || bodyEl.querySelector('img,pre,table')) box.append(bodyEl);
       bq.replaceWith(box);
     });
+  }
+
+  function postProcess() {
+    const doc = el.doc;
+    const base = state.current.path;
+
+    makeCallouts(doc);
 
     // 제목: id, 링크 복사, 접기 단추
     const used = new Map();
@@ -2621,6 +2641,233 @@ body.zen .zen-exit:hover { opacity: 1; }
     const btn = block.querySelector('.code-expand');
     if (btn) btn.title = on ? L('작게 보기 (Esc)', 'Shrink (Esc)') : L('크게 보기', 'Expand');
   }
+
+  /* ---------- 링크 · 각주 미리 보기: 마우스를 올리면(휴대폰은 길게 누르면) 작은 창으로 ---------- */
+  const lp = { box: null, timer: 0, hideTimer: 0, seq: 0, anchor: null, suppress: false };
+  const builtinTexts = new Map();
+  // 미리 볼 수 있는 링크: 각주 번호, 다른 문서(위키링크 · .md 링크 · 안내 문서), 이 문서 안의 제목
+  function previewKind(a) {
+    if (!a || !el.doc.contains(a) || a.closest('nav.toc-inline, .h-tools')) return null;
+    if (a.closest('.footnote-ref')) return 'fn';
+    if (a.classList.contains('footnote-backref') || a.classList.contains('missing')) return null;
+    if (a.dataset.builtin) return 'builtin';
+    if (a.dataset.path) return 'doc';
+    const href = a.getAttribute('href') || '';
+    if (!('path' in a.dataset) && href.length > 1 && href.startsWith('#')) return 'here';
+    return null;
+  }
+  // 아직 열지 않은 문서도 내용만 읽음 (목록의 기록은 건드리지 않음)
+  async function peekText(entry) {
+    if (entry === state.current) return source();
+    if (entry.text != null) return entry.text;
+    if (entry.tauriPath && !entry.file && !entry.handle) return (await tinvoke('read_file', { path: entry.tauriPath })).text;
+    return readText(await entryFile(entry));
+  }
+  async function builtinText(key) {
+    const opened = state.files.find((f) => f.builtin && f.path === builtinPath(key));
+    if (opened && opened.text != null) return opened.text;
+    if (!builtinTexts.has(key)) {
+      const res = await fetch('docs/' + BUILTIN[key].file, { cache: 'no-cache' });
+      if (!res.ok) throw new Error(res.status);
+      builtinTexts.set(key, await res.text());
+    }
+    return builtinTexts.get(key);
+  }
+  const plainInline = (s) => { const d = document.createElement('div'); d.innerHTML = DOMPurify.sanitize(md.renderInline(s)); return d.textContent.trim(); };
+  // 원본에서 #제목 단락(없으면 앞부분)만 잘라 냄: 40줄 안팎, 빈 줄에서 끊음
+  function sliceSource(text, hash) {
+    const lines = splitFrontMatter(text).body.split('\n');
+    const heads = [];
+    let fence = null;
+    lines.forEach((l, i) => {
+      const f = l.match(/^\s{0,3}(`{3,}|~{3,})/);
+      if (fence) { if (f && f[1][0] === fence[0] && f[1].length >= fence.length) fence = null; return; }
+      if (f) { fence = f[1]; return; }
+      const h = l.match(/^\s{0,3}(#{1,6})\s+(.*?)(?:\s+#+)?\s*$/);
+      if (h) heads.push({ i, lvl: h[1].length, text: h[2] });
+    });
+    let from = 0, to = lines.length, found = '';
+    if (hash) {
+      const want = slugify(hash), used = new Map();
+      for (const h of heads) {
+        const t = plainInline(h.text);
+        let id = slugify(t);
+        const n = used.get(id) || 0;
+        used.set(id, n + 1);
+        if (n) id += '-' + n;
+        if (id === hash || id === want || t === hash) {
+          const next = heads.find((x) => x.i > h.i && x.lvl <= h.lvl);
+          from = h.i; to = next ? next.i : lines.length; found = t;
+          break;
+        }
+      }
+    }
+    while (from < to && !lines[from].trim()) from++;
+    let end = Math.min(to, from + 40);
+    if (end < to) for (let k = end; k > from + 10; k--) if (!lines[k - 1].trim()) { end = k; break; }
+    return { md: lines.slice(from, end).join('\n'), cut: end < to, found };
+  }
+  // 미리 보기 안: 알림 상자는 그리고, 링크는 누르지 않게, 그림은 그 문서 기준으로
+  function previewProcess(root, base, builtin) {
+    makeCallouts(root);
+    const imgSrc = (img, src) => {
+      img.loading = 'lazy';
+      if (builtin || hasScheme(src) || src.startsWith('data:')) { img.src = src; return; }
+      img.removeAttribute('src');
+      const key = findAssetKey(base, src);
+      if (key) assetUrl(key).then((u) => (img.src = u)).catch(() => {});
+    };
+    root.querySelectorAll('span.wiki-embed').forEach((x) => {
+      const f = x.dataset.file;
+      if (!IMG_EXT.test(f)) { x.replaceWith(document.createTextNode(x.dataset.raw)); return; }
+      const img = document.createElement('img');
+      img.alt = f;
+      imgSrc(img, f);
+      x.replaceWith(img);
+    });
+    root.querySelectorAll('img[src]').forEach((img) => imgSrc(img, img.getAttribute('src')));
+    root.querySelectorAll('a').forEach((x) => {
+      const h = x.getAttribute('href') || '';
+      if (/^https?:|^mailto:/i.test(h)) { x.target = '_blank'; x.rel = 'noopener noreferrer'; return; }
+      const sp = document.createElement('span');
+      sp.className = 'pv-link';
+      sp.append(...x.childNodes);
+      x.replaceWith(sp);
+    });
+  }
+  async function previewContent(a, kind) {
+    const box = document.createElement('div');
+    if (kind === 'fn') {
+      const li = document.getElementById(decodeURIComponent((a.getAttribute('href') || '#').slice(1)));
+      if (!li || !el.doc.contains(li)) return null;
+      const c = li.cloneNode(true);
+      c.querySelectorAll('.footnote-backref').forEach((x) => x.remove());
+      box.append(...c.childNodes);
+      return { title: L('각주 ', 'Footnote ') + a.textContent.replace(/[[\]]/g, ''), node: box };
+    }
+    if (kind === 'here') {
+      const id = decodeURIComponent((a.getAttribute('href') || '#').slice(1));
+      const h = document.getElementById(id) || document.getElementById(slugify(id));
+      if (!h || !el.doc.contains(h) || !headingLevel(h)) return null;
+      const lvl = headingLevel(h);
+      for (let n = h.nextElementSibling, k = 0; n && k < 12; n = n.nextElementSibling, k++) {
+        const l = headingLevel(n);
+        if ((l && l <= lvl) || n.matches('.footnotes, .footnotes-sep')) break;
+        const c = n.cloneNode(true);
+        c.querySelectorAll('.h-tools, .dg-expand, .code-head button, .copy').forEach((x) => x.remove());
+        c.querySelectorAll('[id]').forEach((x) => x.removeAttribute('id'));
+        c.removeAttribute('id');
+        c.classList.remove('fold-hidden', 'cursor-block');
+        box.append(c);
+      }
+      if (!box.childNodes.length) return null;
+      box.querySelectorAll('a').forEach((x) => { if (!/^https?:|^mailto:/i.test(x.getAttribute('href') || '')) x.removeAttribute('href'); });
+      return { title: headLabel(h), node: box };
+    }
+    let text, base, name, builtin = false;
+    if (kind === 'builtin') {
+      const key = a.dataset.builtin;
+      text = await builtinText(key);
+      base = builtinPath(key); name = BUILTIN[key].title; builtin = true;
+    } else {
+      const entry = state.files.find((f) => f.path === a.dataset.path);
+      if (!entry) return null;
+      text = await peekText(entry);
+      base = entry.path; name = entry.name.replace(MD_EXT, ''); builtin = !!entry.builtin;
+    }
+    if (text == null) return null;
+    let hash = a.dataset.hash || a.dataset.heading || '';
+    try { hash = decodeURIComponent(hash); } catch {}
+    const s = sliceSource(text, hash);
+    box.innerHTML = DOMPurify.sanitize(md.render(s.md, { nested: true, depth: 1, docId: 'pv' }), { ADD_ATTR: ['target'], FORBID_TAGS: ['style'] });
+    previewProcess(box, base, builtin);
+    if (!box.textContent.trim() && !box.querySelector('img')) box.innerHTML = `<p class="lp-more">${L('비어 있는 문서입니다', 'This document is empty')}</p>`;
+    if (s.cut) box.insertAdjacentHTML('beforeend', `<div class="lp-more">${L('… 이어지는 내용은 링크를 눌러 보세요', '… Click the link to read the rest')}</div>`);
+    return { title: name + (s.found ? ' › ' + s.found : ''), node: box };
+  }
+  function previewBox() {
+    if (lp.box) return lp.box;
+    const b = document.createElement('div');
+    b.className = 'link-preview';
+    b.hidden = true;
+    b.setAttribute('role', 'tooltip');
+    b.innerHTML = '<div class="lp-head"></div><div class="lp-body markdown-body"></div>';
+    b.addEventListener('pointerenter', () => clearTimeout(lp.hideTimer));
+    b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') hidePreviewSoon(); });
+    document.body.append(b);
+    return (lp.box = b);
+  }
+  async function showPreview(a) {
+    const kind = previewKind(a);
+    if (!kind) return;
+    const seq = ++lp.seq;
+    let r = null;
+    try { r = await previewContent(a, kind); } catch {}
+    if (seq !== lp.seq || !r || !a.isConnected) return;
+    const b = previewBox();
+    b.querySelector('.lp-head').textContent = r.title;
+    const body = b.querySelector('.lp-body');
+    body.innerHTML = '';
+    body.append(r.node);
+    b.style.visibility = 'hidden';
+    b.hidden = false;
+    b.scrollTop = 0;
+    // 링크 바로 아래(자리가 없으면 위)에
+    const rc = a.getClientRects()[0] || a.getBoundingClientRect();
+    const w = b.offsetWidth, h = b.offsetHeight;
+    let top = rc.bottom + 6;
+    if (top + h > innerHeight - 8 && rc.top - 6 - h >= 8) top = rc.top - 6 - h;
+    b.style.top = Math.max(8, Math.min(top, innerHeight - h - 8)) + 'px';
+    b.style.left = Math.max(8, Math.min(rc.left, innerWidth - w - 8)) + 'px';
+    b.style.visibility = '';
+    lp.anchor = a;
+  }
+  function hidePreview() {
+    clearTimeout(lp.timer);
+    clearTimeout(lp.hideTimer);
+    lp.seq++;
+    lp.anchor = null;
+    if (lp.box) lp.box.hidden = true;
+  }
+  function hidePreviewSoon() { clearTimeout(lp.hideTimer); lp.hideTimer = setTimeout(hidePreview, 220); }
+  const previewOpen = () => !!(lp.box && !lp.box.hidden);
+  el.doc.addEventListener('pointerover', (e) => {
+    if (e.pointerType !== 'mouse') return;
+    const a = e.target.closest('a');
+    if (!previewKind(a)) return;
+    clearTimeout(lp.hideTimer);
+    if (lp.anchor === a && previewOpen()) return;
+    clearTimeout(lp.timer);
+    lp.timer = setTimeout(() => showPreview(a), 350);
+  });
+  el.doc.addEventListener('pointerout', (e) => {
+    if (e.pointerType !== 'mouse') return;
+    const a = e.target.closest('a');
+    if (!a || (e.relatedTarget && a.contains(e.relatedTarget))) return;
+    clearTimeout(lp.timer);
+    if (previewOpen()) hidePreviewSoon(); else lp.seq++;
+  });
+  // 휴대폰 · 태블릿: 길게 누르면 미리 보기, 그때는 링크로 넘어가지 않음
+  el.doc.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse') return;
+    lp.suppress = false;
+    if (previewOpen()) hidePreview();
+    const a = e.target.closest('a');
+    if (!previewKind(a)) return;
+    const x = e.clientX, y = e.clientY;
+    lp.timer = setTimeout(() => { lp.suppress = true; showPreview(a); }, 450);
+    const stop = (ev) => {
+      if (ev.type === 'pointermove' && Math.hypot(ev.clientX - x, ev.clientY - y) < 10) return;
+      clearTimeout(lp.timer);
+      ['pointerup', 'pointercancel', 'pointermove'].forEach((t) => a.removeEventListener(t, stop));
+    };
+    ['pointerup', 'pointercancel', 'pointermove'].forEach((t) => a.addEventListener(t, stop));
+  });
+  el.doc.addEventListener('click', (e) => { if (lp.suppress) { lp.suppress = false; e.preventDefault(); e.stopImmediatePropagation(); } }, true);
+  el.doc.addEventListener('contextmenu', (e) => { if (lp.suppress) e.preventDefault(); });
+  document.addEventListener('pointerdown', (e) => { if (previewOpen() && !lp.box.contains(e.target)) hidePreview(); });
+  el.preview.addEventListener('scroll', () => { if (previewOpen()) hidePreview(); }, { passive: true });
+  window.addEventListener('blur', () => { if (previewOpen()) hidePreview(); });
 
   /* ---------- 문서에서 찾기 ---------- */
   const find = { hits: [], now: -1 };
@@ -5025,6 +5272,7 @@ ${clone.innerHTML}
 
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      if (previewOpen()) { hidePreview(); return; }
       if (!$('#dgViewer').hidden) { closeDiagramViewer(); return; }
       const exp = document.querySelector('.code-block.expanded');
       if (exp) { toggleExpand(exp, false); return; }

@@ -128,6 +128,7 @@ Review: 2d
 
 - To another document: [User guide](User-Guide.md), wikilink [[Markdown-Writing-Rules#7-2. Diagrams (markcont style)|the diagrams chapter of the writing rules]]
 - To a heading in this document: [[#3. Task lists]]
+- Hover over a link or a footnote number to see its content in a small window (long-press on phones)
 - A YouTube link on its own line becomes a thumbnail:
 
 https://youtu.be/SEgHM748yrE?si=HsLb-OZOiQqXq3ng

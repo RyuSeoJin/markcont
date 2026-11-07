@@ -86,6 +86,7 @@ Write `[[_TOC_]]` on a line of its own in the document, and a table of contents 
 | Light · Dark | ☾ / ☀ button at the top | Dark mode |
 | Fold a heading | ⌄ button next to a heading | Folds the content under that heading |
 | Copy link | **#** button next to a heading | Copies a `[heading](#heading)` link |
+| Link · footnote preview | Hover over a link or a footnote number (long-press on phones) | Shows the start of another document, the section under its heading, or the footnote text in a small window |
 | Find in document | <kbd>Ctrl</kbd>+<kbd>F</kbd> | Highlights matches and steps through them |
 | Focus mode | <kbd>Ctrl</kbd>+<kbd>.</kbd> | Leaves only the body text. Press <kbd>Esc</kbd> to exit |
 | Enlarge code | ⤢ in the code block header | Shows the code full screen |

@@ -65,7 +65,7 @@ curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh 
 - Bold · italic that works with Korean, Chinese and Japanese: `**스크립트(script)**는` stays bold even when a character follows a bracket or punctuation
 - Code highlighting · line numbers · copy · enlarge, `diff` coloring
 - Math `$E=mc^2$`, chemical formulas `$\ce{H2O}$`, diagrams: markcont style (markcont-standard flowcharts, message order, state changes, timelines, exposure trees with entry points) and Mermaid, plus workflow writing rules for large flows
-- Wikilinks `[[document#heading]]`, video · YouTube thumbnails
+- Wikilinks `[[document#heading]]`, link · footnote previews (hover or long-press), video · YouTube thumbnails
 - Images: click to enlarge (zoom · pan), a description under images that sit on their own line, and sizes with `![description|300](image.png)` · `![[image.png|300]]`
 - A workspace that opens several folders together, folder tree · file search · right-click menu, table of contents, heading folding, find in document, focus mode
 - A table of contents inside the text with `[[_TOC_]]` (also in print · PDF), and heading numbers (1 · 1.1 · 1.1.1) shown without changing the source

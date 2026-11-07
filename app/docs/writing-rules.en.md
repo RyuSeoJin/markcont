@@ -877,6 +877,7 @@ Links that jump straight to another document when you've opened a folder. Leave 
 - If you write just a document name, markcont looks for **that name across the whole folder**. If several share the name, write a path like `[[docs/Meeting notes]]`.
 - A link to a document that doesn't exist shows as a faint dotted link. A link with no heading, like `[[document]]`, is left as plain text if the document it points to doesn't exist.
 - Regular links like `[text](other-doc.md)` also open right inside markcont.
+- Hover over a link to preview the start of that document (or the section under its `#heading`) in a small window.
 
 ### Video · audio · YouTube
 
