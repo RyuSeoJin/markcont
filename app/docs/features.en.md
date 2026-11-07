@@ -14,6 +14,8 @@ Open this document to see everything the viewer can show, all in one place. Pres
 
 **Bold**, *italic*, ~~strikethrough~~, `inline code`, ==highlight==, ++inserted text++, --deleted text--, <kbd>Ctrl</kbd>+<kbd>S</kbd>.
 
+In Korean, Chinese and Japanese text, bold that ends in a bracket, quote or punctuation still works when a character follows right after it: **스크립트(script)**는, **"인용"**이라고, **10%**의, **「強調」**です.
+
 ## 2. Callouts
 
 > [!NOTE]

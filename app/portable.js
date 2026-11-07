@@ -23,6 +23,8 @@
     diagramErr: () => [L('다이어그램 (틀린 곳 있음)', 'Diagram (has errors)'), L('바꾸지 않음', 'not converted')],
     uiTree: () => [L('노출 위치 블록', 'Exposure block'), L('일반 들여 쓴 목록으로', 'to a normal indented list')],
     dataTable: () => [L('데이터 정의 블록', 'Data definition block'), L('데이터마다 일반 표로', 'to a normal table per data')],
+    cjkEmph: () => [L('조사가 붙은 굵게 · 기울임 **굵게(괄호)**는', 'Bold · italic next to CJK text **bold(note)**는'), L('<strong> · <em> · <del> 태그로', 'to <strong> · <em> · <del> tags')],
+    cjkEmphErr: () => [L('조사가 붙은 굵게 (기호가 얽혀 있음)', 'Bold next to CJK text (tangled markers)'), L('바꾸지 않음 — <strong> 태그로 직접 바꾸세요', 'not converted — change it to a <strong> tag by hand')],
   };
   const STD = { note: 1, tip: 1, important: 1, warning: 1, caution: 1 };
   const MAP = { info: 'NOTE', todo: 'NOTE', example: 'NOTE', question: 'NOTE', faq: 'NOTE', danger: 'CAUTION' };
@@ -32,6 +34,56 @@
   const ghSlug = (h) => h.trim().toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').replace(/\s/g, '-');
   const dest = (u) => (/[\s()<>]/.test(u) ? `<${u}>` : u);
 
+  // 조사가 붙은 굵게 · 기울임 · 취소선: markcont 에서만 되는 짝을 HTML 태그로
+  //  - markcont 해석(cjk)과 CommonMark 해석(std)을 견줘서, markcont 에서만 생긴 짝만 바꿈
+  //  - 바꾼 뒤 CommonMark 로 다시 그려 보고, 모양이 달라지면 바꾸지 않고 알리기만 함
+  const samePair = (p, q) => p.tag === q.tag && p.open[0] === q.open[0] && p.close[0] === q.close[0];
+  const delTag = (h) => h.replace(/<(\/?)s>/g, '<$1del>');
+  function cjkText(text, P) {
+    const C = window.markdownitCjk;
+    if (!C.edge.test(text)) return { text, state: 'same' };
+    const std = C.pairs(P.std, text);
+    const only = C.pairs(P.cjk, text).filter((p) => !std.some((q) => samePair(p, q)));
+    if (!only.length) return { text, state: 'same' };
+    const edits = [];
+    for (const p of only) edits.push([p.open[0], p.open[1], `<${p.tag}>`], [p.close[0], p.close[1], `</${p.tag}>`]);
+    edits.sort((a, b) => b[0] - a[0]);
+    let out = text;
+    for (const [from, to, tag] of edits) out = out.slice(0, from) + tag + out.slice(to);
+    if (delTag(P.std.renderInline(out)) !== delTag(P.cjk.renderInline(text))) return { text, state: 'failed' };
+    return { text: out, state: 'fixed' };
+  }
+  // 표 줄은 칸마다 따로 (칸을 넘는 짝이 생기지 않게). 코드 안의 | 와 \| 는 칸 나눔이 아님
+  function rowCells(line) {
+    const cells = [];
+    let cur = '', tick = 0;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '\\' && i + 1 < line.length) { cur += ch + line[++i]; continue; }
+      if (ch === '`') {
+        let n = 1;
+        while (line[i + n] === '`') n++;
+        cur += line.slice(i, i + n);
+        i += n - 1;
+        tick = !tick ? n : tick === n ? 0 : tick;
+        continue;
+      }
+      if (ch === '|' && !tick) { cells.push(cur); cur = ''; continue; }
+      cur += ch;
+    }
+    cells.push(cur);
+    return cells;
+  }
+  function cjkLine(line) {
+    const P = window.markdownitCjk && MarkPortable.parsers && MarkPortable.parsers();
+    if (!P || !/[*_~]/.test(line)) return { text: line, state: 'same' };
+    if (!/^\s*\|/.test(line)) return cjkText(line, P);
+    const res = rowCells(line).map((c) => cjkText(c, P));
+    if (res.some((r) => r.state === 'failed')) return { text: line, state: 'failed' };
+    if (!res.some((r) => r.state === 'fixed')) return { text: line, state: 'same' };
+    return { text: res.map((r) => r.text).join('|'), state: 'fixed' };
+  }
+
   function convert(src) {
     const lines = String(src).replace(/\r\n?/g, '\n').split('\n');
     const out = [], changes = [], notes = [];
@@ -40,6 +92,9 @@
 
     // 인라인: 코드 · 수식 조각은 그대로 두고 나머지만 바꿈
     function inline(line, ln) {
+      const cj = cjkLine(line);
+      if (cj.state === 'fixed') { note(ln, 'cjkEmph', line); line = cj.text; }
+      else if (cj.state === 'failed') note(ln, 'cjkEmphErr', line);
       const pieces = line.split(/(`+[^`]*`+|\$[^$\n]+\$)/);
       return pieces.map((p, k) => {
         if (k % 2) { if (p[0] === '$' && /\\ce\{/.test(p)) note(ln, 'chem', p); return p; }
@@ -179,6 +234,6 @@
     convert,
     describe(kind) { return (KINDS[kind] || (() => [kind, '']))(); },
     // 바꿀 수 없어 경고만 하는 종류
-    warnOnly: (kind) => kind === 'chem' || kind === 'diagramErr',
+    warnOnly: (kind) => kind === 'chem' || kind === 'diagramErr' || kind === 'cjkEmphErr',
   };
 })();

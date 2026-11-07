@@ -1418,6 +1418,7 @@ body.zen .zen-exit:hover { opacity: 1; }
 <script src="vendor/markdown-it-deflist.min.js"></script>
 <script src="vendor/markdown-it-mark.min.js"></script>
 <script src="vendor/markdown-it-ins.min.js"></script>
+<script src="cjk.js"></script>
 <script src="vendor/purify.min.js"></script>
 <script src="vendor/highlight.min.js"></script>
 <script src="vendor/katex/katex.min.js"></script>
@@ -1703,10 +1704,15 @@ body.zen .zen-exit:hover { opacity: 1; }
     };
   }
 
-  let md;
+  let md, mdStd = null;
   function buildMd() {
     if (!libsOk) return;
-    md = window.markdownit({
+    md = makeMd(true);
+    mdStd = null; // CommonMark 규칙 그대로인 해석기: 다른 뷰어용 변환에서 필요할 때 만듦
+  }
+  // cjk: 한국어 · 중국어 · 일본어 옆의 굵게 · 기울임 · 취소선을 넓게 받을지 (false 면 CommonMark 그대로)
+  function makeMd(cjk) {
+    const md = window.markdownit({
       html: true, linkify: true, breaks: false, // 엔터 한 번은 표준대로 같은 문단 (빈 줄로 문단을 나눔)
       highlight(str, lang) {
         if (lang && lang !== 'mermaid' && window.hljs && hljs.getLanguage(lang)) {
@@ -1716,6 +1722,8 @@ body.zen .zen-exit:hover { opacity: 1; }
       },
     });
     for (const p of [window.markdownitFootnote, window.markdownitDeflist]) if (p) md.use(p);
+    // `**스크립트(script)**는` 처럼 문장부호로 끝나는 굵게 뒤에 조사가 붙어도 굵게로
+    if (window.markdownitCjk) md.use(window.markdownitCjk, { relax: cjk });
     // 형광펜 ==글== · 추가 표시 ++글++ · 제거 표시 --글-- : 영문 · 숫자에 붙은 기호(x==1, C++, --force)는 문법으로 보지 않음
     md.inline.ruler.before('emphasis', 'mark_safe', pairRule(0x3D, 'mark'));
     md.inline.ruler.before('emphasis', 'ins_safe', pairRule(0x2B, 'ins'));
@@ -1755,8 +1763,11 @@ body.zen .zen-exit:hover { opacity: 1; }
       if (s.env && s.env.nested) return;
       for (const t of s.tokens) if (t.map && t.nesting >= 0 && t.type !== 'inline') t.attrSet('data-line', String(t.map[0]));
     });
+    return md;
   }
   buildMd();
+  // 다른 뷰어용 변환: markcont 해석과 CommonMark 해석을 견줘서 markcont 에서만 굵게가 되는 곳을 찾음
+  if (window.MarkPortable) MarkPortable.parsers = () => (md ? { cjk: md, std: mdStd || (mdStd = makeMd(false)) } : null);
 
   /* =========================================================
      파일 읽기 (UTF-8이 아니면 한글 EUC-KR로 다시 시도)
