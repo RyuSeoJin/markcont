@@ -821,7 +821,7 @@ On top of the same 5 types as GitHub (`NOTE` · `TIP` · `IMPORTANT` · `WARNING
 
 - `-` means **collapsed at first**, `+` means **expanded at first**.
 - Text written right after `[!TYPE]` becomes the title.
-- Choose the callout look (💡 NOTE / ⓘ Note) in **View settings (Aa) → Callout style**.
+- Choose the callout look (💡 NOTE / ⓘ Note) in **View settings (Aa) → Callouts**.
 
 ### Highlight · inserted · deleted text
 

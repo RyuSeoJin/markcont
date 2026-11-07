@@ -9,7 +9,7 @@ markcont (**mark**down **cont**roller) is a program for viewing Markdown files n
 This guide is laid out so a first-time user can follow it step by step.
 
 > [!TIP]
-> You can replay the first-run tour (tutorial) at any time from **⋯ → Replay the tour** in the top right.
+> You can replay the first-run tour (tutorial) at any time from **⋯ → Help → Replay the tour** in the top right.
 
 ---
 
@@ -285,10 +285,10 @@ Open the window with the **History** button in the editing toolbar (<kbd>Ctrl</k
 | Save to original file | **Save** button or <kbd>Ctrl</kbd>+<kbd>S</kbd> |
 | Save as a new file | **▾ → Save as new file…** next to the Save button, or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> — the original file stays as it is, and from then on you edit the new file |
 | For other viewers | **▾ → Save for other viewers…** next to the Save button — a copy with markcont-only syntax converted to standard syntax (looks the same on GitHub · VS Code; the original stays as it is) |
-| As an HTML file | **⋯ → Save as HTML** — a single file that looks just like the screen |
-| As a PDF | In **⋯ → Print · Save as PDF**, choose "Save as PDF" |
-| As a Word file | **⋯ → Save as Word (.docx)** — to send to a company or keep editing in Word · Hancom Office |
-| Somewhere else, looking the same | **⋯ → Copy with formatting**, then paste into mail · Notion · Google Docs · a blog editor — tables · callouts · code colors stay, and math · diagrams go in as images. Select part of the document first to copy just that part |
+| As an HTML file | **⋯ → Export → HTML file** — a single file that looks just like the screen |
+| As a PDF | In **⋯ → Export → Print · PDF**, choose "Save as PDF" |
+| As a Word file | **⋯ → Export → Word file (.docx)** — to send to a company or keep editing in Word · Hancom Office |
+| Somewhere else, looking the same | **⋯ → Export → Copy with formatting**, then paste into mail · Notion · Google Docs · a blog editor — tables · callouts · code colors stay, and math · diagrams go in as images. Select part of the document first to copy just that part |
 
 - Files opened with Open file · Open folder are **saved straight to the original file**.
 - Before saving, markcont **shows you what will change and asks once more** (Cancel · Save as new file · Save). To turn this off, turn off **Aa → Review changes before saving**, or check **Don't ask again** in the confirmation window.
@@ -389,7 +389,7 @@ Folders with no md files at all, folders whose names start with `.`, and `node_m
 <details>
 <summary>How do I write documents that look good?</summary>
 
-Open **⋯ → [Markdown writing rules](Markdown-Writing-Rules.md)**. Give that document to an AI along with yours and say "Rewrite this following these rules."
+Open **⋯ → Help → [Markdown writing rules](Markdown-Writing-Rules.md)**. Give that document to an AI along with yours and say "Rewrite this following these rules."
 
 </details>
 
@@ -401,4 +401,4 @@ Open **⋯ → [Markdown writing rules](Markdown-Writing-Rules.md)**. Give that 
 2. In the sidebar, use the **Files · Contents · Search · Links** tabs; right-click for **New document · Rename · Delete**
 3. **Aa** for view settings, <kbd>Ctrl</kbd>+<kbd>F</kbd> to find in the document, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> to search all documents, <kbd>Ctrl</kbd>+<kbd>.</kbd> for focus mode
 4. <kbd>Ctrl</kbd>+<kbd>E</kbd> to edit, <kbd>Ctrl</kbd>+<kbd>S</kbd> to save
-5. From the **⋯** menu: HTML · PDF · Word export, the guide and the writing rules
+5. In the **⋯** menu, **Export** saves as HTML · PDF · Word, and **Help** has the guide and the writing rules

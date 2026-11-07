@@ -584,32 +584,55 @@ button, input, select { font: inherit; color: inherit; }
 /* 팝업 메뉴 */
 .menu-wrap { position: relative; }
 .menu {
-  position: absolute; right: 0; top: calc(100% + 8px); z-index: 45; width: 290px; padding: 8px;
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 45; width: var(--menu-w, 290px); padding: 6px;
   background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
   box-shadow: 0 12px 32px rgba(0,0,0,.14);
+  /* 창이 낮아도 잘리지 않게: 남는 높이만큼만, 넘치면 메뉴 안에서 스크롤 (여는 순간 JS가 정확한 높이로 다시 맞춤) */
+  max-height: calc(100vh - 64px); max-height: calc(100dvh - 64px); overflow-y: auto; overscroll-behavior: contain;
 }
 .menu-item {
-  display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; background: none;
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0; background: none;
   border-radius: 8px; cursor: pointer; font-size: 14px; text-align: left;
 }
 .menu-item:hover:not(:disabled) { background: var(--surface-2); }
 .menu-item:disabled { opacity: .45; cursor: default; }
-.menu-item svg { width: 16px; height: 16px; color: var(--muted); }
+.menu-item svg { width: 16px; height: 16px; color: var(--muted); flex: none; }
 .menu-item kbd { margin-left: auto; font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
-.set-row { padding: 10px 10px; }
-.set-row + .set-row { border-top: 1px solid var(--border); }
-.set-label { font-size: 12.5px; color: var(--muted); margin-bottom: 8px; display: flex; justify-content: space-between; }
+.menu-sep { border: 0; border-top: 1px solid var(--border); margin: 5px 4px; }
+/* 묶음 항목 (내보내기 · 도움말): 누르면 아래로 펼침 */
+.menu-sub .chev { margin-left: auto; width: 14px; height: 14px; transition: transform .15s; }
+.menu-sub[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.menu-sub[aria-expanded="true"] { color: var(--accent); }
+.menu-sub[aria-expanded="true"] svg { color: var(--accent); }
+.menu-subitems { margin: 0 0 4px 17px; padding-left: 6px; border-left: 2px solid var(--border); }
+.menu-subitems .menu-item { padding: 7px 10px; font-size: 13.5px; }
 .seg { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .seg button { flex: 1; border: 0; background: none; padding: 6px 0; font-size: 13px; cursor: pointer; }
 .seg button + button { border-left: 1px solid var(--border); }
 .seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-.size-row { display: flex; align-items: center; gap: 8px; }
-.size-row input { flex: 1; accent-color: var(--accent); }
+/* 보기 설정: 이름 | 선택지를 한 줄에, 비슷한 것끼리 묶음 */
+#settingsMenu { --menu-w: 320px; padding: 2px 6px; }
+html[lang="en"] #settingsMenu { --menu-w: 340px; }
+.set-group { padding: 5px 0; }
+.set-group + .set-group { border-top: 1px solid var(--border); }
+.set-line { display: flex; align-items: center; gap: 10px; padding: 3px 6px; min-height: 36px; }
+.set-name { flex: 0 0 66px; font-size: 13px; line-height: 1.3; color: var(--muted); }
+html[lang="en"] .set-name { flex-basis: 84px; }
+.set-name small { display: block; font-size: 11px; opacity: .8; }
+.set-line > .seg, .set-line > .size-row { flex: 1; min-width: 0; }
+.set-line .seg button { flex: 1 1 0; padding: 5px 4px; white-space: nowrap; }
+.size-row { display: flex; align-items: center; gap: 6px; }
+.size-row input { flex: 1; min-width: 0; accent-color: var(--accent); }
+.size-row .btn.icon { width: 28px; height: 28px; }
+.set-check { display: flex; align-items: center; gap: 9px; padding: 6px 6px; border-radius: 7px; font-size: 13.5px; cursor: pointer; }
+.set-check:hover { background: var(--surface-2); }
+.set-check input { margin: 0; flex: none; accent-color: var(--accent); }
 .check-row { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; cursor: pointer; }
 .check-row input { margin-top: 3px; accent-color: var(--accent); }
 .check-row small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
-.user-css summary { font-size: 14px; cursor: pointer; }
-.user-css textarea { display: block; width: 100%; margin-top: 8px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text); font: 12.5px/1.5 var(--mono); resize: vertical; }
+.user-css { padding: 2px 6px 4px; }
+.user-css summary { font-size: 13.5px; cursor: pointer; padding: 5px 0; }
+.user-css textarea { display: block; width: 100%; margin-top: 4px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text); font: 12.5px/1.5 var(--mono); resize: vertical; }
 .user-css small { display: block; color: var(--muted); font-size: 12px; margin-top: 4px; }
 
 .layout { display: flex; height: calc(100% - 56px); }
@@ -1228,6 +1251,7 @@ body.zen .zen-exit:hover { opacity: 1; }
 @media (max-width: 900px) {
   .only-narrow { display: inline-flex; }
   .only-narrow-item { display: flex; }
+  hr.only-narrow-item { display: block; }
   /* 휴대폰: 둥근 단추 위주 화면 */
   .topbar { height: 64px; border-bottom: 0; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); }
   .layout { height: calc(100% - 64px); }
@@ -1252,7 +1276,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   .topbar { gap: 6px; padding: 0 10px; }
   .actions { gap: 4px; flex: 1; justify-content: flex-end; }
   .sep { display: none; }
-  .menu { position: fixed; left: 10px; right: 10px; top: 60px; width: auto; }
+  .menu { position: fixed; left: 10px; right: 10px; top: 60px; width: auto; max-height: calc(100vh - 80px); max-height: calc(100dvh - 80px); }
   .sidebar {
     position: fixed; top: 56px; bottom: 0; left: 0; z-index: 30; width: min(300px, 84vw);
     transform: translateX(-100%); transition: transform .2s; box-shadow: 0 10px 30px rgba(0,0,0,.18);
@@ -1354,63 +1378,61 @@ body.zen .zen-exit:hover { opacity: 1; }
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19 9 5l5 14M5.8 14h6.4M15 19l3-8 3 8M15.9 16.6h4.2"/></svg>
       </button>
       <div class="menu" id="settingsMenu" hidden>
-        <div class="set-row">
-          <div class="set-label"><span>글자 크기</span><span id="sizeVal"></span></div>
-          <div class="size-row">
-            <button class="btn icon" id="sizeDown" aria-label="작게">−</button>
-            <input type="range" id="sizeRange" min="13" max="24" step="0.5">
-            <button class="btn icon" id="sizeUp" aria-label="크게">+</button>
+        <div class="set-group">
+          <div class="set-line">
+            <span class="set-name">글자 크기<small id="sizeVal"></small></span>
+            <div class="size-row">
+              <button class="btn icon" id="sizeDown" aria-label="작게">−</button>
+              <input type="range" id="sizeRange" min="13" max="24" step="0.5" aria-label="글자 크기">
+              <button class="btn icon" id="sizeUp" aria-label="크게">+</button>
+            </div>
+          </div>
+          <div class="set-line">
+            <span class="set-name">글꼴</span>
+            <div class="seg" id="fontSeg"><button data-v="sans">고딕</button><button data-v="serif" title="명조 글꼴은 Google Fonts에서 받습니다 (인터넷 필요)">명조 🌐</button></div>
           </div>
         </div>
-        <div class="set-row">
-          <div class="set-label"><span>글꼴</span></div>
-          <div class="seg" id="fontSeg"><button data-v="sans">고딕</button><button data-v="serif" title="명조 글꼴은 Google Fonts에서 받습니다 (인터넷 필요)">명조 🌐</button></div>
+        <div class="set-group">
+          <div class="set-line">
+            <span class="set-name">본문 폭</span>
+            <div class="seg" id="widthSeg"><button data-v="narrow">좁게</button><button data-v="normal">보통</button><button data-v="wide">넓게</button></div>
+          </div>
+          <div class="set-line">
+            <span class="set-name">줄 간격</span>
+            <div class="seg" id="lhSeg"><button data-v="tight">좁게</button><button data-v="normal">보통</button><button data-v="loose">넓게</button></div>
+          </div>
+          <div class="set-line">
+            <span class="set-name">문단 간격</span>
+            <div class="seg" id="paraSeg"><button data-v="tight">좁게</button><button data-v="normal">보통</button><button data-v="loose">넓게</button></div>
+          </div>
         </div>
-        <div class="set-row">
-          <div class="set-label"><span>본문 폭</span></div>
-          <div class="seg" id="widthSeg"><button data-v="narrow">좁게</button><button data-v="normal">보통</button><button data-v="wide">넓게</button></div>
+        <div class="set-group">
+          <div class="set-line">
+            <span class="set-name">색 테마</span>
+            <div class="seg" id="tintSeg"><button data-v="plain">기본</button><button data-v="paper">종이</button><button data-v="contrast">또렷하게</button></div>
+          </div>
+          <div class="set-line">
+            <span class="set-name">알림 상자</span>
+            <div class="seg" id="calloutSeg"><button data-v="soft">💡 NOTE</button><button data-v="icon">ⓘ 참고</button></div>
+          </div>
         </div>
-        <div class="set-row">
-          <div class="set-label"><span>줄 간격</span></div>
-          <div class="seg" id="lhSeg"><button data-v="tight">좁게</button><button data-v="normal">보통</button><button data-v="loose">넓게</button></div>
+        <div class="set-group">
+          <label class="set-check"><input type="checkbox" id="optLines"><span>코드 줄 번호 보기</span></label>
+          <label class="set-check" title="1 · 1.1 · 1.1.1 처럼 보여 줍니다. 원본 글은 바뀌지 않고, 이미 번호가 있는 제목은 건너뜁니다"><input type="checkbox" id="optHeadNum"><span>제목에 번호 붙여 보기</span></label>
+          <label class="set-check" title="저장할 때 무엇이 바뀌는지 먼저 보여주고 한 번 더 묻습니다"><input type="checkbox" id="optConfirmSave"><span>저장하기 전에 바뀐 내용 확인</span></label>
+          <label class="set-check" title="원본과 미리보기가 같은 위치를 보여줍니다"><input type="checkbox" id="optSync"><span>편집할 때 스크롤 맞추기</span></label>
+          <label class="set-check" title="깨진 링크 · 제목 단계 · 표 · 긴 문장, 다른 뷰어에서 다르게 보이는 곳을 문서 위에 알려 줍니다 (문서 정보 「뷰어: markcont」 면 그 문서는 다른 뷰어 안내만 끔)"><input type="checkbox" id="optCompat"><span>문서 점검 안내 보기</span></label>
         </div>
-        <div class="set-row">
-          <div class="set-label"><span>문단 간격</span></div>
-          <div class="seg" id="paraSeg"><button data-v="tight">좁게</button><button data-v="normal">보통</button><button data-v="loose">넓게</button></div>
-        </div>
-        <div class="set-row">
-          <div class="set-label"><span>색 테마</span></div>
-          <div class="seg" id="tintSeg"><button data-v="plain">기본</button><button data-v="paper">종이</button><button data-v="contrast">또렷하게</button></div>
-        </div>
-        <div class="set-row">
-          <div class="set-label"><span>알림 상자 모양</span></div>
-          <div class="seg" id="calloutSeg"><button data-v="soft">💡 NOTE</button><button data-v="icon">ⓘ 참고</button></div>
-        </div>
-        <div class="set-row">
-          <label class="check-row"><input type="checkbox" id="optLines"><span>코드 줄 번호 보기</span></label>
-        </div>
-        <div class="set-row">
-          <label class="check-row"><input type="checkbox" id="optHeadNum"><span>제목에 번호 붙여 보기<small>1 · 1.1 · 1.1.1 처럼 보여 줍니다. 원본 글은 바뀌지 않고, 이미 번호가 있는 제목은 건너뜁니다</small></span></label>
-        </div>
-        <div class="set-row">
-          <label class="check-row"><input type="checkbox" id="optConfirmSave"><span>저장하기 전에 바뀐 내용 확인<small>저장할 때 무엇이 바뀌는지 먼저 보여주고 한 번 더 묻습니다</small></span></label>
-        </div>
-        <div class="set-row">
-          <label class="check-row"><input type="checkbox" id="optSync"><span>편집할 때 스크롤 맞추기<small>원본과 미리보기가 같은 위치를 보여줍니다</small></span></label>
-        </div>
-        <div class="set-row">
-          <label class="check-row"><input type="checkbox" id="optCompat"><span>문서 점검 안내 보기<small>깨진 링크 · 제목 단계 · 표 · 긴 문장, 다른 뷰어에서 다르게 보이는 곳을 문서 위에 알려 줍니다 (문서 정보 「뷰어: markcont」 면 그 문서는 다른 뷰어 안내만 끔)</small></span></label>
-        </div>
-        <div class="set-row">
+        <div class="set-group">
+          <div class="set-line">
+            <span class="set-name">언어<small id="langHint">Language</small></span>
+            <div class="seg" id="langSeg"><button data-v="ko">한국어</button><button data-v="en">English</button></div>
+          </div>
           <details class="user-css" id="userCssBox">
             <summary>내 CSS로 문서 꾸미기</summary>
             <textarea id="userCss" spellcheck="false" rows="5" placeholder="h2 { color: teal; }&#10;p { text-indent: 1em; }"></textarea>
             <small>문서 안만 바뀝니다. h2 · p 처럼 문서 속 요소 이름으로 씁니다. HTML로 저장 · 서식 복사에도 들어갑니다.</small>
           </details>
-        </div>
-        <div class="set-row">
-          <div class="set-label"><span>언어</span><span id="langHint">Language</span></div>
-          <div class="seg" id="langSeg"><button data-v="ko">한국어</button><button data-v="en">English</button></div>
         </div>
       </div>
     </div>
@@ -1435,73 +1457,88 @@ body.zen .zen-exit:hover { opacity: 1; }
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
           밝게 / 어둡게
         </button>
-        <button class="menu-item" id="mFind" disabled>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-          문서에서 찾기<kbd>Ctrl+F</kbd>
+        <hr class="menu-sep only-narrow-item">
+        <button class="menu-item" id="mNew">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          새 문서 쓰기
         </button>
         <button class="menu-item" id="mQuick">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></svg>
           빠른 열기 · 명령<kbd>Ctrl+O</kbd>
         </button>
+        <button class="menu-item" id="mFind" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          문서에서 찾기<kbd>Ctrl+F</kbd>
+        </button>
+        <hr class="menu-sep">
         <button class="menu-item" id="mZen" disabled>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
           집중 모드<kbd>Ctrl+.</kbd>
         </button>
-        <button class="menu-item" id="mPresent" disabled>
+        <button class="menu-item" id="mPresent" disabled title="단락마다 한 장씩 전체 화면으로 넘겨 봅니다">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4M10 7.5v5l4-2.5z"/></svg>
-          발표하기 (단락마다 한 장)
+          발표하기
         </button>
         <button class="menu-item" id="mFoldAll" disabled>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5-5 5 5"/><path d="M7 20h10M7 4h10"/></svg>
           제목 모두 접기 / 펴기
         </button>
-        <button class="menu-item" id="mExport" disabled>
+        <hr class="menu-sep">
+        <button class="menu-item menu-sub" id="mExportSub" aria-expanded="false" aria-controls="exportSub" disabled>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-          HTML 파일로 저장
+          내보내기
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
         </button>
-        <button class="menu-item" id="mDocx" disabled>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M8.5 12l1.2 5 1.8-4 1.8 4 1.2-5"/></svg>
-          Word 파일로 저장 (.docx)
-        </button>
-        <button class="menu-item" id="mCopyRich" disabled>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/><path d="M12 12h5M12 15.5h5"/></svg>
-          서식 그대로 복사
-        </button>
-        <button class="menu-item" id="mPortable" disabled>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 15l2 2 4-4"/></svg>
-          다른 뷰어용 마크다운으로 저장
-        </button>
-        <button class="menu-item" id="mPrint" disabled>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>
-          인쇄 · PDF로 저장<kbd>Ctrl+P</kbd>
-        </button>
-        <hr style="border:0;border-top:1px solid var(--border);margin:4px 0">
+        <div class="menu-subitems" id="exportSub" hidden>
+          <button class="menu-item" id="mExport" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M10 12l-2 2.5 2 2.5M14 12l2 2.5-2 2.5"/></svg>
+            HTML 파일
+          </button>
+          <button class="menu-item" id="mDocx" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M8.5 12l1.2 5 1.8-4 1.8 4 1.2-5"/></svg>
+            Word 파일 (.docx)
+          </button>
+          <button class="menu-item" id="mPrint" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>
+            인쇄 · PDF<kbd>Ctrl+P</kbd>
+          </button>
+          <button class="menu-item" id="mCopyRich" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/><path d="M12 12h5M12 15.5h5"/></svg>
+            서식 그대로 복사
+          </button>
+          <button class="menu-item" id="mPortable" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 15l2 2 4-4"/></svg>
+            다른 뷰어용 마크다운
+          </button>
+        </div>
         <button class="menu-item" id="mMcp">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0z"/><path d="M12 16v5"/></svg>
           Claude와 연결 (MCP)
         </button>
-        <button class="menu-item" id="mGuide">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>
-          사용 안내서
+        <button class="menu-item menu-sub" id="mHelpSub" aria-expanded="false" aria-controls="helpSub">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01"/></svg>
+          도움말
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
         </button>
-        <button class="menu-item" id="mRules">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          마크다운 작성 규칙
-        </button>
-        <button class="menu-item" id="mLicenses">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
-          오픈소스 라이선스
-        </button>
-        <button class="menu-item" id="mTour">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z"/></svg>
-          처음 사용 안내 다시 보기
-        </button>
-        <hr style="border:0;border-top:1px solid var(--border);margin:4px 0">
-        <button class="menu-item" id="mNew">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-          새 문서 쓰기
-        </button>
-              <div class="menu-version" id="appVersion"></div>
+        <div class="menu-subitems" id="helpSub" hidden>
+          <button class="menu-item" id="mGuide">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>
+            사용 안내서
+          </button>
+          <button class="menu-item" id="mRules">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            마크다운 작성 규칙
+          </button>
+          <button class="menu-item" id="mTour">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z"/></svg>
+            처음 사용 안내 다시 보기
+          </button>
+          <button class="menu-item" id="mLicenses">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
+            오픈소스 라이선스
+          </button>
+        </div>
+        <div class="menu-version" id="appVersion"></div>
       </div>
     </div>
     <button class="btn icon" id="btnTheme" title="밝게/어둡게" aria-label="테마 바꾸기"></button>
@@ -5855,7 +5892,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     el.editor.value = entry.text;
     el.welcome.hidden = true;
     el.workspace.hidden = false;
-    [el.btnEdit, $('#mZen'), $('#mFoldAll'), $('#mExport'), $('#mPortable'), $('#mPrint'), $('#mFind'), $('#mPresent'), $('#mDocx'), $('#mCopyRich')].forEach((b) => (b.disabled = false));
+    [el.btnEdit, $('#mZen'), $('#mFoldAll'), $('#mExportSub'), $('#mExport'), $('#mPortable'), $('#mPrint'), $('#mFind'), $('#mPresent'), $('#mDocx'), $('#mCopyRich')].forEach((b) => (b.disabled = false));
     document.body.classList.add('has-doc');
     if (!fromHistory) {
       state.hist = state.hist.slice(0, state.histPos + 1);
@@ -8052,13 +8089,34 @@ ${clone.innerHTML}
   /* =========================================================
      메뉴, 사이드바, 집중 모드
      ========================================================= */
-  function closeMenus() { document.querySelectorAll('.menu').forEach((m) => (m.hidden = true)); }
+  // 묶음 항목(내보내기 · 도움말): 한 번에 하나만 펼침, 메뉴를 닫으면 다시 접힘
+  function setMenuSub(b, open) {
+    b.setAttribute('aria-expanded', open ? 'true' : 'false');
+    $('#' + b.getAttribute('aria-controls')).hidden = !open;
+  }
+  function closeMenus() {
+    document.querySelectorAll('.menu').forEach((m) => (m.hidden = true));
+    document.querySelectorAll('.menu-sub[aria-expanded="true"]').forEach((b) => setMenuSub(b, false));
+  }
+  // 창 아래로 잘리지 않게: 메뉴 위쪽부터 창 바닥까지 남은 높이만큼만 쓰고, 넘치면 메뉴 안에서 스크롤
+  function fitMenu(m) {
+    m.style.maxHeight = '';
+    m.style.maxHeight = Math.max(160, window.innerHeight - m.getBoundingClientRect().top - 12) + 'px';
+  }
   function toggleMenu(id) {
     const m = $(id);
     const open = m.hidden;
     closeMenus();
     m.hidden = !open;
+    if (open) { fitMenu(m); m.scrollTop = 0; }
   }
+  window.addEventListener('resize', () => document.querySelectorAll('.menu:not([hidden])').forEach(fitMenu));
+  document.querySelectorAll('.menu-sub').forEach((b) => (b.onclick = () => {
+    const open = b.getAttribute('aria-expanded') !== 'true';
+    document.querySelectorAll('.menu-sub').forEach((o) => setMenuSub(o, false));
+    setMenuSub(b, open);
+    if (open) $('#' + b.getAttribute('aria-controls')).scrollIntoView({ block: 'nearest' });
+  }));
   $('#btnSettings').onclick = (e) => { e.stopPropagation(); toggleMenu('#settingsMenu'); };
   $('#btnMore').onclick = (e) => { e.stopPropagation(); toggleMenu('#moreMenu'); };
   document.addEventListener('click', (e) => { if (!e.target.closest('.menu-wrap')) closeMenus(); });
@@ -8490,11 +8548,11 @@ ${clone.innerHTML}
     { target: '#btnSettings', title: L('보기 설정', 'View settings'),
       text: L('<b>Aa</b>에서 글자 크기, 고딕 · 명조, 본문 폭, 알림 상자 모양, 코드 줄 번호를 바꿉니다.', 'In <b>Aa</b> you can change text size, sans · serif font, width, callout style, code line numbers and language.') },
     { target: '#btnMore', title: L('더 많은 기능', 'More features'),
-      text: L('<b>⋯</b> 메뉴에 문서에서 찾기, 집중 모드, HTML · PDF 저장, 그리고 <b>사용 안내서</b>와 <b>작성 규칙</b>이 있어요.', 'The <b>⋯</b> menu has find in document, focus mode, HTML · PDF export, the <b>User guide</b> and the <b>Writing rules</b>.'),
-      mobileText: L('<b>⋯</b> 메뉴에 파일 · 폴더 열기, 보기 설정, 찾기, 집중 모드, PDF 저장, <b>사용 안내서</b>가 있어요.', 'The <b>⋯</b> menu has open file · folder, view settings, find, focus mode, PDF export and the <b>User guide</b>.') },
+      text: L('<b>⋯</b> 메뉴에 문서에서 찾기, 집중 모드, 발표하기가 있어요.<br><b>내보내기</b>에서 HTML · Word · PDF로 저장하고, <b>도움말</b>에서 사용 안내서와 작성 규칙을 열어요.', 'The <b>⋯</b> menu has find in document, focus mode and presenting.<br>Save as HTML · Word · PDF under <b>Export</b>, and open the user guide and writing rules under <b>Help</b>.'),
+      mobileText: L('<b>⋯</b> 메뉴에 파일 · 폴더 열기, 보기 설정, 찾기, 집중 모드가 있어요.<br><b>내보내기</b>에서 PDF로 저장하고, <b>도움말</b>에서 사용 안내서를 열어요.', 'The <b>⋯</b> menu has open file · folder, view settings, find and focus mode.<br>Save as PDF under <b>Export</b>, and open the user guide under <b>Help</b>.') },
     { target: '#btnTheme', title: L('밝게 · 어둡게', 'Light · Dark'), text: L('눈이 편한 쪽으로 테마를 바꿉니다.', 'Switch to whichever theme is easier on your eyes.') },
     { center: true, emoji: '🎉', title: L('준비 끝!', 'All set!'),
-      text: L('지금 열린 문서는 <b>사용 안내서</b>예요. 천천히 읽어 보세요.<br>이 안내는 <b>⋯ → 처음 사용 안내 다시 보기</b>로 언제든 다시 볼 수 있습니다.', 'The open document is the <b>User guide</b>. Take your time reading it.<br>You can replay this tour anytime from <b>⋯ → Replay the tour</b>.'),
+      text: L('지금 열린 문서는 <b>사용 안내서</b>예요. 천천히 읽어 보세요.<br>이 안내는 <b>⋯ → 도움말 → 처음 사용 안내 다시 보기</b>로 언제든 다시 볼 수 있습니다.', 'The open document is the <b>User guide</b>. Take your time reading it.<br>You can replay this tour anytime from <b>⋯ → Help → Replay the tour</b>.'),
       next: L('시작하기', 'Get started'), alt: L('내 파일 열기', 'Open my file') },
   ];
   const tour = { i: 0, steps: [], on: false };
@@ -8519,7 +8577,7 @@ ${clone.innerHTML}
     hasDoc = hasDoc || !!state.current;
     tour.steps = TOUR.filter((s) => (s.center || tourTarget(s)) && (!s.needDoc || hasDoc));
     if (!hasDoc) tour.steps[tour.steps.length - 1] = { ...TOUR[TOUR.length - 1],
-      text: L('<b>파일 열기</b>나 <b>폴더 열기</b>로 내 문서를 열어 보세요.<br>이 안내는 <b>⋯ → 처음 사용 안내 다시 보기</b>로 언제든 다시 볼 수 있습니다.', 'Open your own documents with <b>Open file</b> or <b>Open folder</b>.<br>You can replay this tour anytime from <b>⋯ → Replay the tour</b>.') };
+      text: L('<b>파일 열기</b>나 <b>폴더 열기</b>로 내 문서를 열어 보세요.<br>이 안내는 <b>⋯ → 도움말 → 처음 사용 안내 다시 보기</b>로 언제든 다시 볼 수 있습니다.', 'Open your own documents with <b>Open file</b> or <b>Open folder</b>.<br>You can replay this tour anytime from <b>⋯ → Help → Replay the tour</b>.') };
     tour.i = 0;
     tour.on = true;
     $('#tour').hidden = false;
