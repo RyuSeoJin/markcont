@@ -66,8 +66,9 @@
     '저장하기 전에 바뀐 내용 확인': 'Review changes before saving',
     '저장할 때 무엇이 바뀌는지 먼저 보여주고 한 번 더 묻습니다': 'Shows what will change and asks once more before saving',
     '편집할 때 스크롤 맞추기': 'Sync scroll while editing',
-    '다른 뷰어 호환 안내 보기': 'Show other-viewer compatibility notice',
-    'markcont 전용 문법이 있으면 문서 위에 알려 줍니다 (문서 정보 「뷰어: markcont」 면 그 문서만 끔)': 'Notes markcont-only syntax at the top of a document ("viewer: markcont" in the document info turns it off for that document)',
+    '문서 점검 안내 보기': 'Show the document check',
+    '깨진 링크 · 제목 단계 · 표 · 긴 문장, 다른 뷰어에서 다르게 보이는 곳을 문서 위에 알려 줍니다 (문서 정보 「뷰어: markcont」 면 그 문서는 다른 뷰어 안내만 끔)': 'Notes broken links, heading levels, tables, long sentences and spots that look different in other viewers at the top of a document ("viewer: markcont" in the document info turns off only the other-viewer notes for that document)',
+    '문서 점검': 'Document check',
     '원본과 미리보기가 같은 위치를 보여줍니다': 'Keeps the source and preview at the same spot',
     // ⋯ 메뉴
     '더 보기': 'More',

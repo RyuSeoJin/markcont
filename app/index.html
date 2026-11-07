@@ -1237,7 +1237,7 @@ body.zen .zen-exit:hover { opacity: 1; }
           <label class="check-row"><input type="checkbox" id="optSync"><span>편집할 때 스크롤 맞추기<small>원본과 미리보기가 같은 위치를 보여줍니다</small></span></label>
         </div>
         <div class="set-row">
-          <label class="check-row"><input type="checkbox" id="optCompat"><span>다른 뷰어 호환 안내 보기<small>markcont 전용 문법이 있으면 문서 위에 알려 줍니다 (문서 정보 「뷰어: markcont」 면 그 문서만 끔)</small></span></label>
+          <label class="check-row"><input type="checkbox" id="optCompat"><span>문서 점검 안내 보기<small>깨진 링크 · 제목 단계 · 표 · 긴 문장, 다른 뷰어에서 다르게 보이는 곳을 문서 위에 알려 줍니다 (문서 정보 「뷰어: markcont」 면 그 문서는 다른 뷰어 안내만 끔)</small></span></label>
         </div>
         <div class="set-row">
           <div class="set-label"><span>언어</span><span id="langHint">Language</span></div>
@@ -1540,8 +1540,8 @@ body.zen .zen-exit:hover { opacity: 1; }
   </div>
 </div>
 <div class="modal" id="compatModal" hidden>
-  <div class="modal-card" role="dialog" aria-modal="true" aria-label="다른 뷰어 호환">
-    <div class="modal-head"><div class="modal-title">다른 뷰어에서 다르게 보이는 곳</div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-label="문서 점검">
+    <div class="modal-head"><div class="modal-title">문서 점검</div>
       <button class="btn icon ghost" id="compatClose" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </div>
     <div class="modal-body" id="compatBody"></div>
@@ -3342,20 +3342,10 @@ body.zen .zen-exit:hover { opacity: 1; }
       facts.append(sp);
     }
     el.docMeta.append(facts);
-    // 다른 뷰어에서 다르게 보이는 곳 (markcont 전용 문법)
-    if (window.MarkPortable && !cur.builtin && settings.compatHint !== false && !docOptions(splitFrontMatter(src).fm).markcontOnly) {
-      let n = 0;
-      try { n = MarkPortable.convert(src).changes.length; } catch {}
-      if (n) {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'meta-compat';
-        b.textContent = L(`⚠ 다른 뷰어에서 다르게 보이는 곳 ${n}곳`, `⚠ ${n} spot${n === 1 ? '' : 's'} look different in other viewers`);
-        b.title = L('GitHub · VS Code 같은 다른 뷰어에서는 기호가 그대로 보이거나 다르게 보이는 markcont 전용 문법입니다. 눌러서 목록을 보고 표준 문법으로 바꿀 수 있습니다.', 'markcont-only syntax that shows as raw symbols or differently in viewers like GitHub or VS Code. Click to see the list and convert it.');
-        b.onclick = openCompat;
-        el.docMeta.append(b);
-      }
-    }
+    // 문서 점검 (깨진 링크 · 다른 뷰어에서 다르게 보이는 곳 …): 지난 결과를 바로 보이고, 잠시 뒤 다시 셈
+    if (chk.for !== cur) chk.res = null;
+    paintCheckBadge();
+    scheduleCheck(chk.res ? 600 : 0);
     if (loc.note) {
       const n = document.createElement('div');
       n.className = 'meta-note';
@@ -3822,8 +3812,11 @@ body.zen .zen-exit:hover { opacity: 1; }
       : c.type === 'wikilink' ? c.meta.alias || (c.meta.file ? c.meta.file + (c.meta.heading ? ' › ' + c.meta.heading : '') : c.meta.heading) : '')).join('');
   }
   // 문서 하나의 링크 · 제목 (줄 번호는 0부터, 맨 위 문서 정보는 빈 줄로 바꿔 세므로 원본과 같음)
-  function scanDoc(text) {
-    const tokens = md ? md.parse(splitFrontMatter(text).body, {}) : [];
+  function scanDoc(text, env = {}) {
+    const tokens = md ? md.parse(splitFrontMatter(text).body, env) : [];
+    return scanParsed(tokens, text);
+  }
+  function scanParsed(tokens, text) {
     const links = [], heads = [], used = new Map();
     let at = 0;
     for (let i = 0; i < tokens.length; i++) {
@@ -4168,6 +4161,146 @@ body.zen .zen-exit:hover { opacity: 1; }
     }
     const plans = await planLinkFix(items);
     if (plans.length) showLinkFix(plans, L(`제목을 「${escapeHtml([...pairs.values()][0][0])}」 → 「${escapeHtml([...pairs.values()][0][1])}」${pairs.size > 1 ? ` 외 ${pairs.size - 1}개` : ''}로 바꿔서, 그 제목을 가리키던 링크가 깨집니다. 새 제목으로 바꿀까요?`, `You renamed the heading “${escapeHtml([...pairs.values()][0][0])}” → “${escapeHtml([...pairs.values()][0][1])}”${pairs.size > 1 ? ` and ${pairs.size - 1} more` : ''}, so links to it are now broken. Point them to the new heading?`));
+  }
+
+  /* =========================================================
+     문서 점검: 깨진 링크 · 그림, 제목 단계 건너뜀, 각주, 표 칸 수, 너무 긴 문장, 작성 규칙, 다른 뷰어에서 다르게 보이는 곳
+     (문서 위의 「⚠ 문서 점검」 단추 → 목록, 줄을 누르면 그 위치로)
+     ========================================================= */
+  const LONG_KO = 100, LONG_EN = 40; // 한국어는 글자 수(빈칸 빼고), 영어는 낱말 수
+  const sentenceSeg = window.Intl && Intl.Segmenter ? new Intl.Segmenter(LANG === 'en' ? 'en' : 'ko', { granularity: 'sentence' }) : null;
+  function sentencesOf(text) {
+    if (sentenceSeg) return [...sentenceSeg.segment(text)].map((s) => s.segment);
+    return text.split(/(?<=[.!?。])\s+/);
+  }
+  // 표 줄의 칸 수 (\| 는 칸 나눔이 아님 · GFM 처럼 `코드` 안의 | 도 나눔)
+  function tableCells(line) {
+    let t = line.trim();
+    if (t.startsWith('|')) t = t.slice(1);
+    if (/(^|[^\\])\|$/.test(t)) t = t.slice(0, -1);
+    return t.split(/(?<!\\)\|/).length;
+  }
+  // index: 다른 문서의 제목까지 볼 때 (없으면 이미 읽어 둔 문서만으로)
+  function runCheck(src, cur, index) {
+    const groups = [];
+    const add = (key, title, items) => { if (items.length) groups.push({ key, title, items }); };
+    const env = {};
+    const tokens = md ? md.parse(splitFrontMatter(src).body, env) : [];
+    const scan = scanParsed(tokens, src), lines = src.split('\n');
+    // 1) 깨진 링크 · 그림
+    if (!index) { index = new Map(); for (const [e, c] of gs.cache) if (c.scan) index.set(e, c.scan); }
+    index = new Map(index);
+    index.set(cur, scan);
+    const maps = fileMaps(), bad = [];
+    for (const l of scan.links) {
+      const j = judge(cur, l, maps, index);
+      if (j.status !== 'ok' && j.status !== 'skip') bad.push({ line: l.line, what: j.status === 'loose' ? L('markcont에서만 열리는 링크', 'Link that opens only in markcont') : j.what === 'img' ? L('깨진 그림', 'Broken image') : L('깨진 링크', 'Broken link'), text: lkLabel(l) + ' · ' + lkWhy(j), warn: j.status === 'loose' });
+    }
+    add('links', L('깨진 링크 · 그림', 'Broken links · images'), bad);
+    // 2) 제목 단계 건너뜀 (## 다음에 #### 처럼)
+    const skips = [];
+    scan.heads.forEach((h, i) => {
+      const prev = scan.heads[i - 1];
+      if (prev && h.level > prev.level + 1) skips.push({ line: h.line, what: L(`${'#'.repeat(prev.level)} 다음에 ${'#'.repeat(h.level)}`, `${'#'.repeat(h.level)} right after ${'#'.repeat(prev.level)}`), text: h.title });
+    });
+    add('heads', L('제목 단계를 건너뜀', 'Skipped heading levels'), skips);
+    // 3) 각주: 쓰지 않는 설명 · 설명이 없는 번호
+    const notes = [], refs = (env.footnotes && env.footnotes.refs) || {};
+    let fence = null;
+    lines.forEach((ln, i) => {
+      const fm = ln.match(/^ {0,3}(`{3,}|~{3,})/);
+      if (fence) { if (fm && fm[1][0] === fence[0] && fm[1].length >= fence.length) fence = null; return; }
+      if (fm) { fence = fm[1]; return; }
+      const def = ln.match(/^ {0,3}\[\^([^\]\s]+)\]:/);
+      if (def && refs[':' + def[1]] === -1) notes.push({ line: i, what: L('쓰지 않는 각주', 'Unused footnote'), text: `[^${def[1]}]` });
+      const spans = codeSpans(ln);
+      for (const m of ln.matchAll(/\[\^([^\]\s]+)\](?!:)/g)) {
+        if (inSpans(spans, m.index) || (def && m.index === ln.indexOf('[^'))) continue;
+        if (!(':' + m[1] in refs)) notes.push({ line: i, what: L('설명이 없는 각주', 'Footnote without a note'), text: m[0] });
+      }
+    });
+    add('notes', L('각주', 'Footnotes'), notes);
+    // 4) 칸 수가 머리줄과 다른 표 줄
+    const rows = [];
+    for (let i = 0; i < tokens.length; i++) {
+      const t = tokens[i];
+      if (t.type !== 'table_open' || !t.map) continue;
+      let head = 0;
+      for (let k = i + 1; k < tokens.length && tokens[k].type !== 'tr_close'; k++) if (tokens[k].type === 'th_open') head++;
+      for (let n = t.map[0]; n < t.map[1]; n++) {
+        if (n === t.map[0] + 1 || !lines[n] || !lines[n].trim()) continue;
+        const c = tableCells(lines[n]);
+        if (c !== head) rows.push({ line: n, what: L(`칸 ${c}개 (머리줄은 ${head}개)`, `${c} cells (header has ${head})`), text: lines[n].trim() });
+      }
+    }
+    add('table', L('칸 수가 다른 표 줄', 'Table rows with a different number of cells'), rows);
+    // 5) 너무 긴 문장 (문단 · 목록의 글만)
+    const longs = [];
+    for (let i = 0; i < tokens.length; i++) {
+      const t = tokens[i];
+      if (t.type !== 'inline' || !t.map || !tokens[i - 1] || tokens[i - 1].type !== 'paragraph_open') continue;
+      for (const s of sentencesOf(inlineText(t))) {
+        const noSpace = s.replace(/\s/g, ''), ko = (s.match(/[가-힣]/g) || []).length;
+        const isKo = noSpace && ko / noSpace.length > 0.3;
+        const size = isKo ? noSpace.length : (s.trim().match(/\S+/g) || []).length;
+        if (size <= (isKo ? LONG_KO : LONG_EN)) continue;
+        const head = s.trim().slice(0, 12);
+        let at = t.map[0];
+        for (let n = t.map[0]; n < t.map[1]; n++) if (lines[n] && lines[n].includes(head)) { at = n; break; }
+        longs.push({ line: at, what: isKo ? L(`${size}자`, `${size} chars`) : L(`${size}낱말`, `${size} words`), text: s.trim().slice(0, 60) + (s.trim().length > 60 ? '…' : '') });
+      }
+    }
+    add('long', L(`너무 긴 문장 (한국어 ${LONG_KO}자 · 영어 ${LONG_EN}낱말 넘음)`, `Long sentences (over ${LONG_KO} Korean chars · ${LONG_EN} words)`), longs);
+    // 6) 작성 규칙: 제목(#)은 하나, ## 단락마다 알림 상자 두 개 · 형광펜 한 번까지
+    const rules = [];
+    const h1 = scan.heads.filter((h) => h.level === 1);
+    if (h1.length > 1) rules.push({ line: h1[1].line, what: L('제목(#)이 둘 이상', 'More than one title (#)'), text: L('작성 규칙: 맨 위 제목은 문서에 하나만', 'Writing rules: one top title per document'), warn: true });
+    let callouts = 0, marks = 0;
+    for (let i = 0; i < tokens.length; i++) {
+      const t = tokens[i];
+      if (t.type === 'heading_open' && (t.tag === 'h1' || t.tag === 'h2')) { callouts = 0; marks = 0; continue; }
+      if (t.type === 'blockquote_open' && t.level === 0 && tokens[i + 2] && /^\[!\w+\]/.test(tokens[i + 2].content || '')) {
+        if (++callouts === 3) rules.push({ line: t.map ? t.map[0] : 0, what: L('한 단락에 알림 상자 3개 이상', '3+ callouts in one section'), text: L('작성 규칙: 알림 상자는 단락(##)마다 두 개까지', 'Writing rules: at most two callouts per section (##)'), warn: true });
+      }
+      if (t.type === 'inline' && t.children) for (const c of t.children) {
+        if (c.type === 'mark_open' && ++marks === 2) rules.push({ line: t.map ? t.map[0] : 0, what: L('한 단락에 형광펜 두 번 이상', 'Highlight used twice in one section'), text: L('작성 규칙: 형광펜은 단락(##)마다 한 번만', 'Writing rules: one highlight per section (##)'), warn: true });
+      }
+    }
+    add('rules', L('작성 규칙', 'Writing rules'), rules);
+    const problems = groups.reduce((s, g) => s + g.items.length, 0);
+    // 7) 다른 뷰어에서 다르게 보이는 곳 (markcont 전용 문법)
+    let changes = [];
+    if (window.MarkPortable && !docOptions(splitFrontMatter(src).fm).markcontOnly) { try { changes = MarkPortable.convert(src).changes; } catch {} }
+    return { groups, problems, changes, compat: changes.length };
+  }
+  const chk = { timer: 0, res: null, for: null };
+  // 문서 위의 단추: 「⚠ 문서 점검 N곳 · 다른 뷰어 M곳」
+  function paintCheckBadge() {
+    const old = el.docMeta.querySelector('.meta-compat'), r = chk.res;
+    if (!state.current || state.current.builtin || settings.compatHint === false || !r || chk.for !== state.current || (!r.problems && !r.compat)) { if (old) old.remove(); return; }
+    const b = old || document.createElement('button');
+    b.type = 'button';
+    b.className = 'meta-compat';
+    b.textContent = r.problems
+      ? L(`⚠ 문서 점검 ${r.problems}곳`, `⚠ ${r.problems} issue${r.problems === 1 ? '' : 's'} found`) + (r.compat ? L(` · 다른 뷰어 ${r.compat}곳`, ` · ${r.compat} differ in other viewers`) : '')
+      : L(`⚠ 다른 뷰어에서 다르게 보이는 곳 ${r.compat}곳`, `⚠ ${r.compat} spot${r.compat === 1 ? '' : 's'} look different in other viewers`);
+    b.title = L('깨진 링크 · 제목 단계 · 각주 · 표 · 긴 문장 · 작성 규칙과, GitHub · VS Code 같은 다른 뷰어에서 다르게 보이는 곳을 모아 봅니다. 눌러서 목록을 보세요.', 'Broken links, heading levels, footnotes, tables, long sentences, writing rules, and spots that look different in viewers like GitHub or VS Code. Click to see the list.');
+    b.onclick = openCompat;
+    if (!old) el.docMeta.insertBefore(b, el.docMeta.querySelector('.meta-note'));
+  }
+  function scheduleCheck(ms = 500) {
+    clearTimeout(chk.timer);
+    chk.timer = setTimeout(() => {
+      const cur = state.current;
+      if (!cur || cur.builtin || settings.compatHint === false) { chk.res = null; paintCheckBadge(); return; }
+      try { chk.res = runCheck(source(), cur); chk.for = cur; } catch (e) { console.warn('[문서 점검]', e); }
+      paintCheckBadge();
+      // 다른 문서의 제목(#링크)까지 보려면 링크 색인이 필요: 문서를 열 때 한 번 뒤에서 만들고 다시 셈
+      if (chk.indexedFor !== cur && gsFiles().length > 1) {
+        chk.indexedFor = cur;
+        linkIndex().then(() => { if (state.current === cur) scheduleCheck(0); }).catch(() => {});
+      }
+    }, ms);
   }
 
   // 폴더 목록 → 트리 구조
@@ -6588,19 +6721,34 @@ body.zen .zen-exit:hover { opacity: 1; }
       toast(L('저장하지 못했습니다: ', "Couldn't save: ") + ((e && e.message) || e), 4000);
     }
   }
-  function openCompat() {
-    if (!state.current || !window.MarkPortable) return;
-    const { changes } = MarkPortable.convert(source());
+  async function openCompat() {
+    const cur = state.current;
+    if (!cur) return;
     const body = $('#compatBody'), foot = $('#compatFoot');
+    $('#compatModal').hidden = false;
+    if (!body.childElementCount) body.innerHTML = '<p class="chg-help">' + L('살펴보는 중…', 'Checking…') + '</p>';
+    // 다른 문서의 제목까지 보도록 링크 색인을 만든 뒤 셈
+    let index = null;
+    try { index = await linkIndex(); } catch {}
+    if (state.current !== cur || $('#compatModal').hidden) return;
+    const r = runCheck(source(), cur, index);
+    chk.res = r; chk.for = cur; paintCheckBadge();
+    const { changes } = r, E = escapeHtml;
     const fixable = changes.filter((c) => !MarkPortable.warnOnly(c.kind)).length;
-    body.innerHTML = '<p class="chg-help">' + L('아래 문법은 markcont에서만 보기 좋게 보이고, GitHub · VS Code 같은 다른 뷰어에서는 기호가 그대로 보이거나 다르게 보입니다. 줄을 누르면 그 위치로 갑니다.', 'The syntax below looks nice only in markcont; viewers like GitHub or VS Code show raw symbols or render it differently. Click a row to jump to it.') + '</p>' +
-      (changes.length ? '<div class="compat-list">' + changes.map((c, i) => {
-        const [what, fix] = MarkPortable.describe(c.kind);
-        return `<button type="button" class="compat-row${MarkPortable.warnOnly(c.kind) ? ' warn' : ''}" data-i="${i}"><span class="ln">${L(`${c.line}번째 줄`, `Line ${c.line}`)}</span><span class="what"><b>${escapeHtml(what)}</b> → ${escapeHtml(fix)}<small>${escapeHtml(c.text)}</small></span></button>`;
-      }).join('') + '</div>' : '<p class="chg-empty">' + L('다르게 보이는 곳이 없습니다.', 'Nothing looks different.') + '</p>');
+    const rows = [];
+    const row = (line, what, text, warn) => { rows.push(line); return `<button type="button" class="compat-row${warn ? ' warn' : ''}" data-i="${rows.length - 1}"><span class="ln">${L(`${line}번째 줄`, `Line ${line}`)}</span><span class="what"><b>${E(what)}</b>${text ? `<small>${E(text)}</small>` : ''}</span></button>`; };
+    let h = '<p class="chg-help">' + L('고칠 만한 곳과, 다른 뷰어에서 다르게 보이는 곳을 모았습니다. 줄을 누르면 그 위치로 갑니다.', 'Spots worth fixing, and spots that look different in other viewers. Click a row to jump to it.') + '</p>';
+    if (!r.problems) h += '<p class="chg-empty" style="padding:8px 0 4px">' + L('✓ 깨진 링크 · 제목 단계 · 각주 · 표 · 긴 문장 · 작성 규칙 모두 문제없습니다.', '✓ No broken links, heading-level skips, footnote, table, long-sentence or writing-rule issues.') + '</p>';
+    for (const g of r.groups) h += `<div class="lk-title">${E(g.title)}<span class="gs-n">${g.items.length}</span></div><div class="compat-list">` + g.items.map((it) => row(it.line + 1, it.what, it.text, it.warn)).join('') + '</div>';
+    h += `<div class="lk-title">${L('다른 뷰어에서 다르게 보이는 곳', 'Looks different in other viewers')}<span class="gs-n">${changes.length}</span></div>`;
+    h += changes.length ? '<p class="chg-help" style="margin:2px 0 8px">' + L('아래 문법은 markcont에서만 보기 좋게 보이고, GitHub · VS Code 같은 다른 뷰어에서는 기호가 그대로 보이거나 다르게 보입니다.', 'The syntax below looks nice only in markcont; viewers like GitHub or VS Code show raw symbols or render it differently.') + '</p><div class="compat-list">' + changes.map((c) => {
+      const [what, fix] = MarkPortable.describe(c.kind);
+      return row(c.line, `${what} → ${fix}`, c.text, MarkPortable.warnOnly(c.kind));
+    }).join('') + '</div>' : '<p class="lk-empty">' + L('다르게 보이는 곳이 없습니다.', 'Nothing looks different.') + '</p>';
+    body.innerHTML = h;
     foot.innerHTML = '<button class="btn" id="compatExport">' + L('다른 뷰어용으로 저장…', 'Save for other viewers…') + '</button><span style="flex:1"></span>' +
       (fixable ? '<button class="btn primary" id="compatFix">' + L(`이 문서를 표준 문법으로 바꾸기 (${fixable}곳)`, `Convert this document (${fixable})`) + '</button>' : '');
-    body.querySelectorAll('.compat-row').forEach((b) => (b.onclick = () => { closeCompat(); gotoSourceLine(changes[+b.dataset.i].line); }));
+    body.querySelectorAll('.compat-row').forEach((b) => (b.onclick = () => { closeCompat(); gotoSourceLine(rows[+b.dataset.i]); }));
     $('#compatExport').onclick = () => { closeCompat(); exportPortable(); };
     const fx = $('#compatFix');
     if (fx) fx.onclick = () => {
@@ -6734,6 +6882,8 @@ ${clone.innerHTML}
       { ko: '인쇄 · PDF로 저장', en: 'Print · save as PDF', kbd: 'Ctrl+P', when: cur, run: () => window.print() },
       { ko: '문서에서 찾기', en: 'Find in document', kbd: 'Ctrl+F', when: cur, run: openFind },
       { ko: '모든 문서에서 찾기 (폴더 전체)', en: 'Search all documents (whole folder)', kbd: 'Ctrl+Shift+F', run: openGlobalSearch },
+      { ko: '문서 점검 (깨진 링크 · 긴 문장 · 다른 뷰어)', en: 'Check document (broken links · long sentences · other viewers)', when: cur, run: openCompat },
+      { ko: '연결: 이 문서를 가리키는 문서 · 깨진 링크', en: 'Links: what links here · broken links', when: cur, run: () => { if (window.innerWidth <= 900) { el.sidebar.classList.add('open'); el.scrim.classList.add('show'); } else if (document.body.classList.contains('side-collapsed')) $('#btnSidebar').click(); setSideTab('links'); } },
       { ko: '찾아 바꾸기 (원본)', en: 'Find and replace (source)', kbd: IS_MAC ? '⌥⌘F' : 'Ctrl+H', when: cur, run: openReplace },
       { ko: '줄 위로 옮기기', en: 'Move line up', kbd: 'Alt+↑', when: cur && state.editing, run: () => moveLines(-1) },
       { ko: '줄 아래로 옮기기', en: 'Move line down', kbd: 'Alt+↓', when: cur && state.editing, run: () => moveLines(1) },

@@ -242,7 +242,19 @@ Open the window with the **History** button in the editing toolbar (<kbd>Ctrl</k
 - Before saving, markcont **shows you what will change and asks once more** (Cancel · Save as new file · Save). To turn this off, turn off **Aa → Review changes before saving**, or check **Don't ask again** in the confirmation window.
 - Documents whose original location is unknown (the User guide, new documents, some dropped files) automatically open **Save as new file** when you save.
 - If you save a new file inside an open folder, it shows up in that folder tree right away.
-- If a document uses markcont-only syntax (`==highlight==`, `[!INFO]`, ```` ```flow ````, etc.), **⚠ N spots look different in other viewers** appears at the top of the document. Click it for the list of lines; click a line to jump there, or use **Convert this document** to convert everything at once.
+- Click **⚠ N issues found** at the top of a document to see the spots worth fixing in one list. Click a row to jump there.
+
+  | Group | What it looks at |
+  |:---|:---|
+  | Broken links · images | Documents · headings · images that can't be found, links that open only in markcont |
+  | Skipped heading levels | `####` right after `##` |
+  | Footnotes | Footnote notes that are never used, footnote numbers without a note |
+  | Table rows with a different number of cells | Rows with more or fewer cells than the header |
+  | Long sentences | Sentences over 100 Korean characters · 40 English words |
+  | Writing rules | More than one title (`#`), 3+ callouts or 2+ highlights in one section (`##`) |
+  | Looks different in other viewers | markcont-only syntax (`==highlight==`, `[!INFO]`, ```` ```flow ````, etc.) — **Convert this document** converts it all at once |
+
+  With no issues and only markcont-only syntax, it shows **⚠ N spots look different in other viewers** instead. To hide it, turn off **Aa → Show the document check**.
 - If another program changes the file, markcont **reloads it automatically.** If you have unsaved changes, it won't overwrite them and lets you know instead.
 - Every save is kept in **Saved versions**. If you saved something by mistake, go back to the older content with the **History** button → **Saved versions**.
 

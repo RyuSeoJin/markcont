@@ -483,7 +483,7 @@ Write `mermaid` as the code block language, and put the **diagram type** on the 
 | `A --- B` | Line only |
 | `A -.-> B` | Dotted arrow (optional · exception) |
 | `A ==> B` | Thick arrow (main path) |
-| `A -->|yes| B` | Text on the arrow |
+| `A -->\|yes\| B` | Text on the arrow |
 | `A --> B & C` | To several places at once |
 
 #### Branches: splitting by condition

@@ -78,6 +78,7 @@ curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh 
 - 닫아도 남는 저장 기록: 저장할 때마다 · Claude나 다른 프로그램이 고칠 때마다 그때의 내용을 남겨, 14일 동안 예전 내용으로 되돌리기
 - 바뀐 파일 자동 새로고침, HTML 파일로 저장, 인쇄 · PDF
 - 다른 뷰어용으로 저장: markcont 전용 문법을 표준 마크다운으로 바꾼 사본(다이어그램은 Mermaid로), 다르게 보이는 곳 표시
+- 문서 점검: 깨진 링크 · 그림, 제목 단계 건너뜀, 각주, 칸 수가 다른 표 줄, 너무 긴 문장, 작성 규칙을 한 목록으로
 - 처음 실행할 때 기능을 짚어 주는 안내(튜토리얼)
 - PC 프로그램: Claude Desktop · Claude Code와 MCP로 연결해 열어 둔 폴더의 문서를 고치기, 밖에서 바뀐 곳 강조 · 되돌리기
 

@@ -78,6 +78,7 @@ curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh 
 - Saved versions that survive closing: a copy is kept on every save and every time Claude or another program edits the file, so you can go back for 14 days
 - Auto-reload of changed files, Save as HTML, Print · PDF
 - Save for other viewers: a copy with markcont-only syntax converted to standard markdown (diagrams to Mermaid), plus a marker for spots that look different
+- Document check: broken links · images, skipped heading levels, footnotes, table rows with a different cell count, long sentences and writing rules in one list
 - A first-run tour (tutorial) that walks you through the features
 - PC app: connect to Claude Desktop · Claude Code over MCP to edit documents in your open folders, with highlighting and undo for changes made from outside
 
