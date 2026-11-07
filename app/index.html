@@ -1381,7 +1381,7 @@ body.zen .zen-exit:hover { opacity: 1; }
           </button>
           <button data-cmd="hr" title="구분선">—</button>
           <span class="tsep"></span>
-          <button id="btnChanges" type="button" title="바뀐 내용 · 되돌리기 기록 (Ctrl+Shift+H)" style="gap:4px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>기록</button>
+          <button id="btnChanges" type="button" title="바뀐 내용 · 되돌리기 · 저장 기록 (Ctrl+Shift+H)" style="gap:4px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>기록</button>
         </div>
         <div class="editor-wrap">
           <div class="editor-hl" id="editorHl" aria-hidden="true"></div>
@@ -1444,7 +1444,7 @@ body.zen .zen-exit:hover { opacity: 1; }
 <div class="modal" id="changesModal" hidden>
   <div class="modal-card" role="dialog" aria-modal="true" aria-label="바뀐 내용">
     <div class="modal-head">
-      <div class="seg" id="chgTabs"><button data-v="diff">저장 후 바뀐 내용</button><button data-v="hist">되돌리기 기록</button></div>
+      <div class="seg" id="chgTabs"><button data-v="diff">저장 후 바뀐 내용</button><button data-v="hist">되돌리기 기록</button><button data-v="ver">저장 기록</button></div>
       <div class="modal-title" id="chgTitle" hidden>저장 전에 바뀐 내용 확인</div>
       <button class="btn icon ghost" id="chgClose" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </div>
@@ -3651,26 +3651,33 @@ body.zen .zen-exit:hover { opacity: 1; }
   ['dragenter', 'dragover'].forEach((t) => sideDrop.addEventListener(t, () => sideDrop.classList.add('over')));
   ['dragleave', 'drop'].forEach((t) => sideDrop.addEventListener(t, () => sideDrop.classList.remove('over')));
 
-  /* ---------- 최근 폴더 기억 (Chrome · Edge: 폴더 핸들, PC 프로그램: 경로) ---------- */
+  /* ---------- 최근 폴더 기억 (Chrome · Edge: 폴더 핸들, PC 프로그램: 경로) · 웹 앱의 저장 기록 ---------- */
   const idb = {
     db: null,
     open() {
       if (this.db) return this.db;
       this.db = new Promise((res, rej) => {
-        const r = indexedDB.open('markcont', 1);
-        r.onupgradeneeded = () => r.result.createObjectStore('folders', { keyPath: 'name' });
-        r.onsuccess = () => res(r.result);
+        const r = indexedDB.open('markcont', 2);
+        r.onupgradeneeded = () => {
+          const db = r.result;
+          if (!db.objectStoreNames.contains('folders')) db.createObjectStore('folders', { keyPath: 'name' });
+          if (!db.objectStoreNames.contains('versions')) db.createObjectStore('versions', { keyPath: 'id', autoIncrement: true }).createIndex('key', 'key');
+        };
+        r.onsuccess = () => { const db = r.result; db.onversionchange = () => { db.close(); this.db = null; }; res(db); };
         r.onerror = () => rej(r.error);
+        r.onblocked = () => rej(new Error('blocked')); // 예전 버전 창이 열려 있을 때
       });
+      this.db.catch(() => { this.db = null; });
       return this.db;
     },
-    async run(mode, fn) {
+    async run(mode, fn, store = 'folders') {
       const db = await this.open();
       return new Promise((res, rej) => {
-        const t = db.transaction('folders', mode);
-        const req = fn(t.objectStore('folders'));
+        const t = db.transaction(store, mode);
+        const req = fn(t.objectStore(store));
         t.oncomplete = () => res(req && req.result);
         t.onerror = () => rej(t.error);
+        t.onabort = () => rej(t.error);
       });
     },
   };
@@ -4042,6 +4049,7 @@ body.zen .zen-exit:hover { opacity: 1; }
         await dh.move(name);
       }
     } catch (e) { toast(L('이름을 바꾸지 못했습니다: ', "Couldn't rename: ") + (e.message || e), 4000); return; }
+    await vers.moved(path, rel, kind === 'dir');
     // 접힘 상태와 보고 있던 파일 경로를 새 이름으로 옮김
     const moveP = (p) => (under(p, path) ? rel + p.slice(path.length) : p);
     side.collapsed = new Set([...side.collapsed].map(moveP)); saveCollapsed();
@@ -4799,6 +4807,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   function renderChanges() {
     const body = $('#chgBody'), foot = $('#chgFoot');
     document.querySelectorAll('#chgTabs button').forEach((b) => b.classList.toggle('on', b.dataset.v === chg.tab));
+    if (chg.tab === 'ver') { renderVersions(); return; }
     const cur = el.editor.value;
     if (chg.tab === 'diff') {
       body.innerHTML = '<p class="chg-help">' + L('마지막으로 저장한 내용과 지금 내용을 비교합니다. <span class="chg-del">− 빨강</span>은 저장한 뒤 지운 줄, <span class="chg-add">+ 초록</span>은 새로 쓴 줄입니다. 왼쪽 숫자는 지금 문서의 줄 번호입니다.', 'Compares the last saved version with what you have now. <span class="chg-del">− Red</span> lines were removed since saving, <span class="chg-add">+ green</span> lines are new. Numbers on the left are line numbers in the current document.') + '</p>' +
@@ -4882,6 +4891,140 @@ body.zen .zen-exit:hover { opacity: 1; }
     return !!t && Date.now() - t < 20000;
   }
 
+  /* ---------- 저장 기록 (닫아도 남음) ----------
+     저장할 때마다 · Claude나 다른 프로그램이 파일을 바꿀 때마다 그때의 파일 내용을 남김 (14일 · 파일마다 50개).
+     PC 프로그램은 앱 설정 폴더(src-tauri/src/history.rs, MCP 서버도 같은 곳에 씀), 웹 앱은 IndexedDB. */
+  const VER_KEEP = 50, VER_DAYS = 14;
+  const VER_KIND = {
+    save: () => L('저장', 'Saved'),
+    before: () => L('바뀌기 전', 'Before the change'),
+    claude: () => L('Claude가 고침', 'Edited by Claude'),
+    outside: () => L('밖에서 바뀜', 'Changed outside'),
+  };
+  const verTauri = (e) => !!(e && e.tauriPath && isTauri());
+  const verKey = (e) => 'f:' + (e.path || e.name);
+  const vers = {
+    usable: (e) => !!e && !e.builtin && (verTauri(e) || !!window.indexedDB),
+    async all(e) { return ((await idb.run('readonly', (s) => s.index('key').getAll(verKey(e)), 'versions')) || []).sort((a, b) => b.t - a.t); },
+    // 새것부터 [{ id, t, kind, lines }]
+    async list(e) {
+      if (verTauri(e)) return tinvoke('history_list', { path: e.tauriPath });
+      return (await vers.all(e)).map((v) => ({ id: v.id, t: v.t, kind: v.kind, lines: v.text.split('\n').length }));
+    },
+    async read(e, id) {
+      if (verTauri(e)) return tinvoke('history_read', { path: e.tauriPath, id });
+      const v = await idb.run('readonly', (s) => s.get(id), 'versions');
+      if (!v) throw new Error('missing');
+      return v.text;
+    },
+    // 바로 앞 기록과 같으면 건너뜀 ('바뀌기 전'은 최근 10개 중 같은 것이 있으면 건너뜀)
+    async add(e, text, kind) {
+      if (!vers.usable(e) || typeof text !== 'string') return;
+      if (verTauri(e)) return tinvoke('history_add', { path: e.tauriPath, text, kind });
+      const key = verKey(e), all = await vers.all(e);
+      if (all.slice(0, kind === 'before' ? 10 : 1).some((v) => v.text === text)) return;
+      const t = Math.max(Date.now(), all.length ? all[0].t + 1 : 0);
+      await idb.run('readwrite', (s) => s.add({ key, t, kind, text }), 'versions');
+      const limit = Date.now() - VER_DAYS * 864e5;
+      const drop = all.filter((v, i) => i >= VER_KEEP - 1 || v.t < limit);
+      if (drop.length) await idb.run('readwrite', (s) => { drop.forEach((v) => s.delete(v.id)); }, 'versions');
+    },
+    // 파일이 oldText → newText 로 바뀜: 바뀌기 전 내용이 기록에 없으면 먼저 남기고, 새 내용을 남김
+    async changed(e, oldText, newText, kind) {
+      try {
+        if (typeof oldText === 'string' && oldText !== newText) await vers.add(e, oldText, 'before');
+        await vers.add(e, newText, kind);
+      } catch {}
+      if (!$('#changesModal').hidden && chg.tab === 'ver' && state.current === e) renderChanges();
+    },
+    // 웹 앱: 이름을 바꾸면 기록도 옮김 (PC 프로그램은 rename_path 가 옮김)
+    async moved(from, to, dir) {
+      if (isTauri() || !window.indexedDB) return;
+      try {
+        const a = 'f:' + from;
+        const range = dir ? IDBKeyRange.bound(a + '/', a + '/￿') : IDBKeyRange.only(a);
+        const list = (await idb.run('readonly', (s) => s.index('key').getAll(range), 'versions')) || [];
+        if (list.length) await idb.run('readwrite', (s) => { list.forEach((v) => s.put({ ...v, key: 'f:' + to + v.key.slice(a.length) })); }, 'versions');
+      } catch {}
+    },
+    async clear(e) {
+      if (verTauri(e)) return tinvoke('history_clear', { path: e.tauriPath });
+      const ids = (await idb.run('readonly', (s) => s.index('key').getAllKeys(verKey(e)), 'versions')) || [];
+      if (ids.length) await idb.run('readwrite', (s) => { ids.forEach((id) => s.delete(id)); }, 'versions');
+    },
+  };
+  // 오래된 기록 정리: 하루에 한 번
+  setTimeout(() => {
+    if (Date.now() - (+store.get('mdv-ver-prune') || 0) < 864e5) return;
+    store.set('mdv-ver-prune', String(Date.now()));
+    if (isTauri()) tinvoke('history_prune').catch(() => {});
+    if (!window.indexedDB) return;
+    const limit = Date.now() - VER_DAYS * 864e5;
+    idb.run('readwrite', (s) => {
+      const req = s.openCursor();
+      req.onsuccess = () => { const c = req.result; if (!c) return; if (c.value.t < limit) c.delete(); c.continue(); };
+    }, 'versions').catch(() => {});
+  }, 8000);
+  // 언제: 오늘 14:03:21 · 어제 09:10 · 11월 5일 14:03
+  function fmtWhen(t) {
+    const d = new Date(t), now = new Date();
+    const two = (x) => String(x).padStart(2, '0');
+    const hm = two(d.getHours()) + ':' + two(d.getMinutes());
+    const day = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const ago = Math.round((day(now) - day(d)) / 864e5);
+    if (ago === 0) return L('오늘 ', 'Today ') + hm + ':' + two(d.getSeconds());
+    if (ago === 1) return L('어제 ', 'Yesterday ') + hm;
+    return d.toLocaleDateString(LANG === 'en' ? 'en' : 'ko', { month: 'short', day: 'numeric', ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) }) + ' ' + hm;
+  }
+  // 바뀐 내용 창의 「저장 기록」 탭
+  async function renderVersions() {
+    const body = $('#chgBody'), foot = $('#chgFoot'), e = state.current;
+    const seq = (chg.seq = (chg.seq || 0) + 1);
+    const help = '<p class="chg-help">' + L(`저장할 때마다, 그리고 Claude나 다른 프로그램이 파일을 바꿀 때마다 그때의 파일 내용이 남습니다. 프로그램을 닫아도 ${VER_DAYS}일 동안, 파일마다 최근 ${VER_KEEP}개까지 남습니다. 시점을 누르면 <b>그 내용으로 돌아갈 때 무엇이 바뀌는지</b> 아래에 보여줍니다.`, `A copy of the file is kept every time you save, and every time Claude or another program changes the file. They stay for ${VER_DAYS} days even after you close the app, up to the latest ${VER_KEEP} per file. Pick one to see <b>what would change if you went back to it</b>.`) + '</p>';
+    if (!vers.usable(e)) {
+      body.innerHTML = help + '<p class="chg-empty">' + (e && e.builtin ? L('앱에 든 안내 문서는 기록을 남기지 않습니다.', "Built-in documents don't keep saved versions.") : L('이 브라우저에서는 기록을 남길 수 없습니다.', "This browser can't keep saved versions.")) + '</p>';
+      foot.innerHTML = '';
+      return;
+    }
+    if (chg.verFor !== e) { chg.verFor = e; chg.vpick = 0; chg.vtext = new Map(); }
+    let list = null;
+    try { list = await vers.list(e); } catch {}
+    if (seq !== chg.seq || chg.tab !== 'ver' || state.current !== e || $('#changesModal').hidden) return;
+    if (!list) { body.innerHTML = help + '<p class="chg-empty">' + L('기록을 읽지 못했습니다.', "Couldn't read the saved versions.") + '</p>'; foot.innerHTML = ''; return; }
+    if (!list.length) { body.innerHTML = help + '<p class="chg-empty">' + L('아직 남은 기록이 없습니다. 이 문서를 저장하면 그때부터 남습니다.', 'No saved versions yet. They start once you save this document.') + '</p>'; foot.innerHTML = ''; return; }
+    chg.vpick = Math.min(Math.max(0, chg.vpick), list.length - 1);
+    const need = [...new Set([0, chg.vpick])].filter((i) => !chg.vtext.has(list[i].id));
+    try { for (const i of need) chg.vtext.set(list[i].id, await vers.read(e, list[i].id)); } catch {}
+    if (seq !== chg.seq || chg.tab !== 'ver' || state.current !== e) return;
+    const sel = list[chg.vpick], selText = chg.vtext.get(sel.id), cur = el.editor.value;
+    const prevList = body.querySelector('.hist-list.ver'), keepList = prevList ? prevList.scrollTop : 0, keepBody = prevList ? body.scrollTop : 0;
+    body.innerHTML = help + '<div class="hist-list ver">' + list.map((v, i) => {
+      const isFile = i === 0 && chg.vtext.get(v.id) === savedText();
+      const tags = isFile ? '<span class="tag now">' + L('지금 파일', 'Current file') + '</span>' : '';
+      const label = (VER_KIND[v.kind] || VER_KIND.save)();
+      return `<button class="hist-item${i === chg.vpick ? ' on' : ''}" data-i="${i}"><span class="ht">${escapeHtml(fmtWhen(v.t))}</span><span class="hl">${escapeHtml(label)}</span>${tags}<span class="hn">${L(`${v.lines}줄`, `${v.lines} line${v.lines === 1 ? '' : 's'}`)}</span></button>`;
+    }).join('') + '</div>' +
+      (selText == null ? '<p class="chg-empty">' + L('이 기록을 읽지 못했습니다.', "Couldn't read this version.") + '</p>'
+        : selText === cur ? '<p class="chg-help">' + L('지금 편집창의 내용과 같습니다.', 'Same as what is in the editor now.') + '</p>'
+        : `<div class="hist-preview"><div class="hist-cap">${L(`${escapeHtml(fmtWhen(sel.t))} 내용으로 돌아가면 지금 문서가 이렇게 바뀝니다`, `Going back to ${escapeHtml(fmtWhen(sel.t))} changes the document like this`)}</div>${diffHtml(cur, selText)}</div>`);
+    foot.innerHTML = '<button class="btn" id="verClear">' + L('이 문서 기록 지우기', 'Delete these versions') + '</button><span style="flex:1"></span>' +
+      (selText != null && selText !== cur ? `<button class="btn primary" id="verRestore">${L(`${escapeHtml(fmtWhen(sel.t))} 내용으로 되돌리기`, `Go back to ${escapeHtml(fmtWhen(sel.t))}`)}</button>` : '');
+    body.querySelector('.hist-list').scrollTop = keepList;
+    body.scrollTop = keepBody;
+    body.querySelectorAll('.hist-item').forEach((b) => (b.onclick = () => { chg.vpick = +b.dataset.i; renderChanges(); }));
+    $('#verClear').onclick = async () => {
+      if (!confirm(L('이 문서의 저장 기록을 모두 지울까요? 지운 기록은 되살릴 수 없습니다.', 'Delete all saved versions of this document? They cannot be recovered.'))) return;
+      try { await vers.clear(e); chg.vtext = new Map(); toast(L('저장 기록을 지웠습니다', 'Saved versions deleted')); } catch (err) { toast(L('지우지 못했습니다: ', "Couldn't delete: ") + ((err && err.message) || err), 4000); }
+      renderChanges();
+    };
+    const rs = $('#verRestore');
+    if (rs) rs.onclick = () => {
+      replaceAll(selText, L(`${fmtWhen(sel.t)} 저장 기록으로 되돌림`, `Back to the version from ${fmtWhen(sel.t)}`));
+      toast(L('되돌렸습니다. 저장하면 파일에도 반영됩니다 (Ctrl+Z 로 취소)', 'Restored. Save to write it to the file (Ctrl+Z to undo)'), 4000);
+      renderChanges();
+    };
+  }
+
   // 저장 전 확인: 'save' | 'saveAs' | 'cancel' 를 돌려줌
   let confirmResolve = null;
   function confirmSave(mode) {
@@ -4926,6 +5069,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (!state.editing) setEditing(true);
     chg.tab = tab || (state.dirty ? 'diff' : 'hist');
     chg.pick = -1;
+    chg.verFor = null;
     $('#changesModal').hidden = false;
     renderChanges();
   }
@@ -5059,15 +5203,18 @@ body.zen .zen-exit:hover { opacity: 1; }
         const startDir = cur.tauriPath ? cur.tauriPath.replace(/[\\/][^\\/]*$/, '') : null;
         const path = await tinvoke('pick_save_path', { defaultName: suggestName(cur), startDir });
         if (!path) return;
-        const modified = await tinvoke('save_file', { path, text });
+        const modified = await tinvoke('save_file', { path, text, keepHistory: true });
         await adoptSaved({ tauriPath: path, name: path.split(/[\\/]/).pop(), lastModified: modified }, text);
       } else if (window.showSaveFilePicker) {
         const fh = await window.showSaveFilePicker({
           suggestedName: suggestName(cur),
           types: [{ description: L('마크다운', 'Markdown'), accept: { 'text/markdown': ['.md', '.markdown', '.txt'] } }],
         });
+        let before = null;
+        try { const f = await fh.getFile(); if (f.size) before = await readText(f); } catch {}
         const w = await fh.createWritable(); await w.write(text); await w.close();
         await adoptSaved({ handle: fh, name: fh.name, lastModified: (await fh.getFile()).lastModified }, text);
+        vers.changed(state.current, before, text, 'save');
       } else {
         // 파일 위치를 고를 수 없는 브라우저(Safari · Firefox): 이름만 정해 다운로드
         let name = prompt(L('저장할 파일 이름 (다운로드 폴더에 저장됩니다)', 'File name (saved to your Downloads folder)'), suggestName(cur));
@@ -5075,6 +5222,7 @@ body.zen .zen-exit:hover { opacity: 1; }
         name = name.trim();
         if (!MD_EXT.test(name)) name += '.md';
         download(name, text, 'text/markdown;charset=utf-8');
+        vers.changed(cur, cur.text, text, 'save');
         cur.text = text; state.dirty = false;
         snapshot(L('다운로드로 저장', 'Saved to Downloads'), { saved: true });
         updateTitle(); applyChangeMarks();
@@ -5132,7 +5280,8 @@ body.zen .zen-exit:hover { opacity: 1; }
     let saved = false;
     if (cur.tauriPath && tauriInvoke) {
       try {
-        cur.lastModified = await tauriInvoke('save_file', { path: cur.tauriPath, text });
+        // 저장 기록은 PC 프로그램 쪽에서 남김 (바뀌기 전 디스크 내용 → 새 내용)
+        cur.lastModified = await tauriInvoke('save_file', { path: cur.tauriPath, text, keepHistory: true });
         saved = true;
         toast(quiet ? L('체크 표시를 파일에 저장했습니다', 'Checkbox saved to the file') : L('원래 파일에 저장했습니다', 'Saved to the original file'));
       } catch (e) {
@@ -5141,10 +5290,13 @@ body.zen .zen-exit:hover { opacity: 1; }
       }
     } else if (cur.handle?.createWritable) {
       try {
+        let before = null;
+        try { before = await readText(await cur.handle.getFile()); } catch {}
         const w = await cur.handle.createWritable();
         await w.write(text);
         await w.close();
         saved = true;
+        vers.changed(cur, before, text, 'save');
         try { cur.lastModified = (await cur.handle.getFile()).lastModified; } catch {}
         toast(quiet ? L('체크 표시를 파일에 저장했습니다', 'Checkbox saved to the file') : L('원래 파일에 저장했습니다', 'Saved to the original file'));
       } catch (e) {
@@ -5181,6 +5333,7 @@ body.zen .zen-exit:hover { opacity: 1; }
           if (text !== cur.text) {
             const oldText = cur.text;
             const who = recentMcpWrite(cur) ? 'claude' : 'ext';
+            vers.changed(cur, oldText, text, who === 'claude' ? 'claude' : 'outside'); // Claude가 고친 것은 MCP 서버가 이미 남김 (같으면 건너뜀)
             snapshot(L('밖에서 바뀌기 전', 'Before outside change'));
             cur.text = text;
             const keep = el.editor.scrollTop;
@@ -5382,6 +5535,7 @@ ${clone.innerHTML}
       { ko: '인쇄 · PDF로 저장', en: 'Print · save as PDF', kbd: 'Ctrl+P', when: cur, run: () => window.print() },
       { ko: '문서에서 찾기', en: 'Find in document', kbd: 'Ctrl+F', when: cur, run: openFind },
       { ko: '바뀐 내용 · 되돌리기 기록', en: 'Changes · undo history', kbd: 'Ctrl+Shift+H', when: cur, run: () => openChanges('hist') },
+      { ko: '저장 기록 (닫아도 남는 기록)', en: 'Saved versions (kept after closing)', when: cur, run: () => openChanges('ver') },
       { ko: '집중 모드', en: 'Focus mode', kbd: 'Ctrl+.', when: cur, run: () => setZen(true) },
       { ko: '제목 모두 접기 · 펴기', en: 'Fold · unfold all headings', when: cur, run: foldAllToggle },
       { ko: settings.headNum ? '제목 번호 끄기' : '제목에 번호 붙여 보기', en: settings.headNum ? 'Hide heading numbers' : 'Number the headings', run: () => { settings.headNum = !settings.headNum; applySettings(true); } },
@@ -5898,14 +6052,14 @@ ${clone.innerHTML}
       <li>연결하면 Claude가 <b>markcont에서 열어 둔 폴더의 마크다운 파일</b>을 읽고 고칠 수 있습니다.</li>
       <li>Claude가 읽은 문서 내용은 <b>Anthropic으로 보내져 처리</b>됩니다 (Anthropic의 이용 약관 · 개인정보 처리방침이 적용됩니다). markcont가 따로 문서를 어디로 보내지는 않습니다.</li>
       <li>Claude는 <b>열어 둔 폴더 안의 마크다운 · 텍스트 파일만</b> 다룰 수 있고, 파일 삭제 · 이름 바꾸기 · 명령 실행은 할 수 없습니다.</li>
-      <li>Claude 앱은 도구를 쓰기 전에 허락을 묻습니다. 고친 곳은 markcont에서 <b>바로 보입니다</b>. 잘못 고쳐졌다면 바뀐 내용 보기 · 되돌리기 기록으로 되돌릴 수 있으나, <b>저장된 경우에는 복구가 불가능</b>하니 조심해서 이용해주세요.</li>
+      <li>Claude 앱은 도구를 쓰기 전에 허락을 묻습니다. 고친 곳은 markcont에서 <b>바로 보입니다</b>. 잘못 고쳐졌다면 바뀐 내용 보기 · 되돌리기 기록으로 되돌릴 수 있고, 파일에 저장된 뒤에도 <b>저장 기록</b>(14일 · 파일마다 50개)에서 고치기 전 내용으로 되돌릴 수 있습니다. 그래도 중요한 문서는 따로 백업해 두세요.</li>
       <li>내 구독(Claude Pro · Max 등)으로 <b>Claude 앱에서</b> 대화합니다. markcont는 구독이나 API 키를 쓰지 않습니다.</li>
       <li>⚠️ <b>남이 보낸 문서는 조심하세요.</b> 문서 안에 숨겨진 지시문을 AI가 따를 수 있습니다. 믿을 수 없는 문서가 든 폴더는 연결한 채로 AI에게 맡기지 마세요.</li></ul></div>`,
       `<div class="mcp-section"><h4>🔒 Before you connect</h4><ul>
       <li>Once connected, Claude can read and edit <b>the markdown files in folders you opened in markcont</b>.</li>
       <li>Document content Claude reads is <b>sent to Anthropic for processing</b> (Anthropic's terms and privacy policy apply). markcont itself doesn't send your documents anywhere.</li>
       <li>Claude can only work with <b>markdown and text files inside the folders you opened</b>. It can't delete or rename files or run commands.</li>
-      <li>The Claude app asks for permission before using a tool. Edits show up in markcont <b>right away</b>. If something gets changed by mistake you can undo it with View changes · Undo history, but <b>once it has been saved it cannot be recovered</b>, so please use it with care.</li>
+      <li>The Claude app asks for permission before using a tool. Edits show up in markcont <b>right away</b>. If something gets changed by mistake you can undo it with View changes · Undo history, and even after it has been saved to the file you can go back to the content before the edit in <b>Saved versions</b> (14 days, up to 50 per file). Still, keep backups of important documents.</li>
       <li>You chat <b>in the Claude app</b> with your own subscription (Claude Pro, Max, etc.). markcont doesn't use any subscription or API key.</li>
       <li>⚠️ <b>Be careful with documents from others.</b> The AI may follow instructions hidden inside a document. Don't hand a folder with untrusted documents to the AI while connected.</li></ul></div>`);
     if (!isTauri()) {

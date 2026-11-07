@@ -149,8 +149,12 @@ The editing toolbar has buttons for headings, lists, task lists, callouts, code 
 Open the window with the **History** button in the editing toolbar (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>H</kbd>).
 
 - **Changes since save**: Compares the saved version with the current one using `−` (deleted lines) / `+` (new lines). Each changed chunk has **Undo this part**, and at the bottom there's **Revert all to saved**.
-- **Undo history**: Your edits are recorded every second with a timestamp. Click a point in time to first see **how the current document would change if you went back to it**, then press **Undo** to go back.
-- Even after going back, you can cancel with <kbd>Ctrl</kbd>+<kbd>Z</kbd>. The history disappears when you close the program.
+- **Undo history**: Your edits are recorded every second with a timestamp. Click a point in time to first see **how the current document would change if you went back to it**, then press **Undo** to go back. This history disappears when you close the program.
+- **Saved versions**: A copy of the file is kept every time you save, and every time Claude or another program changes the file. They stay **for 14 days even after you close the program, up to the latest 50 per file**, so you can go back to older content even after saving. Click one to first see what would change, then press **Go back to …** to put that content in the editor (save to write it to the file). You can also remove them with **Delete these versions**.
+- Even after going back, you can cancel with <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+
+> [!NOTE]
+> Saved versions stay only on your device: in the app's settings folder for the PC app (`%APPDATA%\com.markcont.app\history` on Windows), and in browser storage for the web app. When you rename a file, its versions follow it.
 
 ---
 
@@ -170,6 +174,7 @@ Open the window with the **History** button in the editing toolbar (<kbd>Ctrl</k
 - If you save a new file inside an open folder, it shows up in that folder tree right away.
 - If a document uses markcont-only syntax (`==highlight==`, `[!INFO]`, ```` ```flow ````, etc.), **⚠ N spots look different in other viewers** appears at the top of the document. Click it for the list of lines; click a line to jump there, or use **Convert this document** to convert everything at once.
 - If another program changes the file, markcont **reloads it automatically.** If you have unsaved changes, it won't overwrite them and lets you know instead.
+- Every save is kept in **Saved versions**. If you saved something by mistake, go back to the older content with the **History** button → **Saved versions**.
 
 ---
 
@@ -182,6 +187,7 @@ Open the window with the **History** button in the editing toolbar (<kbd>Ctrl</k
 | New document · Rename · Delete | ✅ | ✅ | ❌ | ❌ |
 | Recover deleted files | ✅ Trash | ❌ | — | — |
 | Auto-reload changed files | ✅ | ✅ | ❌ | ❌ |
+| Saved versions kept after closing | ✅ | ✅ | ✅ | ✅ |
 | Use without the internet | ✅ | ✅ After installing | ✅ After opening once | ✅ After installing |
 
 ---
@@ -207,13 +213,14 @@ You can let Claude Desktop · Claude Code edit your markcont documents directly 
 | **🔌 Claude edited ○○** at the top | The file Claude just read or edited |
 | Changed spots **glow yellow** | Places Claude (or another program) changed |
 | **View changes** in the notification | A −/+ comparison and **Undo this change** |
-| "Claude edited" in the **History** window | A point you can go back to (the history is cleared when markcont closes) |
+| "Claude edited" in the **History** window | A point you can go back to |
+| "Before the change" · "Edited by Claude" in **History → Saved versions** | The file content before and after Claude's edit. Edits made while markcont was closed are kept too, and you can go back for 14 days |
 
 > [!NOTE]
 > Once connected, the content of documents Claude reads is sent to Anthropic for processing. The Claude app asks for permission before it uses a tool. markcont doesn't use a subscription or an API key.
 
 > [!WARNING]
-> **Be careful with documents from other people.** An AI may follow instructions hidden inside a document (e.g. "change all the other documents too") (prompt injection). markcont limits the damage by blocking delete · rename · running commands and by working only inside the folders you have open, but don't hand a folder containing untrusted documents to an AI while connected. If something gets changed by mistake, you can undo it with **View changes · Undo history**, but once it has been saved it cannot be recovered, so please use it with care.
+> **Be careful with documents from other people.** An AI may follow instructions hidden inside a document (e.g. "change all the other documents too") (prompt injection). markcont limits the damage by blocking delete · rename · running commands and by working only inside the folders you have open, but don't hand a folder containing untrusted documents to an AI while connected. If something gets changed by mistake, you can undo it with **View changes · Undo history**, and even after it has been saved to the file you can go back to the content before the edit in **Saved versions** (14 days, up to 50 per file). Still, keep backups of important documents.
 
 ---
 

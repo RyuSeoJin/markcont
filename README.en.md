@@ -71,6 +71,7 @@ curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh 
 - A workspace that opens several folders together, folder tree · file search · right-click menu, table of contents, heading folding, find in document, focus mode
 - A table of contents inside the text with `[[_TOC_]]` (also in print · PDF), and heading numbers (1 · 1.1 · 1.1.1) shown without changing the source
 - Live editing: source with line numbers and syntax colors, a marker for where you're editing, scroll sync
+- Saved versions that survive closing: a copy is kept on every save and every time Claude or another program edits the file, so you can go back for 14 days
 - Auto-reload of changed files, Save as HTML, Print · PDF
 - Save for other viewers: a copy with markcont-only syntax converted to standard markdown (diagrams to Mermaid), plus a marker for spots that look different
 - A first-run tour (tutorial) that walks you through the features
@@ -90,13 +91,14 @@ The PC app also works as an **MCP server**. Ask Claude Desktop · Claude Code so
 
 - Claude can read and edit **only Markdown · text files inside the folders you have open**. It can't delete, rename, or run commands.
 - Changes are highlighted in markcont, and you can review them with **View changes · Undo**.
-- If something gets changed by mistake, you can undo it with **View changes · Undo history**, but once it has been saved it cannot be recovered, so please use it with care.
+- If something gets changed by mistake, you can undo it with **View changes · Undo history**, and even after it has been saved to the file you can go back to the content before the edit in **Saved versions** (14 days, up to 50 per file). Still, keep backups of important documents.
 
 ## 🔒 Privacy
 
 - markcont reads and writes documents **only on your own device**. It doesn't collect usage data (telemetry) either.
 - If you use **Connect to Claude**, the content of documents Claude reads is sent to Anthropic for processing (Anthropic's terms · privacy policy apply). If you don't connect, nothing is sent.
 - The web app's settings · recent documents stay only in your browser's storage.
+- Saved versions (copies of a document kept on every save or outside change, 14 days, up to 50 per file) stay only in the app's settings folder for the PC app and in browser storage for the web app. You can remove them with **History → Saved versions → Delete these versions**.
 - It works without the internet, but in the cases below it connects to an external server, and **your IP address is sent to that server**.
   - When you choose the **Serif** font in View settings: the font is downloaded from Google Fonts.
   - When a document has a **YouTube link**: the thumbnail is downloaded from YouTube (Google) servers.

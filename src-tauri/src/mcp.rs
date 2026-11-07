@@ -195,7 +195,7 @@ fn tools() -> Value {
           "inputSchema": { "type": "object", "properties": { "path": { "type": "string" } }, "required": ["path"] } },
         { "name": "search", "description": tr("열어 둔 폴더의 마크다운 파일에서 글자를 찾습니다 (대소문자 무시). 최대 100줄.", "Searches text in markdown files of the open folders (case-insensitive). Up to 100 lines."),
           "inputSchema": { "type": "object", "properties": { "query": { "type": "string" }, "folder": { "type": "string" } }, "required": ["query"] } },
-        { "name": "edit_file", "description": tr("파일 안의 old_text 를 new_text 로 바꿉니다. old_text 는 파일에 정확히 한 번만 있어야 합니다. 작은 수정에 쓰세요. 고친 내용은 바로 파일에 저장되고 되돌리지 못할 수 있으니 신중히 고치세요.", "Replaces old_text with new_text in a file. old_text must appear exactly once. Use it for small edits. Changes are saved to the file immediately and may not be recoverable, so edit carefully."),
+        { "name": "edit_file", "description": tr("파일 안의 old_text 를 new_text 로 바꿉니다. old_text 는 파일에 정확히 한 번만 있어야 합니다. 작은 수정에 쓰세요. 고친 내용은 바로 파일에 저장됩니다. 고치기 전 내용은 markcont의 저장 기록에 남지만, 그래도 신중히 고치세요.", "Replaces old_text with new_text in a file. old_text must appear exactly once. Use it for small edits. Changes are saved to the file immediately. markcont keeps the previous content in its saved versions, but still edit carefully."),
           "inputSchema": { "type": "object", "properties": { "path": { "type": "string" }, "old_text": { "type": "string" }, "new_text": { "type": "string" } }, "required": ["path", "old_text", "new_text"] } },
         { "name": "write_file", "description": tr("마크다운 파일 전체를 새 내용으로 씁니다 (없으면 새로 만듦). 큰 수정이나 새 문서에 쓰세요.", "Writes a whole markdown file with new content (creates it if missing). Use it for big edits or new documents."),
           "inputSchema": { "type": "object", "properties": { "path": { "type": "string" }, "content": { "type": "string" } }, "required": ["path", "content"] } }
@@ -287,7 +287,7 @@ fn run_tool(name: &str, args: &Value) -> Result<String, String> {
             if n > 1 {
                 return Err((if is_en() { format!("old_text appears {n} times. Include more surrounding text so it matches only one place.") } else { format!("old_text 가 {n}번 나옵니다. 앞뒤 글을 더 넣어 한 곳만 가리키게 하세요.") }));
             }
-            fs::write(&p, text.replacen(&old, &new, 1)).map_err(|e| (if is_en() { format!("Couldn't write: {e}") } else { format!("쓰지 못했습니다: {e}") }))?;
+            crate::history::write_with_history(&p, &text.replacen(&old, &new, 1), "claude").map_err(|e| (if is_en() { format!("Couldn't write: {e}") } else { format!("쓰지 못했습니다: {e}") }))?;
             log_activity("write", &p);
             Ok((if is_en() { format!("Edited {}.", display(&st, &p)) } else { format!("{} 을(를) 고쳤습니다.", display(&st, &p)) }))
         }
@@ -297,7 +297,7 @@ fn run_tool(name: &str, args: &Value) -> Result<String, String> {
                 return Err(tr("마크다운 · 텍스트 파일(.md 등)만 쓸 수 있습니다.", "Only markdown and text files (.md etc.) can be written.").into());
             }
             let existed = p.exists();
-            fs::write(&p, arg("content")).map_err(|e| (if is_en() { format!("Couldn't write: {e}") } else { format!("쓰지 못했습니다: {e}") }))?;
+            crate::history::write_with_history(&p, &arg("content"), "claude").map_err(|e| (if is_en() { format!("Couldn't write: {e}") } else { format!("쓰지 못했습니다: {e}") }))?;
             log_activity("write", &p);
             Ok(if is_en() { format!("{} {}.", if existed { "Rewrote" } else { "Created" }, display(&st, &p)) } else { format!("{} 을(를) {}.", display(&st, &p), if existed { "새 내용으로 썼습니다" } else { "새로 만들었습니다" }) })
         }
@@ -307,10 +307,10 @@ fn run_tool(name: &str, args: &Value) -> Result<String, String> {
 
 const INSTRUCTIONS_KO: &str = "markcont는 마크다운 뷰어입니다. 사용자가 markcont에서 열어 둔 폴더의 마크다운 파일을 읽고 고칠 수 있습니다. \
 '이 문서'처럼 말하면 get_current_document 를 먼저 쓰세요. 작은 수정은 edit_file, 큰 수정은 write_file 을 쓰세요. \
-고친 내용은 바로 파일에 저장되고 되돌리지 못할 수 있으니 신중히 고치세요. 고친 뒤에는 무엇을 바꿨는지 짧게 알려 주세요.";
+고친 내용은 바로 파일에 저장됩니다. 고치기 전 내용은 markcont의 저장 기록에 남지만, 그래도 신중히 고치세요. 고친 뒤에는 무엇을 바꿨는지 짧게 알려 주세요.";
 const INSTRUCTIONS_EN: &str = "markcont is a markdown viewer. You can read and edit markdown files in the folders the user opened in markcont. \
 When the user says 'this document', use get_current_document first. Use edit_file for small edits and write_file for big ones. \
-Changes are saved to the file immediately and may not be recoverable, so edit carefully. After editing, briefly tell the user what you changed.";
+Changes are saved to the file immediately. markcont keeps the previous content in its saved versions, but still edit carefully. After editing, briefly tell the user what you changed.";
 
 /// MCP 서버 실행 (줄 단위 JSON-RPC 2.0)
 pub fn serve() {
