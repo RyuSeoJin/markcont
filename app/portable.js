@@ -222,6 +222,8 @@
         i = j;
         continue;
       }
+      // 표 구분 줄 |:--|--:| 은 그대로 (-- 가 제거 표시로 읽히지 않게)
+      if (line.includes('|') && /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(line)) { out.push(line); i++; continue; }
       out.push(inline(line, ln));
       i++;
     }
