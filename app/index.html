@@ -710,6 +710,26 @@ body.resizing { cursor: col-resize; user-select: none; }
 .link-preview .lp-body h1 { font-size: 1.3em; }
 .link-preview .lp-body .lp-more { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
 .markdown-body :is(a.wikilink, a[data-path], .footnote-ref a) { -webkit-touch-callout: none; }
+/* 빠른 열기 · 명령 (Ctrl+O) */
+.qo { position: fixed; inset: 0; z-index: 97; display: flex; justify-content: center; align-items: flex-start; padding: 11vh 12px 12px; background: rgba(10, 12, 16, .28); }
+.qo[hidden] { display: none; }
+.qo-card { width: min(640px, 100%); max-height: min(560px, 78vh); display: flex; flex-direction: column; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 20px 60px rgba(0, 0, 0, .28); }
+.qo-input { flex: none; width: 100%; padding: 14px 16px; border: 0; border-bottom: 1px solid var(--border); outline: 0; background: transparent; color: var(--text); font: inherit; font-size: 16px; }
+.qo-list { flex: 1; overflow-y: auto; padding: 6px; }
+.qo-item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px; cursor: pointer; color: var(--text); }
+.qo-item.on { background: var(--accent-soft); }
+.qo-item .ico { width: 16px; height: 16px; flex: none; color: var(--muted); }
+.qo-main { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+.qo-name { flex: none; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.qo-sub { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--muted); }
+.qo-item mark { background: none; color: var(--accent); font-weight: 700; }
+.qo-kbd, .qo-foot kbd { flex: none; padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; font: 11px var(--font); color: var(--muted); background: var(--surface-2); }
+.qo-empty { padding: 16px 12px; font-size: 13px; color: var(--muted); }
+.qo-foot { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 8px 12px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+.qo-foot kbd { margin-right: 2px; }
+.qo-other { margin-left: auto; padding: 3px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font: inherit; font-size: 12px; cursor: pointer; }
+.qo-other:hover { background: var(--surface-2); }
+@media (max-width: 600px) { .qo { padding-top: 64px; } .qo-foot span { display: none; } .qo-main { flex-direction: column; gap: 0; } .qo-name { max-width: 100%; } }
 /* 보기 방식: 편집만 / 나란히 / 미리보기만 */
 #viewSeg { width: 210px; flex: none; }
 #viewSeg button { padding: 5px 0; font-size: 12.5px; }
@@ -1067,7 +1087,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   <div class="doc-title" id="docTitle"></div>
   <button class="mcp-pill" id="mcpPill" type="button" hidden title="Claude 연결 (MCP)"></button>
   <div class="actions">
-    <button class="btn" id="btnOpen" title="파일 열기 (Ctrl+O)">
+    <button class="btn" id="btnOpen" title="파일 열기 (Ctrl+O 를 두 번)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
       <span class="label">파일 열기</span>
     </button>
@@ -1176,6 +1196,10 @@ body.zen .zen-exit:hover { opacity: 1; }
         <button class="menu-item" id="mFind" disabled>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
           문서에서 찾기<kbd>Ctrl+F</kbd>
+        </button>
+        <button class="menu-item" id="mQuick">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></svg>
+          빠른 열기 · 명령<kbd>Ctrl+O</kbd>
         </button>
         <button class="menu-item" id="mZen" disabled>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
@@ -3243,6 +3267,102 @@ body.zen .zen-exit:hover { opacity: 1; }
      파일 목록, 열기, 이전/다음
      ========================================================= */
   /* =========================================================
+     글자 맞추기: 빠른 열기 · 사이드바 파일 찾기
+     - 유니코드 형태(NFC) · 대소문자 · 라틴 악센트 · 전각/반각 · 히라가나=가타카나를 맞춰서 비교
+     - 한글 초성(ㄱㅎㅅ → 기획서), 치는 중인 마지막 글자(깋 → 기획서)도 받음
+     ========================================================= */
+  const CHO = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+  const JUNG = ['ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅗㅏ', 'ㅗㅐ', 'ㅗㅣ', 'ㅛ', 'ㅜ', 'ㅜㅓ', 'ㅜㅔ', 'ㅜㅣ', 'ㅠ', 'ㅡ', 'ㅡㅣ', 'ㅣ'];
+  const JONG = ['', 'ㄱ', 'ㄲ', 'ㄱㅅ', 'ㄴ', 'ㄴㅈ', 'ㄴㅎ', 'ㄷ', 'ㄹ', 'ㄹㄱ', 'ㄹㅁ', 'ㄹㅂ', 'ㄹㅅ', 'ㄹㅌ', 'ㄹㅍ', 'ㄹㅎ', 'ㅁ', 'ㅂ', 'ㅂㅅ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+  const JAMO_KEYS = { 'ㄳ': 'ㄱㅅ', 'ㄵ': 'ㄴㅈ', 'ㄶ': 'ㄴㅎ', 'ㄺ': 'ㄹㄱ', 'ㄻ': 'ㄹㅁ', 'ㄼ': 'ㄹㅂ', 'ㄽ': 'ㄹㅅ', 'ㄾ': 'ㄹㅌ', 'ㄿ': 'ㄹㅍ', 'ㅀ': 'ㄹㅎ', 'ㅄ': 'ㅂㅅ', 'ㅘ': 'ㅗㅏ', 'ㅙ': 'ㅗㅐ', 'ㅚ': 'ㅗㅣ', 'ㅝ': 'ㅜㅓ', 'ㅞ': 'ㅜㅔ', 'ㅟ': 'ㅜㅣ', 'ㅢ': 'ㅡㅣ' };
+  const isSyllable = (c) => c >= 0xac00 && c <= 0xd7a3;
+  const choOf = (ch) => { const c = ch.codePointAt(0); return isSyllable(c) ? CHO[Math.floor((c - 0xac00) / 588)] : ch; };
+  // 자판으로 친 순서: 획 → ㅎㅗㅣㄱ
+  function hangulKeys(ch) {
+    const c = ch.codePointAt(0);
+    if (!isSyllable(c)) return JAMO_KEYS[ch] || ch;
+    const s = c - 0xac00;
+    return CHO[Math.floor(s / 588)] + JUNG[Math.floor((s % 588) / 28)] + JONG[s % 28];
+  }
+  function foldChar(ch) {
+    const c0 = ch.codePointAt(0);
+    if (c0 >= 0x3130 && c0 <= 0x318f) return ch; // 한글 자모(ㄱ~ㅎ): NFKC 를 하면 다른 글자(U+1100…)가 되어 초성 찾기가 깨짐
+    let c = ch.normalize('NFKC'); // 전각 · 반각 (ＡＢＣ → ABC, ｶ → カ)
+    if ([...c].length !== 1) c = ch;
+    const lower = c.toLowerCase();
+    if ([...lower].length === 1) c = lower;
+    const base = String.fromCodePoint(c.normalize('NFD').codePointAt(0));
+    if (base !== c && /\p{Script=Latin}/u.test(base)) c = base; // é → e (라틴 글자만: 가나의 탁점 が 는 그대로)
+    const k = c.codePointAt(0);
+    if (k >= 0x30a1 && k <= 0x30f6) c = String.fromCodePoint(k - 0x60); // カタカナ → ひらがな
+    return c;
+  }
+  // 글자마다 [원래 글자, 맞춘 글자] (맥에서 만든 이름처럼 자모가 쪼개진 글은 먼저 합침)
+  const prepText = (s) => [...String(s).normalize('NFC')].map((ch) => ({ ch, f: foldChar(ch) }));
+  const HANGUL_CHAR = /[ㄱ-ㆎ가-힣]/;
+  // 검색어 한 글자가 대상 i 번째부터 맞으면 쓴 글자 수 (안 맞으면 0)
+  function unitAt(qu, t, i, last) {
+    if (t[i].f === qu.f) return 1;
+    if (CHO.includes(qu.ch) && choOf(t[i].ch) === qu.ch) return 1;
+    if (last && HANGUL_CHAR.test(qu.ch)) { // 치는 중인 마지막 글자: 회 → 획, 깋 → 기획
+      const k = hangulKeys(qu.ch);
+      let acc = '';
+      for (let j = i; j < t.length && j < i + 2; j++) {
+        acc += hangulKeys(t[j].ch);
+        if (acc.startsWith(k)) return j - i + 1;
+        if (!k.startsWith(acc)) break;
+      }
+    }
+    return 0;
+  }
+  const WORD_SEP = /[\s\-_./\\()[\]{}·,+]/;
+  const wordStart = (t, i) => i === 0 || WORD_SEP.test(t[i - 1].ch) || (/\p{Ll}/u.test(t[i - 1].ch) && /\p{Lu}/u.test(t[i].ch));
+  // 이어진 곳을 먼저, 없으면(contiguous 가 아니면) 띄엄띄엄(fp → feature-proposals) → { score, at } 또는 null
+  function textMatch(q, t, contiguous) {
+    const m = q.length, n = t.length;
+    if (!m) return { score: 0, at: [] };
+    for (let s = 0; s < n; s++) {
+      const at = [];
+      let i = s, j = 0;
+      for (; j < m && i < n; j++) {
+        const used = unitAt(q[j], t, i, j === m - 1);
+        if (!used) break;
+        for (let k = 0; k < used; k++) at.push(i + k);
+        i += used;
+      }
+      if (j === m) return { score: 1000 + (s === 0 ? 150 : wordStart(t, s) ? 70 : 0) + (s === 0 && i === n ? 200 : 0) - s * 2 - n * 0.3, at };
+    }
+    if (contiguous) return null;
+    const spread = (wordFirst) => {
+      const at = [];
+      let i = 0, bonus = 0;
+      for (let j = 0; j < m; j++) {
+        let found = -1, used = 0;
+        for (let k = i; k < n && found < 0; k++) if ((!wordFirst || wordStart(t, k)) && (used = unitAt(q[j], t, k, j === m - 1))) found = k;
+        if (found < 0 && wordFirst) for (let k = i; k < n && found < 0; k++) if ((used = unitAt(q[j], t, k, j === m - 1))) found = k;
+        if (found < 0) return null;
+        if (wordStart(t, found)) bonus += 30;
+        for (let k = 0; k < used; k++) at.push(found + k);
+        i = found + used;
+      }
+      return { score: 500 + bonus - (at[at.length - 1] - at[0] - at.length) * 3 - at[0] * 2 - n * 0.3, at };
+    };
+    return spread(true) || spread(false);
+  }
+  const prepCache = new Map();
+  const prepName = (s) => { let p = prepCache.get(s); if (!p) { p = prepText(s); if (prepCache.size > 5000) prepCache.clear(); prepCache.set(s, p); } return p; };
+  // 맞은 글자를 <mark> 로
+  function markText(t, at) {
+    const on = new Set(at);
+    let out = '', open = false;
+    t.forEach((c, i) => {
+      if (on.has(i) !== open) { out += open ? '</mark>' : '<mark>'; open = !open; }
+      out += escapeHtml(c.ch);
+    });
+    return out + (open ? '</mark>' : '');
+  }
+
+  /* =========================================================
      사이드바: 파일 · 목차 탭, 폴더 트리
      ========================================================= */
   const ICON = {
@@ -3253,7 +3373,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   };
   const side = {
     tab: store.get('mdv-side-tab') || 'files',
-    filter: '',
+    filter: '', q: [],
     collapsed: new Set(),
   };
   const parentOf = (p) => (p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '');
@@ -3302,11 +3422,10 @@ body.zen .zen-exit:hover { opacity: 1; }
     row.style.setProperty('--indent', 6 + depth * 14 + 'px');
     row.dataset.kind = kind;
     row.dataset.path = path;
-    const q = side.filter;
     let label = escapeHtml(name);
-    if (q && kind === 'file') {
-      const i = name.toLowerCase().indexOf(q);
-      if (i >= 0) label = escapeHtml(name.slice(0, i)) + '<mark>' + escapeHtml(name.slice(i, i + q.length)) + '</mark>' + escapeHtml(name.slice(i + q.length));
+    if (side.filter && kind === 'file') {
+      const t = prepName(name), m = textMatch(side.q, t, true);
+      if (m) label = markText(t, m.at);
     }
     row.innerHTML = (kind === 'dir' ? ICON.chev : '<span style="width:14px;flex:none"></span>') + (kind === 'dir' ? ICON.dir : ICON.md) +
       `<span class="nm">${label}</span>` + (readonly ? `<span class="cnt" title="${L('읽기 전용 (Safari · Firefox 에서 연 폴더)', 'Read-only (folder opened in Safari · Firefox)')}">${L('읽기 전용', 'Read-only')}</span>` : '') + (kind === 'dir' ? `<span class="cnt">${count}</span>` : '') +
@@ -3335,7 +3454,9 @@ body.zen .zen-exit:hover { opacity: 1; }
     $('#sRefresh').hidden = !canWrite;
     $('#sCollapse').hidden = !hasRoot;
     const q = side.filter;
-    const matches = (f) => !q || f.name.toLowerCase().includes(q);
+    // 파일 이름으로 찾기: 대소문자 · 악센트 · 전각/반각 · 맥의 자모 쪼갬을 맞추고, 초성(ㄱㅎㅅ)으로도
+    const nameHit = (name) => !!textMatch(side.q, prepName(name), true);
+    const matches = (f) => !q || nameHit(f.name);
     const frag = document.createDocumentFragment();
     let shown = 0;
 
@@ -3372,7 +3493,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       walk(tree, 0);
     }
     const appendBuiltin = () => {
-      const keys = Object.keys(BUILTIN).filter((k) => !q || BUILTIN[k].title.toLowerCase().includes(q));
+      const keys = Object.keys(BUILTIN).filter((k) => !q || nameHit(BUILTIN[k].title));
       if (!keys.length) return;
       const g = document.createElement('div');
       g.className = 'tree-group';
@@ -3459,7 +3580,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   let filterTimer;
   $('#treeFilter').addEventListener('input', (e) => {
     clearTimeout(filterTimer);
-    filterTimer = setTimeout(() => { side.filter = e.target.value.trim().toLowerCase(); renderFileList(); }, 120);
+    filterTimer = setTimeout(() => { side.filter = e.target.value.trim(); side.q = prepText(side.filter); renderFileList(); }, 120);
   });
   $('#sCollapse').onclick = () => {
     const dirs = [...el.fileList.querySelectorAll('.tree-row.dir')].map((r) => r.dataset.path);
@@ -3643,7 +3764,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     for (const d of scan.dirs) state.dirs.add(d);
     state.files = state.files.concat(scan.files);
     side.collapsed.delete(root.key); saveCollapsed();
-    side.filter = ''; $('#treeFilter').value = '';
+    side.filter = ''; side.q = []; $('#treeFilter').value = '';
     setSideTab('files');
     saveWorkspace();
     toast(state.roots.length > 1
@@ -4105,14 +4226,15 @@ body.zen .zen-exit:hover { opacity: 1; }
       b.firstChild.textContent = r.name;
       b.lastChild.textContent = (LANG === 'en' ? d.toLocaleDateString('en', { month: 'short', day: 'numeric' }) : `${d.getMonth() + 1}월 ${d.getDate()}일`) + ` ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
       b.title = L('마지막으로 열었을 때 저장해 둔 내용을 보여줍니다', 'Shows the content saved when you last opened it');
-      b.onclick = () => {
-        let entry = state.files.find((f) => f.path === r.name);
-        if (!entry && r.tauriPath && window.__TAURI__) { openTauriPaths([r.tauriPath]); return; }
-        if (!entry) { entry = { name: baseName(r.name), path: r.name, text: r.text, loose: true, fromRecent: true }; state.files.push(entry); }
-        openEntry(entry);
-      };
+      b.onclick = () => openRecent(r);
       box.append(b);
     }
+  }
+  function openRecent(r) {
+    let entry = state.files.find((f) => f.path === r.name);
+    if (!entry && r.tauriPath && window.__TAURI__) { openTauriPaths([r.tauriPath]); return; }
+    if (!entry) { entry = { name: baseName(r.name), path: r.name, text: r.text, loose: true, fromRecent: true }; state.files.push(entry); }
+    openEntry(entry);
   }
   function showHome() {
     el.welcome.hidden = false;
@@ -5236,8 +5358,174 @@ ${clone.innerHTML}
     lineTops = null;
   }
 
+  /* ---------- 빠른 열기 · 명령 (Ctrl+O): 파일 이름 · 이 문서의 제목 · 명령을 한 창에서 ---------- */
+  //  - 그냥 치면 파일(이름 → 경로 순), 「>」로 시작하면 명령만, 「#」으로 시작하면 이 문서의 제목만
+  //  - 창이 열린 채 Ctrl+O 를 한 번 더 누르면 「다른 파일 열기…」
+  const qo = { box: null, input: null, list: null, items: [], shown: [], cur: 0, back: null };
+  const ICON_QO = {
+    file: ICON.md,
+    head: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 4v16M19 4v16M5 12h14"/></svg>',
+    cmd: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 4 4-4 4M12 16h7"/></svg>',
+  };
+  function quickCommands() {
+    const cur = !!state.current;
+    const lang = LANG === 'ko' ? 'en' : 'ko';
+    return [
+      { ko: '다른 파일 열기…', en: 'Open another file…', kbd: 'Ctrl+O ×2', run: pickFiles },
+      { ko: '폴더 열기…', en: 'Open folder…', run: pickFolder },
+      { ko: '새 문서 쓰기', en: 'New document', run: newDoc },
+      { ko: '편집 시작 · 끝', en: 'Start · stop editing', kbd: 'Ctrl+E', when: cur, run: () => setEditing(!state.editing) },
+      { ko: '저장', en: 'Save', kbd: 'Ctrl+S', when: cur, run: () => save() },
+      { ko: '새 파일로 저장…', en: 'Save as new file…', kbd: 'Ctrl+Shift+S', when: cur, run: () => saveAs() },
+      { ko: '다른 뷰어용으로 저장…', en: 'Save for other viewers…', when: cur, run: exportPortable },
+      { ko: 'HTML 파일로 저장', en: 'Save as HTML', when: cur, run: exportHtml },
+      { ko: '인쇄 · PDF로 저장', en: 'Print · save as PDF', kbd: 'Ctrl+P', when: cur, run: () => window.print() },
+      { ko: '문서에서 찾기', en: 'Find in document', kbd: 'Ctrl+F', when: cur, run: openFind },
+      { ko: '바뀐 내용 · 되돌리기 기록', en: 'Changes · undo history', kbd: 'Ctrl+Shift+H', when: cur, run: () => openChanges('hist') },
+      { ko: '집중 모드', en: 'Focus mode', kbd: 'Ctrl+.', when: cur, run: () => setZen(true) },
+      { ko: '제목 모두 접기 · 펴기', en: 'Fold · unfold all headings', when: cur, run: foldAllToggle },
+      { ko: settings.headNum ? '제목 번호 끄기' : '제목에 번호 붙여 보기', en: settings.headNum ? 'Hide heading numbers' : 'Number the headings', run: () => { settings.headNum = !settings.headNum; applySettings(true); } },
+      { ko: '밝게 · 어둡게', en: 'Light · dark', run: () => el.btnTheme.click() },
+      { ko: '보기 설정', en: 'View settings', run: () => setTimeout(() => toggleMenu('#settingsMenu'), 0) },
+      { ko: '사이드바 열기 · 닫기', en: 'Show · hide sidebar', run: () => $('#btnSidebar').click() },
+      { ko: 'Claude와 연결 (MCP)', en: 'Connect to Claude (MCP)', run: openMcp },
+      { ko: '처음 사용 안내 다시 보기', en: 'Show the tour again', run: () => $('#mTour').click() },
+      { ko: '언어: English', en: 'Language: 한국어', run: () => document.querySelector(`#langSeg button[data-v="${lang}"]`).click() },
+    ].filter((c) => c.when !== false).map((c) => ({ kind: 'cmd', label: L(c.ko, c.en), alt: L(c.en, c.ko), altShow: true, kbd: c.kbd, run: c.run }));
+  }
+  // 고를 수 있는 것: 이번에 연 순서 → 나머지 파일 → 안내 문서 → 지난번 최근 문서 (+ 제목 · 명령)
+  function quickItems() {
+    const files = [], seen = new Set();
+    const addFile = (f) => {
+      if (!f || seen.has(f) || f.builtin) return;
+      seen.add(f);
+      const loc = f.loose ? describeLocation(f).short : parentOf(f.path);
+      files.push({ kind: 'file', label: f.name.replace(MD_EXT, ''), sub: f.loose && (!loc || loc === f.name) ? L('따로 연 파일', 'Opened separately') : loc, path: f.path.replace(MD_EXT, ''), entry: f, run: () => { openEntry(f); closeSidebar(); } });
+    };
+    for (let i = state.hist.length - 1; i >= 0; i--) if (state.hist[i] !== state.current) addFile(state.hist[i]);
+    const rest = state.files.filter((f) => !seen.has(f) && !f.builtin && f !== state.current).sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
+    rest.forEach(addFile);
+    if (state.current && !state.current.builtin) addFile(state.current);
+    for (const key of Object.keys(BUILTIN)) {
+      files.push({ kind: 'file', label: BUILTIN[key].title, sub: L('markcont 안내 문서', 'markcont docs'), alt: BUILTIN_NAMES[key].join(' '), run: () => openBuiltinDoc(key) });
+    }
+    for (const r of store.json('mdv-recent', []).filter((r) => !isBuiltinPath(r.name))) {
+      if (state.files.some((f) => f.path === r.name)) continue;
+      files.push({ kind: 'file', label: baseName(r.name).replace(MD_EXT, ''), sub: L('최근 문서 · ', 'Recent · ') + fmtDate(r.time), path: r.name.replace(MD_EXT, ''), run: () => openRecent(r) });
+    }
+    const heads = !state.current ? [] : [...el.doc.querySelectorAll('h1,h2,h3,h4,h5,h6')].filter((h) => !h.closest('.md-example') && h.id)
+      .map((h) => ({ kind: 'head', label: headLabel(h), sub: '#'.repeat(headingLevel(h)), run: () => scrollToId(h.id) }));
+    return { files, heads, cmds: quickCommands() };
+  }
+  function quickBox() {
+    if (qo.box) return qo.box;
+    const b = document.createElement('div');
+    b.className = 'qo';
+    b.hidden = true;
+    b.innerHTML = `<div class="qo-card" role="dialog" aria-modal="true" aria-label="${L('빠른 열기', 'Quick open')}">
+        <input class="qo-input" type="text" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="qoList" aria-autocomplete="list">
+        <div class="qo-list" id="qoList" role="listbox"></div>
+        <div class="qo-foot"><span><kbd>↑</kbd><kbd>↓</kbd> ${L('고르기', 'move')}</span><span><kbd>Enter</kbd> ${L('열기', 'open')}</span><span><kbd>&gt;</kbd> ${L('명령', 'commands')}</span><span><kbd>#</kbd> ${L('이 문서의 제목', 'headings here')}</span><button type="button" class="qo-other">${L('다른 파일 열기…', 'Open another file…')} <kbd>Ctrl+O</kbd></button></div>
+      </div>`;
+    document.body.append(b);
+    qo.box = b;
+    qo.input = b.querySelector('.qo-input');
+    qo.list = b.querySelector('.qo-list');
+    qo.input.placeholder = L('파일 이름 · 초성(ㄱㅎㅅ)으로 찾기   > 명령   # 제목', 'Find a file by name   > commands   # headings');
+    qo.input.addEventListener('input', () => quickFilter());
+    qo.input.addEventListener('keydown', (e) => {
+      if (e.isComposing || e.keyCode === 229) return; // 입력기가 쓰는 키(한자 · 가나 후보 고르기)는 넘김
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); quickMove(e.key === 'ArrowDown' ? 1 : -1); }
+      else if (e.key === 'PageDown' || e.key === 'PageUp') { e.preventDefault(); quickMove(e.key === 'PageDown' ? 8 : -8); }
+      else if (e.key === 'Enter') { e.preventDefault(); quickChoose(qo.cur); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeQuick(); }
+      else if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'o') { e.preventDefault(); e.stopPropagation(); closeQuick(true); pickFiles(); }
+    });
+    qo.list.addEventListener('click', (e) => { const r = e.target.closest('.qo-item'); if (r) quickChoose(+r.dataset.i); });
+    qo.list.addEventListener('mousemove', (e) => { const r = e.target.closest('.qo-item'); if (r && +r.dataset.i !== qo.cur) quickMark(+r.dataset.i, false); });
+    b.querySelector('.qo-other').onclick = () => { closeQuick(true); pickFiles(); };
+    b.addEventListener('pointerdown', (e) => { if (e.target === b) closeQuick(); });
+    return b;
+  }
+  function openQuick(prefix = '') {
+    if (!$('#tour').hidden) return;
+    closeMenus();
+    hidePreview();
+    if (!$('#dgViewer').hidden) closeDiagramViewer();
+    const b = quickBox();
+    if (b.hidden) qo.back = document.activeElement;
+    qo.items = quickItems();
+    b.hidden = false;
+    qo.input.value = prefix;
+    quickFilter();
+    qo.input.focus();
+  }
+  function closeQuick(keepFocus) {
+    if (!qo.box || qo.box.hidden) return;
+    qo.box.hidden = true;
+    if (!keepFocus && qo.back && qo.back.isConnected && qo.back !== document.body) qo.back.focus({ preventScroll: true });
+    qo.back = null;
+  }
+  function quickFilter() {
+    const raw = qo.input.value;
+    const mode = raw[0] === '>' ? 'cmd' : raw[0] === '#' ? 'head' : '';
+    const q = prepText(raw.slice(mode ? 1 : 0).trim());
+    const { files, heads, cmds } = qo.items;
+    let rows = [];
+    if (!q.length) {
+      rows = mode === 'cmd' ? cmds : mode === 'head' ? heads : files;
+      rows = rows.map((it) => ({ it }));
+    } else {
+      const pool = mode === 'cmd' ? cmds : mode === 'head' ? heads : [...files, ...heads, ...cmds];
+      const weight = { file: 0, head: -250, cmd: -300 };
+      for (const it of pool) {
+        let best = null;
+        const tryOn = (text, where, penalty) => {
+          if (!text) return;
+          const t = prepName(text), m = textMatch(q, t);
+          if (m && (!best || m.score - penalty > best.score)) best = { score: m.score - penalty, where, t, at: m.at };
+        };
+        tryOn(it.label, 'label', 0);
+        tryOn(it.alt, 'alt', 40);
+        tryOn(it.path, 'path', 300);
+        if (best) rows.push({ it, m: best, score: best.score + (mode ? 0 : weight[it.kind]) });
+      }
+      rows.sort((a, b) => b.score - a.score || a.it.label.localeCompare(b.it.label, undefined, { numeric: true }));
+    }
+    qo.shown = rows.slice(0, 60);
+    const html = qo.shown.map(({ it, m }, i) => {
+      const name = m && m.where === 'label' ? markText(m.t, m.at) : escapeHtml(it.label);
+      let sub = it.sub ? escapeHtml(it.sub) : '';
+      if (m && m.where === 'path') sub = markText(m.t, m.at);
+      else if (m && m.where === 'alt' && it.altShow) sub = markText(m.t, m.at); // 명령은 다른 언어 이름으로도 찾음
+      return `<div class="qo-item" role="option" data-i="${i}">${ICON_QO[it.kind] || ICON_QO.file}<span class="qo-main"><span class="qo-name">${name}</span>${sub ? `<span class="qo-sub">${sub}</span>` : ''}</span>${it.kbd ? `<kbd class="qo-kbd">${escapeHtml(it.kbd)}</kbd>` : ''}</div>`;
+    }).join('');
+    qo.list.innerHTML = html || `<div class="qo-empty">${mode === 'head' && !state.current ? L('문서를 열면 그 문서의 제목을 찾을 수 있습니다.', 'Open a document to find its headings.') : L('맞는 것이 없습니다. Ctrl+O 를 한 번 더 누르면 다른 파일을 열 수 있어요.', 'Nothing matches. Press Ctrl+O again to open another file.')}</div>`;
+    quickMark(0, true);
+  }
+  function quickMark(i, scroll) {
+    if (!qo.shown.length) { qo.cur = 0; qo.input.removeAttribute('aria-activedescendant'); return; }
+    qo.cur = Math.max(0, Math.min(qo.shown.length - 1, i));
+    qo.list.querySelectorAll('.qo-item.on').forEach((r) => r.classList.remove('on'));
+    const r = qo.list.querySelector(`.qo-item[data-i="${qo.cur}"]`);
+    if (!r) return;
+    r.classList.add('on');
+    r.id = 'qoCur';
+    qo.list.querySelectorAll('.qo-item[id]').forEach((x) => { if (x !== r) x.removeAttribute('id'); });
+    qo.input.setAttribute('aria-activedescendant', 'qoCur');
+    if (scroll) r.scrollIntoView({ block: 'nearest' });
+  }
+  function quickMove(step) { if (qo.shown.length) quickMark((qo.cur + step + qo.shown.length) % qo.shown.length, true); }
+  function quickChoose(i) {
+    const row = qo.shown[i];
+    if (!row) return;
+    closeQuick(true);
+    row.it.run();
+  }
+
   /* ---------- 버튼 · 단축키 ---------- */
   $('#btnOpen').onclick = $('#wOpen').onclick = pickFiles;
+  $('#mQuick').onclick = () => openQuick();
   $('#btnFolder').onclick = $('#wFolder').onclick = pickFolder;
   $('#wNew').onclick = newDoc;
   $('#mNew').onclick = () => { closeMenus(); newDoc(); };
@@ -5289,7 +5577,7 @@ ${clone.innerHTML}
     }
     if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
     const k = e.key.toLowerCase();
-    if (k === 'o') { e.preventDefault(); pickFiles(); }
+    if (k === 'o') { e.preventDefault(); openQuick(); }
     else if (k === 'e' && state.current) { e.preventDefault(); setEditing(!state.editing); }
     else if (k === 's' && state.current) { e.preventDefault(); if (e.shiftKey) saveAs(); else save(); }
     else if (k === 'f' && state.current && !el.workspace.hidden) { e.preventDefault(); openFind(); }
@@ -5350,7 +5638,7 @@ ${clone.innerHTML}
     { center: true, emoji: '👋', lang: true, title: L('markcont에 오신 것을 환영합니다', 'Welcome to markcont'),
       text: L('마크다운 파일을 <b>보기 좋게 보고, 바로 고치는</b> 뷰어입니다.<br>주요 기능을 1분 만에 둘러볼게요.', 'A viewer that lets you <b>read markdown beautifully and edit it on the spot</b>.<br>Let\'s tour the main features in a minute.'), next: L('둘러보기 시작', 'Start the tour') },
     { target: '#btnOpen', mobile: '#btnMore', title: L('파일 열기', 'Open file'),
-      text: L('<b>파일 열기</b>(Ctrl+O)로 .md 파일을 엽니다.<br>파일을 창 위에 <b>끌어다 놓아도</b> 열려요.', 'Open a .md file with <b>Open file</b> (Ctrl+O).<br>You can also <b>drag and drop</b> a file onto the window.'),
+      text: L('<b>파일 열기</b>로 .md 파일을 엽니다.<br>파일을 창 위에 <b>끌어다 놓아도</b> 열려요. <b>Ctrl+O</b> 를 누르면 이름이나 초성으로 찾아 바로 열 수 있어요.', 'Open a .md file with <b>Open file</b>.<br>You can also <b>drag and drop</b> a file onto the window. Press <b>Ctrl+O</b> to find a file by name and open it right away.'),
       mobileText: L('<b>⋯</b> 메뉴의 <b>파일 열기</b>로 .md 파일을 엽니다.', 'Open a .md file with <b>Open file</b> in the <b>⋯</b> menu.') },
     { target: '#btnFolder', title: L('폴더 통째로 열기', 'Open a whole folder'),
       text: L('폴더를 열면 왼쪽에 <b>폴더 트리</b>가 나옵니다.<br>md 파일이 있는 폴더만 골라서 보여줘요.', 'Opening a folder shows a <b>folder tree</b> on the left.<br>Only folders that contain md files are shown.') },

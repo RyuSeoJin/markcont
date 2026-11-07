@@ -17,7 +17,8 @@ This guide is laid out so a first-time user can follow it step by step.
 
 | How | What to do |
 |:---|:---|
-| A single file | **Open file** at the top (<kbd>Ctrl</kbd>+<kbd>O</kbd>) |
+| Open by name | Press <kbd>Ctrl</kbd>+<kbd>O</kbd> (**⋯ → Quick open · commands**), type part of the name and press <kbd>Enter</kbd> |
+| A single file | **Open file** at the top, or <kbd>Ctrl</kbd>+<kbd>O</kbd> twice |
 | A whole folder | **Open folder** at the top — the folder tree appears in the sidebar |
 | Drag and drop | Drop a `.md` file or a folder onto the window |
 | Double-click | If you installed the PC app, double-click a `.md` file |
@@ -25,6 +26,21 @@ This guide is laid out so a first-time user can follow it step by step.
 
 > [!NOTE]
 > Files are read only on your own device. Nothing is uploaded anywhere.
+
+### Quick open · commands (<kbd>Ctrl</kbd>+<kbd>O</kbd>)
+
+Find files in your open folders, headings in the current document and menu commands, all in one box. Move with <kbd>↑</kbd> <kbd>↓</kbd> and open with <kbd>Enter</kbd>.
+
+| Type | To find |
+|:---|:---|
+| Part of a name | Files: `spec` → Spec.md, `fp` → feature-proposals (the first letters of words) |
+| Start with `>` | Commands: `>save` · `>number` · `>저장` (English and Korean names both work) |
+| Start with `#` | Headings in the current document: `#decision` |
+| Nothing | Files in the order you opened them |
+
+- Case, Latin accents (`cafe` → café), full-width · half-width letters (`ＡＢＣ` = ABC) and hiragana · katakana (`きかく` → キカク) are all matched. Korean names can also be found by their initial consonants (`ㄱㅎㅅ` → 기획서), and Korean names made on a Mac are found too.
+- Press <kbd>Ctrl</kbd>+<kbd>O</kbd> once more while the box is open to get the **Open file** dialog.
+- The sidebar's **Filter by file name** box matches the same way.
 
 ### Where is this file?
 
@@ -52,7 +68,7 @@ Open and close the sidebar with the <kbd>☰</kbd> button in the top left. Drag 
 - Right-click a top-level folder → **Close this folder** removes it from the list only. The files stay where they are.
 - The PC app reopens your folders the next time you start it.
 - Click a folder name to fold or unfold it. The folded state is remembered.
-- When there are many files, a **Filter by file name** box appears.
+- When there are many files, a **Filter by file name** box appears. It ignores case and accents.
 - Keyboard: <kbd>↑</kbd> <kbd>↓</kbd> move, <kbd>Enter</kbd> open, <kbd>F2</kbd> rename, <kbd>Del</kbd> delete
 
 ### Right-click menu
@@ -228,7 +244,7 @@ Open **⋯ → [Markdown writing rules](Markdown-Writing-Rules.md)**. Give that 
 
 ## 🎯 One-page summary
 
-1. Open with **Open file · Open folder · drag and drop**
+1. Open with **Open file · Open folder · drag and drop**. <kbd>Ctrl</kbd>+<kbd>O</kbd> opens a file by typing its name
 2. In the sidebar, use the **Files · Contents** tabs; right-click for **New document · Rename · Delete**
 3. **Aa** for view settings, <kbd>Ctrl</kbd>+<kbd>F</kbd> to find, <kbd>Ctrl</kbd>+<kbd>.</kbd> for focus mode
 4. <kbd>Ctrl</kbd>+<kbd>E</kbd> to edit, <kbd>Ctrl</kbd>+<kbd>S</kbd> to save
