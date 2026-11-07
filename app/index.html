@@ -1811,7 +1811,7 @@ body.zen .zen-exit:hover { opacity: 1; }
 <script src="i18n.js"></script>
 <script src="diagram.js"></script>
 <script src="portable.js"></script>
-<script src="emoji.js"></script>
+<script src="vendor/markdown-it-emoji-data.js"></script>
 <script src="paste.js"></script>
 <script src="docx.js"></script>
 <script src="richcopy.js"></script>
@@ -2260,13 +2260,16 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (hm) add(hm[1] ?? hm[2] ?? hm[3]);
     return { lang, title, hl: [...lines].sort((x, y) => x - y) };
   }
-  // GitHub 이모지 코드 :smile: → 😄 (목록에 있는 것만. 웃음 표시 :) · <3 은 그대로 — GitHub 과 같음). 코드 안은 markdown-it 이 이미 빼 둠
+  // GitHub 이모지 코드 :smile: → 😄 (GitHub 목록 전체, vendor/markdown-it-emoji-data.js. 웃음 표시 :) · <3 은 그대로 — GitHub 과 같음). 코드 안은 markdown-it 이 이미 빼 둠
+  // :a: · :b: · :x: · :id: 같은 짧은 코드도 있어서, 앞뒤에 영문 · 숫자가 붙어 있으면 그대로 둠 (10:100:5 · a:b:c · IPv6 주소 fe80::a:b). 한글이 붙은 건 바꿈
+  const asciiWordChar = (c) => (c >= 0x30 && c <= 0x39) || (c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A);
   function emojiRule(state, silent) {
     const src = state.src, pos = state.pos;
     if (src.charCodeAt(pos) !== 0x3A /* : */ || !window.MarkEmoji) return false;
+    if (pos > 0 && asciiWordChar(src.charCodeAt(pos - 1))) return false;
     const m = /^:([a-z0-9_+-]{1,40}):/.exec(src.slice(pos, pos + 44));
     const e = m && window.MarkEmoji[m[1]];
-    if (!e) return false;
+    if (typeof e !== 'string' || asciiWordChar(src.charCodeAt(pos + m[0].length))) return false;
     if (!silent) { const t = state.push('emoji_code', '', 0); t.content = e; t.markup = m[1]; }
     state.pos += m[0].length;
     return true;
@@ -2304,7 +2307,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     md.inline.ruler.after('escape', 'math_inline', mathInline);
     md.block.ruler.before('fence', 'math_block', mathBlock, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
     md.inline.ruler.before('link', 'wikilink', wikiRule);
-    md.inline.ruler.push('emoji_code', emojiRule); // :smile: (자주 쓰는 것만, emoji.js)
+    md.inline.ruler.push('emoji_code', emojiRule); // :smile: (GitHub 목록 전체, vendor/markdown-it-emoji-data.js)
     md.renderer.rules.emoji_code = (t, i) => `<span class="emoji" title=":${escapeHtml(t[i].markup)}:">${t[i].content}</span>`;
     md.block.ruler.before('paragraph', 'toc_inline', tocRule);
     md.block.ruler.before('fence', 'mc_container', containerRule, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });

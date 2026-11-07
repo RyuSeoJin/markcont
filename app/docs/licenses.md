@@ -15,6 +15,7 @@ markcont는 아래 오픈소스 소프트웨어를 사용합니다. 만든 분�
 | markdown-it-deflist | 3.0.0 | MIT | `vendor/licenses/markdown-it-deflist-LICENSE.txt` |
 | markdown-it-mark | 4.0.0 | MIT | `vendor/licenses/markdown-it-mark-LICENSE.txt` |
 | markdown-it-ins | 4.0.0 | MIT | `vendor/licenses/markdown-it-ins-LICENSE.txt` |
+| markdown-it-emoji (이모지 코드 목록만) | 3.1.0 | MIT | `vendor/licenses/markdown-it-emoji-LICENSE.txt` |
 | DOMPurify | 3.1.6 | Apache-2.0 또는 MPL-2.0 | `vendor/licenses/dompurify-LICENSE.txt` |
 | highlight.js | 11.9.0 | BSD-3-Clause | `vendor/licenses/highlight.js-LICENSE.txt` |
 | KaTeX (mhchem 포함) | 0.16.9 | MIT | `vendor/licenses/katex-LICENSE.txt` |
@@ -27,7 +28,7 @@ markcont는 아래 오픈소스 소프트웨어를 사용합니다. 만든 분�
 
 ## 다른 라이브러리 안에 함께 들어 있는 라이브러리
 
-Mermaid · markdown-it 파일 안에는 아래 라이브러리가 함께 묶여 있습니다.
+Mermaid · markdown-it · 이모지 코드 목록 파일 안에는 아래 라이브러리가 함께 묶여 있습니다.
 
 | 묶인 곳 | 라이브러리 | 버전 | 라이선스 | 원문 |
 |:---|:---|:---|:---|:---|
@@ -52,6 +53,7 @@ Mermaid · markdown-it 파일 안에는 아래 라이브러리가 함께 묶여 
 | markdown-it | [mdurl](https://github.com/markdown-it/mdurl) | 2.1.0 | MIT | `vendor/licenses/bundled/mdurl-LICENSE.txt` |
 | markdown-it | [punycode.js](https://github.com/mathiasbynens/punycode.js) | 2.3.1 | MIT | `vendor/licenses/bundled/punycode.js-LICENSE.txt` |
 | markdown-it | [uc.micro](https://github.com/markdown-it/uc.micro) | 2.1.0 | MIT | `vendor/licenses/bundled/uc.micro-LICENSE.txt` |
+| markdown-it-emoji | [gemoji](https://github.com/github/gemoji) (GitHub 이모지 이름) | 4.1.0 | MIT | `vendor/licenses/bundled/gemoji-LICENSE.txt` |
 
 > [!NOTE]
 > elkjs(EPL-2.0)는 Mermaid 안에 컴파일된 형태로 들어 있습니다. 소스 코드는 [github.com/kieler/elkjs](https://github.com/kieler/elkjs) 에서 받을 수 있고, 라이선스 원문은 `vendor/licenses/bundled/elkjs-LICENSE.txt` 에 있습니다.

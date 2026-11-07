@@ -15,6 +15,7 @@ markcont uses the open-source software below. Many thanks to everyone who made i
 | markdown-it-deflist | 3.0.0 | MIT | `vendor/licenses/markdown-it-deflist-LICENSE.txt` |
 | markdown-it-mark | 4.0.0 | MIT | `vendor/licenses/markdown-it-mark-LICENSE.txt` |
 | markdown-it-ins | 4.0.0 | MIT | `vendor/licenses/markdown-it-ins-LICENSE.txt` |
+| markdown-it-emoji (emoji code list only) | 3.1.0 | MIT | `vendor/licenses/markdown-it-emoji-LICENSE.txt` |
 | DOMPurify | 3.1.6 | Apache-2.0 or MPL-2.0 | `vendor/licenses/dompurify-LICENSE.txt` |
 | highlight.js | 11.9.0 | BSD-3-Clause | `vendor/licenses/highlight.js-LICENSE.txt` |
 | KaTeX (including mhchem) | 0.16.9 | MIT | `vendor/licenses/katex-LICENSE.txt` |
@@ -27,7 +28,7 @@ If you choose the Serif font, Noto Serif KR (SIL Open Font License 1.1) is loade
 
 ## Libraries bundled inside other libraries
 
-The Mermaid · markdown-it files have the libraries below bundled inside them.
+The Mermaid · markdown-it · emoji code list files have the libraries below bundled inside them.
 
 | Bundled in | Library | Version | License | License text |
 |:---|:---|:---|:---|:---|
@@ -52,6 +53,7 @@ The Mermaid · markdown-it files have the libraries below bundled inside them.
 | markdown-it | [mdurl](https://github.com/markdown-it/mdurl) | 2.1.0 | MIT | `vendor/licenses/bundled/mdurl-LICENSE.txt` |
 | markdown-it | [punycode.js](https://github.com/mathiasbynens/punycode.js) | 2.3.1 | MIT | `vendor/licenses/bundled/punycode.js-LICENSE.txt` |
 | markdown-it | [uc.micro](https://github.com/markdown-it/uc.micro) | 2.1.0 | MIT | `vendor/licenses/bundled/uc.micro-LICENSE.txt` |
+| markdown-it-emoji | [gemoji](https://github.com/github/gemoji) (GitHub emoji names) | 4.1.0 | MIT | `vendor/licenses/bundled/gemoji-LICENSE.txt` |
 
 > [!NOTE]
 > elkjs (EPL-2.0) is included inside Mermaid in compiled form. The source code is available at [github.com/kieler/elkjs](https://github.com/kieler/elkjs), and the license text is in `vendor/licenses/bundled/elkjs-LICENSE.txt`.

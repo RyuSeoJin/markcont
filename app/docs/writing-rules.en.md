@@ -776,7 +776,7 @@ Check **where it works** first, and if the document will be opened elsewhere too
 | Table of contents | `[[_TOC_]]` on a line of its own | ✅ | ❌ plain text | ❌ |
 | Page break | `<!-- page break -->` on a line of its own | ✅ print · PDF · Word | ⚠️ hidden (no break) | ⚠️ hidden (no break) |
 | Hidden note | `%%note%%` | ✅ hidden | ❌ plain text | ✅ hidden |
-| Emoji code | `:rocket:` | ✅ the 410 common ones | ✅ | ❌ plain text |
+| Emoji code | `:rocket:` | ✅ GitHub's full list | ✅ | ❌ plain text |
 | Collapsible content | `<details>` | ✅ | ✅ | ✅ |
 | Keyboard keys | `<kbd>Ctrl</kbd>` | ✅ | ✅ | ✅ |
 | Source · result side by side | ```` ```markdown example ```` | ✅ | ❌ shown as code | ❌ shown as code |
@@ -1027,7 +1027,8 @@ Visible text %%a note just for me%% more text :rocket:
 
 - Text wrapped in `%%` is a **hidden note** (same as Obsidian), and it can span lines. It stays only in the source: it isn't shown, printed, saved as HTML or Word, or copied with formatting, and **Save for other viewers** removes it (GitHub shows it as plain text).
 - `%%` inside code or math, `%%` right after a number (`50%%`) and a `%%` with no closing pair aren't treated as notes.
-- GitHub **emoji codes** like `:rocket:` become emoji for the 410 common ones (including every gitmoji commit emoji). Codes not on the list stay as text, and emoticons like `:)` or `<3` aren't converted (same as GitHub).
+- GitHub **emoji codes** like `:rocket:` become emoji using the same list as GitHub (1,903 codes, including every gitmoji commit emoji). Codes not on the list stay as text, and emoticons like `:)` or `<3` aren't converted (same as GitHub).
+- A code with a letter or digit right before or after it isn't converted. This keeps `10:100:5`, `a:b:c` and IPv6 addresses (`fe80::a:b`) from turning into emoji. Korean, Chinese or Japanese text right next to it is fine (`完了:tada:`).
 
 ### Line breaks
 
@@ -1061,7 +1062,7 @@ Write **bold** and add a ==highlight== too.
 | `<style>` · `<script>` | Removed (for security) | Format with Markdown syntax |
 | `~subscript~` | Plain text (strikethrough on GitHub) | `<sub>…</sub>` |
 | `^superscript^` | Plain text | `<sup>…</sup>` |
-| `:emoji:` codes not on the list | Plain text (only the 410 common ones become emoji) | Type the 😄 emoji directly |
+| GitHub-only image emoji (`:octocat:` and others) · codes not on the list | Plain text | Type the 😄 emoji directly |
 
 ---
 
