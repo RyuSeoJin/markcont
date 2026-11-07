@@ -149,9 +149,24 @@ Press **Edit** at the top (<kbd>Ctrl</kbd>+<kbd>E</kbd>) to see the source on th
 | <kbd>Ctrl</kbd>+<kbd>K</kbd> | Link |
 | <kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> | Indent / Outdent |
 | <kbd>Enter</kbd> | Continues a list · quote on the next line (press on an empty line to end it) |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> | Paste plain text without formatting |
 | <kbd>Ctrl</kbd>+<kbd>S</kbd> | Save |
 
 The editing toolbar has buttons for headings, lists, task lists, callouts, code blocks, tables, and inserting images.
+
+### Pasting
+
+| What you paste | What goes in |
+|:---|:---|
+| A screenshot · image file | Saved as an image file in an `images` folder next to the document, plus `![](images/paste-20261107-143205.png)` |
+| Cells from Excel · Google Sheets | A markdown table |
+| Text from a web page · Notion · Google Docs · Word | Markdown that keeps headings · lists · links · tables · bold · code |
+| A URL (`https://…`) while text is selected | A `[selected text](URL)` link |
+
+- If you don't like the converted result, remove it with <kbd>Ctrl</kbd>+<kbd>Z</kbd> and paste plain text with <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>.
+- Inside a code block (```` ``` ````), and for text copied from a code editor (VS Code etc.), the text is pasted as it is.
+- After an image is inserted, the cursor sits inside `![ ]`, so you can type a description right away and it shows under the image.
+- The web app can save images only for documents opened with **Open folder** (for a file opened on its own, the browser doesn't tell markcont its folder).
 
 ### Seeing what you've changed · undoing
 

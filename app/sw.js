@@ -28,6 +28,7 @@ const APP_FILES = [
   './diagram.js',
   './portable.js',
   './cjk.js',
+  './paste.js',
   './vendor/highlight.min.js',
   './vendor/hljs-github-dark.min.css',
   './vendor/hljs-github.min.css',

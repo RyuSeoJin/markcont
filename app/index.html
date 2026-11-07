@@ -1529,6 +1529,7 @@ body.zen .zen-exit:hover { opacity: 1; }
 <script src="i18n.js"></script>
 <script src="diagram.js"></script>
 <script src="portable.js"></script>
+<script src="paste.js"></script>
 <script>
 (() => {
   translateStatic(document.body);
@@ -2091,6 +2092,8 @@ body.zen .zen-exit:hover { opacity: 1; }
       const box = document.createElement(m[2] ? 'details' : 'div');
       if (m[2] === '+') box.open = true;
       box.className = 'callout c-' + (soft && SOFT_COLORS[type] ? SOFT_COLORS[type] : info[1]) + (soft ? ' soft' : '');
+      box.dataset.callout = type; // 복사해서 붙여 넣을 때 > [!TYPE] 로 되살림 (paste.js)
+      if (m[3]) box.dataset.title = '1';
       if (bq.dataset.line) box.dataset.line = bq.dataset.line;
       const title = document.createElement(m[2] ? 'summary' : 'div');
       title.className = 'callout-title';
@@ -4999,6 +5002,117 @@ body.zen .zen-exit:hover { opacity: 1; }
       }
     }
   });
+
+  /* ---------- 붙여 넣기 ----------
+     그림(스크린샷 · 그림 파일) → 문서 옆 images 폴더에 저장하고 ![](images/…)
+     서식 있는 글(웹 · 노션 · 구글 문서 · 워드 · 엑셀 표) → 마크다운 (paste.js)
+     글을 고른 채 주소 → [고른 글](주소)
+     코드 블록 안이나 Ctrl+Shift+V 는 글자 그대로 */
+  let plainPaste = 0;
+  el.editor.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'v') plainPaste = Date.now(); }, true);
+  function inCodeFence() {
+    const v = el.editor.value, before = v.slice(0, v.lastIndexOf('\n', el.editor.selectionStart - 1) + 1);
+    let fence = null;
+    for (const line of before.split('\n')) {
+      const m = line.match(/^ {0,3}(`{3,}|~{3,})/);
+      if (!m) continue;
+      if (!fence) fence = m[1];
+      else if (m[1][0] === fence[0] && m[1].length >= fence.length && /^ {0,3}(`+|~+)\s*$/.test(line)) fence = null;
+    }
+    return !!fence;
+  }
+  const urlSafe = (u) => u.replace(/[ ()<>]/g, (c) => ({ ' ': '%20', '(': '%28', ')': '%29', '<': '%3C', '>': '%3E' })[c]);
+  // 블록(표 · 제목 · 목록 …)을 넣을 때는 앞뒤 글과 빈 줄로 띄움 (글줄 안에 넣는 한 토막은 그대로)
+  function blockPad(md, force) {
+    if (!force && !/\n/.test(md) && !/^(#{1,6}\s|[-*+]\s|\d+[.)]\s|>|\||```|~~~|---$)/.test(md)) return md;
+    const v = el.editor.value, s = el.editor.selectionStart, en = el.editor.selectionEnd;
+    const before = v.slice(0, s), after = v.slice(en);
+    const lead = !before || /\n\n$/.test(before) ? '' : /\n$/.test(before) ? '\n' : '\n\n';
+    const trail = !after ? '\n' : /^\n\n/.test(after) ? '' : /^\n/.test(after) ? '\n' : '\n\n';
+    return lead + md + trail;
+  }
+  function htmlOnlyImage(html) {
+    if (!html || !/<img\b/i.test(html)) return false;
+    const b = new DOMParser().parseFromString(html, 'text/html').body;
+    return !b.textContent.trim() && b.querySelectorAll('img').length === 1;
+  }
+  el.editor.addEventListener('paste', (e) => {
+    const cd = e.clipboardData;
+    if (!cd) return;
+    if (Date.now() - plainPaste < 1500) { plainPaste = 0; return; } // 글자만
+    const types = [...cd.types];
+    const html = types.includes('text/html') ? cd.getData('text/html') : '';
+    const plain = cd.getData('text/plain') || '';
+    // 엑셀 · 워드는 글과 함께 그 모양의 그림도 넣으므로, 글이 있으면 글을 씀
+    const imgs = [...cd.files].filter((f) => /^image\//.test(f.type));
+    if (imgs.length && (!plain.trim() || htmlOnlyImage(html))) { e.preventDefault(); pasteImages(imgs); return; }
+    if (inCodeFence()) return;
+    const ta = el.editor, sel = ta.value.slice(ta.selectionStart, ta.selectionEnd), url = plain.trim();
+    if (sel.trim() && !sel.includes('\n') && /^https?:\/\/\S+$/i.test(url) && !/^https?:\/\//i.test(sel.trim())) {
+      e.preventDefault();
+      insertText(`[${sel.replace(/[[\]]/g, '\\$&')}](${urlSafe(url)})`);
+      return;
+    }
+    if (!html || types.includes('vscode-editor-data') || !window.MarkPaste) return;
+    let md = null;
+    try { md = MarkPaste.fromHtml(html, plain); } catch {}
+    if (!md) return;
+    e.preventDefault();
+    insertText(blockPad(md));
+    toast(L('서식을 마크다운으로 바꿔 넣었습니다 · 글자만 넣으려면 Ctrl+Z 뒤 Ctrl+Shift+V', 'Pasted as markdown · for plain text, Ctrl+Z then Ctrl+Shift+V'), 3200);
+  });
+  // 그림 이름: 스크린샷은 paste-20261107-143205.png, 이름이 있는 그림 파일은 그 이름
+  function imageName(f) {
+    const two = (x) => String(x).padStart(2, '0'), d = new Date();
+    const named = f.name && !/^image\.\w+$/i.test(f.name);
+    let base = named ? f.name.replace(/\.[^.]+$/, '') : `paste-${d.getFullYear()}${two(d.getMonth() + 1)}${two(d.getDate())}-${two(d.getHours())}${two(d.getMinutes())}${two(d.getSeconds())}`;
+    base = base.normalize('NFC').replace(/[\\/:*?"<>|#%\s]+/g, '-').replace(/^[-.]+|-+$/g, '') || 'image';
+    const ext = (named && (f.name.match(/\.([A-Za-z0-9]+)$/) || [])[1]) || ({ 'image/jpeg': 'jpg', 'image/svg+xml': 'svg' })[f.type] || f.type.split('/')[1] || 'png';
+    return base + '.' + ext.toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+  // 그림을 쓸 곳: PC 프로그램은 문서 옆, 웹 앱은 폴더 열기로 연 문서 옆 (따로 연 파일은 폴더를 몰라서 못 씀)
+  function imageTarget(cur) {
+    if (!cur || cur.builtin) return null;
+    if (cur.tauriPath && isTauri()) return { kind: 'tauri', dir: cur.tauriPath.replace(/[\\/][^\\/]*$/, '') };
+    const root = !cur.loose && rootOf(cur.path);
+    if (root && root.kind === 'handle') return { kind: 'handle', root, dir: parentOf(cur.path) };
+    return null;
+  }
+  async function pasteImages(files) {
+    const where = imageTarget(state.current);
+    if (!where) { toast(L('그림은 문서 옆 images 폴더에 저장합니다. 폴더 열기로 연 문서(또는 PC 프로그램)에서 붙여 넣어 주세요.', 'Images are saved to an images folder next to the document. Paste into a document opened with Open folder (or in the PC app).'), 4500); return; }
+    const links = [];
+    try {
+      let dh = null;
+      if (where.kind === 'handle') {
+        if (!(await ensureWrite(where.root))) return;
+        dh = await (await dirHandleFor(where.dir)).getDirectoryHandle('images', { create: true });
+      }
+      const sep = where.kind === 'tauri' && where.dir.includes('\\') ? '\\' : '/', abs = (nm) => where.dir + sep + 'images' + sep + nm;
+      const taken = async (nm) => (where.kind === 'tauri' ? (await tinvoke('file_modified', { path: abs(nm) })) > 0 : dh.getFileHandle(nm).then(() => true, () => false));
+      for (const f of files) {
+        let name = imageName(f), n = 2;
+        const stem = name.replace(/\.[^.]+$/, ''), ext = name.slice(stem.length);
+        while (await taken(name)) name = `${stem}-${n++}${ext}`;
+        if (where.kind === 'tauri') {
+          await tinvoke('save_binary', { path: abs(name), data: Array.from(new Uint8Array(await f.arrayBuffer())) });
+        } else {
+          const fh = await dh.getFileHandle(name, { create: true });
+          const w = await fh.createWritable(); await w.write(f); await w.close();
+          state.assets.set(joinRel(where.dir, 'images/' + name), { handle: fh });
+        }
+        links.push(`![](images/${urlSafe(name)})`);
+      }
+    } catch (err) {
+      toast(L('그림을 저장하지 못했습니다: ', "Couldn't save the image: ") + ((err && err.message) || err), 4000);
+    }
+    if (!links.length) return;
+    const ta = el.editor, s = ta.selectionStart, text = blockPad(links.join('\n\n'), true);
+    insertText(text);
+    const at = s + text.indexOf('![') + 2;
+    ta.setSelectionRange(at, at); // ![ ] 안: 설명을 바로 쓸 수 있게
+    toast(L(`그림 ${links.length}개를 images 폴더에 저장했습니다 · [ ] 안에 설명을 쓰면 그림 아래에 나옵니다`, `Saved ${links.length} image${links.length === 1 ? '' : 's'} to the images folder · write a description inside [ ] to show it under the image`), 3500);
+  }
 
   /* =========================================================
      바뀐 내용 추적: 줄 표시, 저장 후 바뀐 내용, 되돌리기 기록
