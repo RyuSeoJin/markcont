@@ -174,6 +174,7 @@ Press **Edit** at the top (<kbd>Ctrl</kbd>+<kbd>E</kbd>) to see the source on th
 The editing toolbar has buttons for headings, lists, task lists, callouts, code blocks, tables, and inserting images.
 
 - If the numbers in a numbered list got mixed up, type `>renumber` in <kbd>Ctrl</kbd>+<kbd>O</kbd> and choose **Renumber the numbered list**. It renumbers from the first item's number.
+- With the cursor **inside a table**, <kbd>Tab</kbd> · <kbd>Shift</kbd>+<kbd>Tab</kbd> move to the next · previous cell, and <kbd>Tab</kbd> in the last cell adds an empty row below. Table buttons (**Align · Row+ · Row− · Col+ · Col− · ◀Col · Col▶ · Sort**) appear in the toolbar. Align measures the real width of Korean characters and emoji, so it may be off by about half a space depending on the font. Sort toggles ascending · descending, and a column of numbers sorts by value.
 - Changing heading levels leaves `#` inside code blocks alone, and if any heading can't go above `#` or below `######`, nothing changes so the headings keep their relative levels.
 - Each of these can be undone with a single <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 
