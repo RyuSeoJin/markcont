@@ -111,19 +111,24 @@ pub fn read(path: &Path, id: &str) -> Result<String, String> {
 }
 
 /// 기록 하나 더하기. 바로 앞 기록과 같으면 건너뜀.
+/// "바뀌기 전"은 최근 10개 중에 같은 내용이 있으면 건너뜀
+/// (Claude가 고친 것은 MCP 서버가 먼저 남기고, 화면도 바뀐 것을 알아채 한 번 더 남기려 하기 때문)
 pub fn add(path: &Path, text: &str, kind: &str) -> Result<(), String> {
     if text.len() > MAX_BYTES || !KINDS.contains(&kind) {
         return Ok(());
     }
     let dir = dir_of(path);
     let list = entries(&dir);
-    let mut t = now_ms();
-    if let Some((last_t, last_id)) = list.first() {
-        if let Ok(prev) = fs::read(dir.join(last_id)) {
+    let check = if kind == "before" { 10 } else { 1 };
+    for (_, id) in list.iter().take(check) {
+        if let Ok(prev) = fs::read(dir.join(id)) {
             if prev == text.as_bytes() {
                 return Ok(());
             }
         }
+    }
+    let mut t = now_ms();
+    if let Some((last_t, _)) = list.first() {
         if t <= *last_t {
             t = last_t + 1;
         }
