@@ -66,6 +66,7 @@ curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh 
 - Code highlighting · line numbers · copy · enlarge, `diff` coloring
 - Math `$E=mc^2$`, chemical formulas `$\ce{H2O}$`, diagrams: markcont style (markcont-standard flowcharts, message order, state changes, timelines, exposure trees with entry points) and Mermaid, plus workflow writing rules for large flows
 - Wikilinks `[[document#heading]]`, video · YouTube thumbnails
+- Images: click to enlarge (zoom · pan), a description under images that sit on their own line, and sizes with `![description|300](image.png)` · `![[image.png|300]]`
 - A workspace that opens several folders together, folder tree · file search · right-click menu, table of contents, heading folding, find in document, focus mode
 - Live editing: source with line numbers and syntax colors, a marker for where you're editing, scroll sync
 - Auto-reload of changed files, Save as HTML, Print · PDF

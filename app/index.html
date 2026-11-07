@@ -134,6 +134,10 @@
 .markdown-body img, .markdown-body video { max-width: 100%; height: auto; border-radius: 8px; }
 .markdown-body audio { width: 100%; max-width: 520px; }
 .markdown-body img.broken { display: inline-block; padding: .5em .8em; border: 1px dashed var(--border); color: var(--muted); font-size: .9em; }
+/* 한 줄에 따로 쓴 그림: 설명(alt)을 그림 아래에 */
+.markdown-body figure.img-fig { margin: 0 0 16px; }
+.markdown-body figure.img-fig img { display: block; }
+.markdown-body figure.img-fig figcaption { margin-top: 6px; font-size: .88em; line-height: 1.5; color: var(--muted); }
 .markdown-body hr { border: 0; border-top: 1px solid var(--border); margin: 2.2em 0; }
 .markdown-body kbd {
   font-family: var(--mono); font-size: .82em; padding: .1em .45em; border-radius: 5px;
@@ -227,6 +231,7 @@
 .dg-viewer-area.drag { cursor: grabbing; }
 .dg-viewer-stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 .dg-viewer-stage svg { display: block; max-width: none !important; font-family: var(--font); }
+.dg-viewer-stage img { display: block; max-width: none; user-select: none; -webkit-user-drag: none; }
 .markdown-body .language-diff .hljs-addition { display: inline-block; min-width: 100%; background: color-mix(in srgb, var(--c-green) 16%, transparent); color: inherit; }
 .markdown-body .language-diff .hljs-deletion { display: inline-block; min-width: 100%; background: color-mix(in srgb, var(--c-red) 16%, transparent); color: inherit; }
 
@@ -678,6 +683,8 @@ body.resizing { cursor: col-resize; user-select: none; }
 }
 .workspace.editing .markdown-body [data-line] { cursor: text; }
 .workspace.editing .markdown-body :is(a, button, input, summary) { cursor: pointer; }
+/* 그림을 누르면 크게 보기 (나란히 편집 중에는 원본으로 이동하므로 빼고) */
+.workspace:is(:not(.editing), .mode-preview) .markdown-body img:not(.broken, a img, .ex-src img) { cursor: zoom-in; }
 /* 보기 방식: 편집만 / 나란히 / 미리보기만 */
 #viewSeg { width: 210px; flex: none; }
 #viewSeg button { padding: 5px 0; font-size: 12.5px; }
@@ -1010,7 +1017,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   .topbar, .sidebar, .editor-pane, .doc-meta, .toast, .drop-overlay, .scrim, .copy, .h-tools, .zen-exit, .menu, .fab, .find-bar, .code-head button { display: none !important; }
   .layout, .main, .workspace, .preview-pane { display: block !important; height: auto !important; overflow: visible !important; padding: 0 !important; }
   .markdown-body { max-width: none; font-size: 11pt; }
-  .markdown-body pre, .markdown-body .table-wrap, .markdown-body img, .markdown-body .callout { break-inside: avoid; }
+  .markdown-body pre, .markdown-body .table-wrap, .markdown-body img, .markdown-body figure, .markdown-body .callout { break-inside: avoid; }
   .markdown-body h1, .markdown-body h2, .markdown-body h3 { break-after: avoid; }
 }
 </style>
@@ -1658,7 +1665,9 @@ body.zen .zen-exit:hover { opacity: 1; }
     const inner = src.slice(start + 2, end);
     if (!inner.trim() || /[\n[\]]/.test(inner)) return false;
     if (!silent) {
-      const [target, alias = ''] = inner.split('|');
+      // 표 칸 안에서는 [[문서\|별명]] 처럼 \| 로 씀 → 앞의 \ 는 버림. 그림은 「설명|300」 처럼 칸이 여럿일 수 있음
+      const parts = inner.split('|').map((x) => x.replace(/\\$/, ''));
+      const target = parts[0], alias = parts.slice(1).join('|');
       const hashAt = target.indexOf('#');
       const file = (hashAt >= 0 ? target.slice(0, hashAt) : target).trim();
       const heading = hashAt >= 0 ? target.slice(hashAt + 1).trim() : '';
@@ -1736,7 +1745,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     md.renderer.rules.wikilink = (t, i) => {
       const m = t[i].meta, e = escapeHtml;
       const attrs = `data-file="${e(m.file)}" data-heading="${e(m.heading)}" data-raw="${e(m.raw)}"`;
-      if (m.embed) return `<span class="wiki-embed" ${attrs}>${e(m.raw)}</span>`;
+      if (m.embed) return `<span class="wiki-embed" ${attrs} data-alias="${e(m.alias)}">${e(m.raw)}</span>`;
       const label = m.alias || (m.file ? m.file + (m.heading ? ' › ' + m.heading : '') : m.heading);
       return `<a class="wikilink" href="#" ${attrs}>${e(label)}</a>`;
     };
@@ -2132,7 +2141,11 @@ body.zen .zen-exit:hover { opacity: 1; }
     doc.querySelectorAll('span.wiki-embed').forEach((sp) => {
       const { file, raw } = sp.dataset;
       if (ASSET_EXT.test(file)) {
-        const node = mediaNode(file, file);
+        // ![[그림.png|설명|300]]: 숫자 칸은 크기(300 · 300x200), 나머지는 설명
+        const o = sizeFrom(sp.dataset.alias);
+        const node = mediaNode(file, o.text || file);
+        applySize(node, o);
+        if (!o.text) node.dataset.nocap = '1'; // 설명이 없으면 파일 이름을 그림 밑에 쓰지 않음
         sp.replaceWith(node);
         return;
       }
@@ -2173,9 +2186,16 @@ body.zen .zen-exit:hover { opacity: 1; }
       const src = img.getAttribute('src');
       const id = ytId(src);
       if (id) { img.replaceWith(ytCard(id)); return; }
-      if (VIDEO_EXT.test(src) || AUDIO_EXT.test(src)) { img.replaceWith(mediaNode(src, img.alt)); return; }
+      // ![설명|300](그림.png): 설명 끝의 |숫자는 크기 (Obsidian 과 같은 문법)
+      const sz = (img.getAttribute('alt') || '').match(/^(.*?)\s*\|\s*(\d{1,5})(?:\s*[x×]\s*(\d{1,5}))?\s*$/);
+      const size = sz ? { w: +sz[2], h: +(sz[3] || 0) } : null;
+      if (sz) img.alt = sz[1];
+      if (VIDEO_EXT.test(src) || AUDIO_EXT.test(src)) { const m = mediaNode(src, img.alt); if (size) applySize(m, size); img.replaceWith(m); return; }
+      if (size) applySize(img, size);
       img.loading = 'lazy';
       img.addEventListener('error', () => img.classList.add('broken'), { once: true });
+      // 앱에 든 안내 문서의 그림은 앱 폴더 기준 (icons/… 처럼)
+      if (state.current.builtin) return;
       if (!hasScheme(src) && !src.startsWith('data:')) {
         const key = findAssetKey(base, src);
         if (key) { assetUrl(key).then((u) => (img.src = u)).catch(() => {}); return; }
@@ -2197,6 +2217,21 @@ body.zen .zen-exit:hover { opacity: 1; }
         const outside = /^\.\.\//.test(rel) && (!r || !resolvePath(base, rel).startsWith(r.key + '/'));
         img.replaceWith(missingImage(src, outside));
       }
+    });
+
+    // 한 줄에 따로 쓴 그림: 설명(alt)을 그림 아래에 (링크로 감싼 그림 · 설명 없는 ![[그림]] 은 그대로)
+    doc.querySelectorAll('p > img').forEach((img) => {
+      const p = img.parentElement;
+      const alt = (img.getAttribute('alt') || '').trim();
+      if (!alt || img.dataset.nocap || p.closest('.md-example .ex-src')) return;
+      if ([...p.childNodes].some((n) => n !== img && (n.nodeType === 1 || n.nodeValue.trim()))) return;
+      const fig = document.createElement('figure');
+      fig.className = 'img-fig';
+      if (p.dataset.line) fig.dataset.line = p.dataset.line;
+      const cap = document.createElement('figcaption');
+      cap.textContent = alt;
+      p.replaceWith(fig);
+      fig.append(img, cap);
     });
 
     // 코드 블록
@@ -2309,7 +2344,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     const node = document.createElement(kind);
     if (kind === 'img') { node.alt = alt || ''; node.loading = 'lazy'; }
     else { node.controls = true; node.preload = 'metadata'; }
-    if (hasScheme(src) || src.startsWith('data:')) node.src = src;
+    if (hasScheme(src) || src.startsWith('data:') || (state.current && state.current.builtin)) node.src = src;
     else {
       const key = findAssetKey(state.current.path, src);
       if (key) assetUrl(key).then((u) => (node.src = u)).catch(() => {});
@@ -2317,6 +2352,21 @@ body.zen .zen-exit:hover { opacity: 1; }
       else node.src = src;
     }
     return node;
+  }
+  // 그림 크기: 「설명|300」 · 「300x200」 · 「설명|300x200」 → { text: 설명, w, h }
+  function sizeFrom(s) {
+    let w = 0, h = 0;
+    const text = [];
+    for (const p of String(s || '').split('|').map((x) => x.trim())) {
+      const m = p.match(/^(\d{1,5})(?:\s*[x×]\s*(\d{1,5}))?$/);
+      if (m && !w) { w = +m[1]; h = +(m[2] || 0); } else if (p) text.push(p);
+    }
+    return { text: text.join(' | '), w, h };
+  }
+  function applySize(node, o) {
+    if (!o || !o.w || !/^(IMG|VIDEO)$/.test(node.tagName)) return;
+    node.setAttribute('width', o.w);
+    if (o.h) { node.setAttribute('height', o.h); node.style.height = o.h + 'px'; node.style.objectFit = 'contain'; }
   }
 
   /* ---------- 문서 안 클릭 처리 (링크, 복사, 접기, 체크박스) ---------- */
@@ -2343,6 +2393,9 @@ body.zen .zen-exit:hover { opacity: 1; }
     }
     const fold = t.closest('.h-fold');
     if (fold) { toggleFold(fold.closest('h1,h2,h3,h4,h5,h6').id); return; }
+    // 그림을 누르면 크게 보기 (링크로 감싼 그림은 링크로, 나란히 편집 중에는 원본으로 이동)
+    const pic = t.closest('img');
+    if (pic && zoomable(pic)) { openImageViewer(pic); return; }
 
     const a = t.closest('a');
     if (!a) return;
@@ -2396,6 +2449,11 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (state.current.handle && !state.editing) save({ quiet: true });
   }
 
+  function zoomable(img) {
+    if (img.closest('a, .ex-src') || img.classList.contains('broken') || !img.complete || !img.naturalWidth) return false;
+    return !state.editing || viewMode === 'preview';
+  }
+
   async function copyText(text) {
     try { await navigator.clipboard.writeText(text); }
     catch {
@@ -2421,7 +2479,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   }
   function dgvFit() {
     const r = $('#dgArea').getBoundingClientRect();
-    dgv.s = Math.min((r.width - 48) / dgv.w, (r.height - 48) / dgv.h, 2);
+    dgv.s = Math.min((r.width - 48) / dgv.w, (r.height - 48) / dgv.h, dgv.maxFit || 2);
     dgv.x = (r.width - dgv.w * dgv.s) / 2;
     dgv.y = (r.height - dgv.h * dgv.s) / 2;
     dgvApply();
@@ -2437,6 +2495,29 @@ body.zen .zen-exit:hover { opacity: 1; }
   function openDiagramViewer(box) {
     const svg = box && box.querySelector('svg:not(.dg-expand svg)');
     if (!svg) return;
+    const vb = svg.viewBox && svg.viewBox.baseVal;
+    const rect = svg.getBoundingClientRect();
+    const w = (vb && vb.width) || rect.width, h = (vb && vb.height) || rect.height;
+    const c = svg.cloneNode(true);
+    c.removeAttribute('style');
+    c.setAttribute('width', w);
+    c.setAttribute('height', h);
+    openZoomViewer(c, w, h, 2);
+  }
+  // 그림 크게 보기: 원래 크기를 넘겨 늘리지는 않고, 화면보다 크면 화면에 맞춤
+  function openImageViewer(img) {
+    const rect = img.getBoundingClientRect();
+    const w = img.naturalWidth || rect.width, h = img.naturalHeight || rect.height;
+    if (!w || !h) return;
+    const c = document.createElement('img');
+    c.src = img.currentSrc || img.src;
+    c.alt = img.alt;
+    c.width = w;
+    c.height = h;
+    c.draggable = false;
+    openZoomViewer(c, w, h, 1);
+  }
+  function openZoomViewer(node, w, h, maxFit) {
     const v = $('#dgViewer');
     if (!v.dataset.ready) {
       v.dataset.ready = '1';
@@ -2488,17 +2569,12 @@ body.zen .zen-exit:hover { opacity: 1; }
       area.addEventListener('pointercancel', up);
       area.addEventListener('dblclick', dgvFit);
     }
-    const vb = svg.viewBox && svg.viewBox.baseVal;
-    const rect = svg.getBoundingClientRect();
-    dgv.w = (vb && vb.width) || rect.width;
-    dgv.h = (vb && vb.height) || rect.height;
-    const c = svg.cloneNode(true);
-    c.removeAttribute('style');
-    c.setAttribute('width', dgv.w);
-    c.setAttribute('height', dgv.h);
+    dgv.w = w;
+    dgv.h = h;
+    dgv.maxFit = maxFit;
     const stage = $('#dgStage');
     stage.innerHTML = '';
-    stage.append(c);
+    stage.append(node);
     v.hidden = false;
     requestAnimationFrame(dgvFit);
   }

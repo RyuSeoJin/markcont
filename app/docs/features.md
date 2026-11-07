@@ -127,3 +127,9 @@ markcont --> 나: 바뀐 곳 표시
 - 유튜브 링크만 따로 쓰면 썸네일이 됩니다:
 
 https://youtu.be/SEgHM748yrE?si=HsLb-OZOiQqXq3ng
+
+## 9. 그림
+
+그림을 누르면 크게 볼 수 있습니다. 그림만 한 줄에 쓰면 설명이 그림 아래에 나오고, 설명 끝에 `|96` 처럼 숫자를 붙이면 폭이 정해집니다.
+
+![markcont 아이콘|96](icons/icon-192.png)

@@ -88,6 +88,7 @@ Builds a table of contents from the document's headings (`#`). The part you're r
 | Focus mode | <kbd>Ctrl</kbd>+<kbd>.</kbd> | Leaves only the body text. Press <kbd>Esc</kbd> to exit |
 | Enlarge code | ⤢ in the code block header | Shows the code full screen |
 | Enlarge a diagram | ⤢ at the top right of a diagram | Wheel or pinch to zoom, drag to pan, "Fit to screen" |
+| Enlarge an image | Click the image | The same zoom view as diagrams. While editing side by side, a click jumps to that line of the source instead |
 
 > [!NOTE]
 > **When markcont goes online** — the Serif font (Google Fonts), YouTube thumbnails, web images in a document, and the styles (CDN) of files saved as HTML are downloaded from external servers, and your IP address is sent to those servers. Everything else works without the internet.

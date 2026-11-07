@@ -127,3 +127,9 @@ Review: 2d
 - A YouTube link on its own line becomes a thumbnail:
 
 https://youtu.be/SEgHM748yrE?si=HsLb-OZOiQqXq3ng
+
+## 9. Images
+
+Click an image to enlarge it. When an image sits alone on its own line, its description shows under it, and a number at the end of the description, like `|96`, sets the width.
+
+![markcont icon|96](icons/icon-192.png)

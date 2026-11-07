@@ -14,6 +14,7 @@
     calloutFold: () => [L('접는 알림 상자', 'Foldable callout'), L('<details> 접는 내용으로', 'to <details>')],
     wikilink: () => [L('위키링크 [[문서]]', 'Wikilink [[doc]]'), L('일반 링크로', 'to a normal link')],
     embed: () => [L('위키식 그림 ![[그림]]', 'Wiki embed ![[image]]'), L('일반 그림으로', 'to a normal image')],
+    imgSize: () => [L('그림 크기 ![[그림|300]] · ![설명|300](그림)', 'Image size ![[image|300]] · ![alt|300](image)'), L('<img width> 태그로', 'to an <img width> tag')],
     footnote: () => [L('바로 쓰는 각주 ^[설명]', 'Inline footnote ^[text]'), L('표준 각주로', 'to a standard footnote')],
     deflist: () => [L('정의 목록', 'Definition list'), L('굵은 용어 + 설명으로', 'to bold term + text')],
     media: () => [L('동영상 · 소리', 'Video · audio'), L('링크로', 'to a link')],
@@ -33,6 +34,18 @@
   const MEDIA = /\.(mp4|webm|ogv|mov|mp3|wav|aac|flac|m4a|oga|ogg)(?=$|[?#])/i;
   const ghSlug = (h) => h.trim().toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').replace(/\s/g, '-');
   const dest = (u) => (/[\s()<>]/.test(u) ? `<${u}>` : u);
+  // 그림 크기: 「설명|300」 · 「300x200」 → { text, w, h } (표 칸 안의 \| 도)
+  function sizeOf(s) {
+    let w = 0, h = 0;
+    const text = [];
+    for (const p of String(s || '').split('|').map((x) => x.replace(/\\$/, '').trim())) {
+      const m = p.match(/^(\d{1,5})(?:\s*[x×]\s*(\d{1,5}))?$/);
+      if (m && !w) { w = +m[1]; h = +(m[2] || 0); } else if (p) text.push(p);
+    }
+    return { text: text.join(' | '), w, h };
+  }
+  const attr = (v) => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const imgTag = (src, alt, o, title) => `<img src="${attr(src.replace(/ /g, '%20'))}" alt="${attr(alt)}"${title ? ` title="${attr(title)}"` : ''} width="${o.w}"${o.h ? ` height="${o.h}"` : ''}>`;
 
   // 조사가 붙은 굵게 · 기울임 · 취소선: markcont 에서만 되는 짝을 HTML 태그로
   //  - markcont 해석(cjk)과 CommonMark 해석(std)을 견줘서, markcont 에서만 생긴 짝만 바꿈
@@ -100,12 +113,22 @@
         if (k % 2) { if (p[0] === '$' && /\\ce\{/.test(p)) note(ln, 'chem', p); return p; }
         let s = p;
         s = s.replace(/!\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]/g, (m, file, alias) => {
-          file = file.trim();
-          note(ln, MEDIA.test(file) ? 'media' : 'embed', m);
-          return MEDIA.test(file) ? `[${alias || file}](${dest(file)})` : `![${alias || file}](${dest(file)})`;
+          file = file.trim().replace(/\\$/, ''); // 표 칸 안의 ![[그림.png\|300]]
+          const o = sizeOf(alias);
+          if (MEDIA.test(file)) { note(ln, 'media', m); return `[${o.text || file}](${dest(file)})`; }
+          if (o.w) { note(ln, 'imgSize', m); return imgTag(file, o.text || file, o); }
+          note(ln, 'embed', m);
+          return `![${o.text || file}](${dest(file)})`;
+        });
+        // ![설명|300](그림.png) · ![설명|300x200](그림.png) → <img width>
+        s = s.replace(/!\[([^\]]*?)\s*\\?\|\s*(\d{1,5})(?:\s*[x×]\s*(\d{1,5}))?\s*\]\((<[^>]*>|[^)\s]+)(?:\s+"([^"]*)")?\)/g, (m, alt, w, h, url, title) => {
+          url = url.replace(/^<(.*)>$/, '$1');
+          if (MEDIA.test(url)) return `![${alt}](${dest(url)})`;
+          note(ln, 'imgSize', m);
+          return imgTag(url, alt, { w: +w, h: +(h || 0) }, title);
         });
         s = s.replace(/\[\[([^\]|#]*)(?:#([^\]|]*))?(?:\|([^\]]*))?\]\]/g, (m, file, heading, alias) => {
-          file = (file || '').trim(); heading = (heading || '').trim();
+          file = (file || '').trim().replace(/\\$/, ''); heading = (heading || '').trim().replace(/\\$/, ''); // 표 칸 안의 [[문서\|별명]]
           const text = (alias || '').trim() || [file, heading].filter(Boolean).join(' › ');
           const href = (file ? (/\.(md|markdown)$/i.test(file) ? file : file + '.md') : '') + (heading ? '#' + ghSlug(heading) : '');
           note(ln, 'wikilink', m);

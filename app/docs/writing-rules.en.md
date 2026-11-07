@@ -178,10 +178,10 @@ console.log("Hello");
 | A title that shows on mouse hover | `![description](picture.png "Title")` |
 | A file name with spaces | `![description](<my picture.png>)` |
 | An image from the web | `![description](https://example.com/picture.png)` |
-| Set the size | `<img src="picture.png" width="300">` |
+| Set the size | `![description\|300](picture.png)` · `![description\|300x200](picture.png)` (markcont · Obsidian), or `<img src="picture.png" width="300">`, which works everywhere |
 | Center it | `<p align="center"><img src="picture.png" width="300"></p>` |
 | An image you can click to go somewhere | `[![description](picture.png)](https://example.com)` |
-| Add by name only (wiki style) | `![[picture.png]]` |
+| Add by name only (wiki style) | `![[picture.png]]` · with a width `![[picture.png\|300]]` |
 | Video · audio | `![description](video.mp4)` · `![description](sound.mp3)` |
 
 **How to write paths**: start from the folder the current document is in.
@@ -195,10 +195,13 @@ console.log("Hello");
 ```markdown example
 ![markcont icon](icons/icon-192.png "markcont")
 
+![A smaller icon|64](icons/icon-192.png)
+
 <p align="center"><img src="icons/icon-192.png" width="64"></p>
 ```
 
 - **Always** write the description inside `[ ]`. It shows when the image can't load, and screen readers read it aloud.
+- When an image sits alone on its own line, markcont shows the description **under the image** in small text. Click an image to enlarge it (wheel or pinch to zoom).
 - Keeping images together in an `images/` folder inside the document folder makes them easy to manage.
 - Images in a folder only show in documents opened with **Open folder**. If you open a single file, it can't read images in the same folder.
 
@@ -751,6 +754,7 @@ Check **where it works** first, and if the document will be opened elsewhere too
 | Exposure · data definition | ```` ```ui ```` · ```` ```data ```` | ✅ | ❌ shown as code | ❌ shown as code |
 | Wikilink | `[[document]]` · `[[document#heading\|alias]]` | ✅ | ❌ | ✅ |
 | Embed image (wiki style) | `![[picture.png]]` | ✅ | ❌ | ✅ |
+| Image size | `![description\|300](picture.png)` · `![[picture.png\|300]]` | ✅ | ⚠️ size ignored | ✅ |
 | Video · audio | `![description](video.mp4)` | ✅ | ❌ broken image | ✅ |
 | YouTube thumbnail | A YouTube URL alone on a line | ✅ | ❌ link | ❌ link |
 | Document info | `name: value` between `---` lines at the very top | ✅ info box | ⚠️ table | ✅ |
@@ -761,7 +765,7 @@ Check **where it works** first, and if the document will be opened elsewhere too
 <sub>The GitHub and Obsidian columns show behavior with default settings as of November 2026. It may differ by version or plugins.</sub>
 
 > [!TIP]
-> Even if you use ❌ syntax, **▾ → Save for other viewers…** makes a standard copy. Bold followed by CJK text and highlight · inserted · deleted text become HTML tags, extra callouts become one of the 5 standard types + a title, foldable callouts become `<details>`, wikilinks become normal links, and markcont diagrams become **Mermaid**. Chemistry `\ce{}` can't be converted, so it's left as is and flagged.
+> Even if you use ❌ syntax, **▾ → Save for other viewers…** makes a standard copy. Bold followed by CJK text and highlight · inserted · deleted text become HTML tags, extra callouts become one of the 5 standard types + a title, foldable callouts become `<details>`, wikilinks become normal links, image sizes become `<img width>`, and markcont diagrams become **Mermaid**. Chemistry `\ce{}` can't be converted, so it's left as is and flagged.
 
 ### Callouts: 11 types and collapsing
 
@@ -866,6 +870,8 @@ Links that jump straight to another document when you've opened a folder. Leave 
 | `[[Meeting notes#Decisions\|See decisions]]` | Shows the link text as "See decisions" |
 | `[[#3️⃣ Text formatting]]` | Goes to a heading in this document |
 | `![[picture.png]]` | Embeds an image in the folder by name only |
+| `![[picture.png\|300]]` · `![[picture.png\|300x200]]` | Embeds it with a set width (· height) |
+| `![[picture.png\|description]]` | Adds a description under the image (also with a size, like `![[picture.png\|description\|300]]`) |
 
 - If you write just a document name, markcont looks for **that name across the whole folder**. If several share the name, write a path like `[[docs/Meeting notes]]`.
 - A link to a document that doesn't exist shows as a faint dotted link. A link with no heading, like `[[document]]`, is left as plain text if the document it points to doesn't exist.
