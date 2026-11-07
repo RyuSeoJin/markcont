@@ -167,7 +167,8 @@ console.log("Hello");
 ````
 
 - Put a space after the language name and write `title="file name"` to show the **file name** in the header, or `{2,4-5}` to put a **highlight strip** on those lines. The MkDocs form `hl_lines="2 4-5"` works too.
-- Other viewers (GitHub, etc.) read only the first word as the language and skip the rest, so only the title and highlights are missing and the code still shows. `js{2}` written without a space works in markcont, but GitHub loses the colors, so keep the space.
+- Other viewers (GitHub, etc.) read only the first word as the language name and skip the rest. The code still shows there, just without the title and highlights.
+- `js{2}` written without a space works in markcont, but GitHub then loses the colors, so keep the space.
 
 ````markdown example
 ```js title="app.js" {2}
