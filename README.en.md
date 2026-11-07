@@ -72,6 +72,7 @@ curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh 
 - Search all documents <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>: searches every open folder, groups matches by document and jumps to the line (match case · whole word · regex, Korean initial consonants)
 - A table of contents inside the text with `[[_TOC_]]` (also in print · PDF), and heading numbers (1 · 1.1 · 1.1.1) shown without changing the source
 - Live editing: source with line numbers and syntax colors, a marker for where you're editing, scroll sync
+- Editor basics: find and replace <kbd>Ctrl</kbd>+<kbd>H</kbd> (match case · whole word · regex), move lines <kbd>Alt</kbd>+<kbd>↑</kbd><kbd>↓</kbd>, raise · lower heading levels, renumber numbered lists
 - Paste as markdown: screenshots become image files in an `images` folder next to the document, Excel cells become tables, text from the web · Notion · Google Docs · Word keeps its headings · lists · links, and a URL pasted over selected text becomes a link
 - Saved versions that survive closing: a copy is kept on every save and every time Claude or another program edits the file, so you can go back for 14 days
 - Auto-reload of changed files, Save as HTML, Print · PDF

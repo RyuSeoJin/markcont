@@ -688,6 +688,23 @@ body.resizing { cursor: col-resize; user-select: none; }
 .editor::placeholder { -webkit-text-fill-color: var(--muted); color: var(--muted); }
 .editor::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
 .editor-hl { overflow: hidden; pointer-events: none; color: var(--text); counter-reset: ln; }
+/* 찾아 바꾸기: 찾은 곳만 칠하는 층 (글자는 투명, 줄 구조는 편집창과 같음) */
+.editor-find { z-index: 0; color: transparent; -webkit-text-fill-color: transparent; }
+.editor-find .ln::before, .editor-find .ln::after { content: none !important; }
+.editor-find mark { color: transparent; background: color-mix(in srgb, var(--c-amber) 28%, transparent); border-radius: 2px; }
+.editor-find mark.now { background: color-mix(in srgb, var(--c-amber) 55%, transparent); box-shadow: 0 0 0 1.5px var(--c-amber); }
+.repl-bar { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--surface); flex: none; }
+.rf-row { display: flex; align-items: center; gap: 3px; min-width: 0; }
+.rf-row input {
+  flex: 1; min-width: 60px; height: 30px; padding: 0 9px; border: 1px solid var(--border); border-radius: 7px; outline: 0;
+  background: var(--bg); color: var(--text); font: 13px var(--mono);
+}
+.rf-row input:focus { border-color: var(--accent); }
+.rf-row input.err { border-color: var(--c-red); }
+.rf-count { flex: none; min-width: 48px; text-align: center; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.rf-row .btn { flex: none; height: 30px; padding: 0 10px; font-size: 12.5px; }
+.rf-row .btn.icon { width: 28px; padding: 0; }
+.rf-row .gs-opt { height: 26px; }
 .editor-hl .ln { position: relative; min-height: 1.75em; }
 .editor-hl .ln::before {
   counter-increment: ln; content: counter(ln); position: absolute; left: -54px; width: 38px; text-align: right;
@@ -1427,8 +1444,26 @@ body.zen .zen-exit:hover { opacity: 1; }
           <span class="tsep"></span>
           <button id="btnChanges" type="button" title="바뀐 내용 · 되돌리기 · 저장 기록 (Ctrl+Shift+H)" style="gap:4px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>기록</button>
         </div>
+        <div class="repl-bar" id="replBar" hidden>
+          <div class="rf-row">
+            <input id="rfFind" type="text" placeholder="찾을 글" aria-label="찾을 글" autocomplete="off" spellcheck="false">
+            <button type="button" class="gs-opt" data-rf="case" title="대소문자 구분" aria-label="대소문자 구분" aria-pressed="false">Aa</button>
+            <button type="button" class="gs-opt" data-rf="word" title="단어 단위로 찾기" aria-label="단어 단위로 찾기" aria-pressed="false"><u>ab</u></button>
+            <button type="button" class="gs-opt" data-rf="regex" title="정규식" aria-label="정규식" aria-pressed="false">.*</button>
+            <span class="rf-count" id="rfCount" role="status"></span>
+            <button type="button" class="btn icon ghost" id="rfPrev" title="이전 (Shift+Enter)" aria-label="이전 결과"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></button>
+            <button type="button" class="btn icon ghost" id="rfNext" title="다음 (Enter)" aria-label="다음 결과"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+            <button type="button" class="btn icon ghost" id="rfClose" title="닫기 (Esc)" aria-label="찾아 바꾸기 닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+          </div>
+          <div class="rf-row">
+            <input id="rfRepl" type="text" placeholder="바꿀 글" aria-label="바꿀 글" autocomplete="off" spellcheck="false">
+            <button type="button" class="btn" id="rfOne" title="바꾸기 (Enter)">바꾸기</button>
+            <button type="button" class="btn" id="rfAll" title="모두 바꾸기 (Ctrl+Alt+Enter)">모두 바꾸기</button>
+          </div>
+        </div>
         <div class="editor-wrap">
           <div class="editor-hl" id="editorHl" aria-hidden="true"></div>
+          <div class="editor-hl editor-find" id="editorFind" aria-hidden="true"></div>
           <textarea class="editor" id="editor" spellcheck="false" placeholder="여기에 마크다운을 쓰세요"></textarea>
         </div>
         <div class="edit-status">
@@ -4708,7 +4743,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   };
 
   /* ---------- 원본 색칠 (줄 번호, 제목 · 굵게 · 코드 · 링크 색) ---------- */
-  const elHl = $('#editorHl');
+  const elHl = $('#editorHl'), elFind = $('#editorFind');
   function hlInline(s) {
     let h = escapeHtml(s);
     const keep = [];
@@ -4770,9 +4805,10 @@ body.zen .zen-exit:hover { opacity: 1; }
     syncHlWidth();
     syncHlScroll();
     updateCursor();
+    if (!$('#replBar').hidden) rfSchedule();
   }
-  function syncHlWidth() { elHl.style.width = el.editor.clientWidth + 'px'; }
-  function syncHlScroll() { elHl.scrollTop = el.editor.scrollTop; }
+  function syncHlWidth() { elHl.style.width = elFind.style.width = el.editor.clientWidth + 'px'; }
+  function syncHlScroll() { elHl.scrollTop = elFind.scrollTop = el.editor.scrollTop; }
   el.editor.addEventListener('scroll', syncHlScroll, { passive: true });
   window.addEventListener('resize', () => { if (state.editing) { syncHlWidth(); syncHlScroll(); } });
 
@@ -5113,6 +5149,301 @@ body.zen .zen-exit:hover { opacity: 1; }
     ta.setSelectionRange(at, at); // ![ ] 안: 설명을 바로 쓸 수 있게
     toast(L(`그림 ${links.length}개를 images 폴더에 저장했습니다 · [ ] 안에 설명을 쓰면 그림 아래에 나옵니다`, `Saved ${links.length} image${links.length === 1 ? '' : 's'} to the images folder · write a description inside [ ] to show it under the image`), 3500);
   }
+
+  /* =========================================================
+     원본 편집기 기본기 — 모두 insertText 로 넣어서 Ctrl+Z 한 번에 되돌림
+     - 찾아 바꾸기: Ctrl+H (Mac은 ⌘H 가 「앱 가리기」라 ⌥⌘F), 대소문자 · 단어 단위 · 정규식($1 · \n)
+     - 줄 옮기기: Alt+↑ · ↓ (차례대로였던 번호 목록은 번호도 다시 매김)
+     - 제목 단계: Ctrl+Shift+[ 올리기(## → #) · Ctrl+Shift+] 내리기(# → ##), 고른 범위의 제목을 한꺼번에
+     - 번호 목록 다시 매기기: 명령(Ctrl+O 에서 >번호)
+     ========================================================= */
+  const IS_MAC = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent || '');
+  // 편집창 글을 next 로: 바뀐 가운데만 넣음 (한 번에 되돌릴 수 있게)
+  function applyText(next) {
+    const v = el.editor.value;
+    if (v === next) return false;
+    let a = 0;
+    while (a < v.length && a < next.length && v[a] === next[a]) a++;
+    let b = 0;
+    while (b < v.length - a && b < next.length - a && v[v.length - 1 - b] === next[next.length - 1 - b]) b++;
+    insertText(next.slice(a, next.length - b), a, v.length - b);
+    return true;
+  }
+  // pos 가 있는 줄 앞까지 열린 코드 울타리 (``` · ~~~) — 없으면 null
+  function fenceBefore(v, lineStart) {
+    let fence = null;
+    for (const line of v.slice(0, lineStart).split('\n')) {
+      const m = line.match(/^ {0,3}(`{3,}|~{3,})/);
+      if (!m) continue;
+      if (!fence) fence = m[1];
+      else if (m[1][0] === fence[0] && m[1].length >= fence.length && /^ {0,3}(`+|~+)\s*$/.test(line)) fence = null;
+    }
+    return fence;
+  }
+  // 고른 범위가 걸친 줄들 [시작, 끝) — 끝 줄의 맨 앞에서 끝나는 선택은 그 줄을 빼고 셈
+  function selLines() {
+    const ta = el.editor, v = ta.value, s = ta.selectionStart, e = ta.selectionEnd;
+    const ls = v.lastIndexOf('\n', s - 1) + 1;
+    let le = v.indexOf('\n', e > s && v[e - 1] === '\n' ? e - 1 : e);
+    if (le < 0) le = v.length;
+    return { v, s, e, ls, le };
+  }
+
+  // ---------- 번호 목록 ----------
+  const LI_ANY = /^(\s*)([-*+]|\d{1,9}[.)])(\s|$)/, LI_NUM = /^(\s*)(\d{1,9})([.)])(\s|$)/;
+  // 줄 i 가 든 목록의 범위 [a, b) (빈 줄을 사이에 둔 항목까지)
+  function listRange(lines, i) {
+    const item = (l) => l != null && LI_ANY.test(l), cont = (l) => l != null && /^\s+\S/.test(l);
+    const inList = (k) => item(lines[k]) || cont(lines[k]);
+    if (!inList(i)) return null;
+    let a = i, b = i + 1;
+    while (a > 0 && (inList(a - 1) || (!lines[a - 1].trim() && inList(a - 2)))) a--;
+    while (b < lines.length && (inList(b) || (!lines[b].trim() && inList(b + 1)))) b++;
+    return lines.slice(a, b).some((l) => LI_NUM.test(l)) ? [a, b] : null;
+  }
+  // 들여쓰기 단계마다 첫 항목 번호(starts 가 있으면 그 번호)부터 차례로
+  function renumber(lines, a, b, starts) {
+    const stack = [];
+    for (let i = a; i < b; i++) {
+      const m = lines[i].match(LI_ANY);
+      if (!m) continue;
+      const indent = m[1].replace(/\t/g, '    ').length;
+      while (stack.length && stack[stack.length - 1].indent > indent) stack.pop();
+      let top = stack[stack.length - 1];
+      if (!top || top.indent < indent) { top = { indent, n: null }; stack.push(top); }
+      const om = lines[i].match(LI_NUM);
+      if (!om) { top.n = null; continue; }
+      top.n = top.n == null ? (starts && starts.has(indent) ? starts.get(indent) : +om[2]) : top.n + 1;
+      lines[i] = om[1] + top.n + om[3] + lines[i].slice(om[1].length + om[2].length + 1);
+    }
+  }
+  function renumberList() {
+    if (!state.editing) return;
+    const ta = el.editor, v = ta.value, lines = v.split('\n');
+    const i = v.slice(0, ta.selectionStart).split('\n').length - 1, col = ta.selectionStart - (v.lastIndexOf('\n', ta.selectionStart - 1) + 1);
+    const r = listRange(lines, i);
+    if (!r) { toast(L('번호 목록(1. 2. 3.) 안에서 쓰세요', 'Use it inside a numbered list (1. 2. 3.)')); return; }
+    const next = lines.slice();
+    renumber(next, r[0], r[1]);
+    if (!applyText(next.join('\n'))) { toast(L('번호가 이미 차례대로입니다', 'The numbers are already in order')); return; }
+    const pos = next.slice(0, i).join('\n').length + (i ? 1 : 0) + Math.min(col, next[i].length);
+    ta.setSelectionRange(pos, pos);
+    toast(L('번호를 다시 매겼습니다 (Ctrl+Z 로 취소)', 'Renumbered (Ctrl+Z to undo)'));
+  }
+
+  // ---------- 줄 옮기기 ----------
+  function moveLines(dir) {
+    const { v, s, e, ls, le } = selLines();
+    if ((dir < 0 && ls === 0) || (dir > 0 && le >= v.length)) return;
+    const lines = v.split('\n');
+    const first = v.slice(0, ls).split('\n').length - 1, count = v.slice(ls, le).split('\n').length;
+    const swap = dir < 0 ? first - 1 : first + count; // 자리를 바꿀 이웃 줄
+    const at = dir < 0 ? first - 1 : first + 1;        // 옮긴 뒤 첫 줄의 자리
+    const next = lines.slice();
+    next.splice(at, 0, ...next.splice(first, count));
+    // 번호 목록 안에서 옮겼고 원래 번호가 차례대로였으면, 옮긴 뒤에도 차례대로
+    const r = LI_NUM.test(lines[first]) && LI_NUM.test(lines[swap]) ? listRange(lines, first) : null;
+    if (r) {
+      const check = lines.slice();
+      renumber(check, r[0], r[1]);
+      if (check.join('\n') === v) {
+        const starts = new Map();
+        for (let k = r[0]; k < r[1]; k++) {
+          const m = lines[k].match(LI_NUM);
+          if (m) { const ind = m[1].replace(/\t/g, '    ').length; starts.set(ind, Math.min(starts.get(ind) ?? Infinity, +m[2])); }
+        }
+        renumber(next, r[0], r[1], starts);
+      }
+    }
+    applyText(next.join('\n'));
+    // 고른 범위가 옮긴 줄을 그대로 따라가게
+    const nls = next.slice(0, at).reduce((n, l) => n + l.length + 1, 0);
+    const grow = next.slice(at, at + count).join('\n').length - (le - ls);
+    el.editor.setSelectionRange(nls + (s - ls), Math.max(nls + (s - ls), nls + (e - ls) + grow));
+  }
+
+  // ---------- 제목 단계 ----------
+  function headingStep(dir) {
+    const { v, s, e, ls, le } = selLines();
+    let fence = fenceBefore(v, ls), changed = 0, stuck = 0;
+    const lines = v.slice(ls, le).split('\n');
+    const out = lines.map((l) => {
+      const fm = l.match(/^ {0,3}(`{3,}|~{3,})/);
+      if (fence) { if (fm && fm[1][0] === fence[0] && fm[1].length >= fence.length && /^ {0,3}(`+|~+)\s*$/.test(l)) fence = null; return l; }
+      if (fm) { fence = fm[1]; return l; }
+      const m = l.match(/^( {0,3})(#{1,6})(?=\s|$)/);
+      if (!m) return l;
+      const n = m[2].length + dir;
+      if (n < 1 || n > 6) { stuck++; return l; }
+      changed++;
+      return m[1] + '#'.repeat(n) + l.slice(m[0].length);
+    });
+    // 제목끼리의 높낮이가 흐트러지지 않게, 하나라도 더 못 움직이면 바꾸지 않음
+    if (stuck || !changed) {
+      toast(!changed && !stuck ? L('제목 줄(#)에서 쓰세요', 'Use it on a heading line (#)')
+        : dir < 0 ? L('# 보다 올릴 수 없는 제목이 있어 바꾸지 않았습니다', "Not changed: a heading is already at the highest level (#)")
+        : L('###### 보다 내릴 수 없는 제목이 있어 바꾸지 않았습니다', "Not changed: a heading is already at the lowest level (######)"), 2800);
+      return;
+    }
+    const text = out.join('\n');
+    insertText(text, ls, le);
+    if (s === e) { const p = Math.max(ls, s + out[0].length - lines[0].length); el.editor.setSelectionRange(p, p); }
+    else el.editor.setSelectionRange(ls, ls + text.length);
+  }
+
+  el.editor.addEventListener('keydown', (e) => {
+    if (e.isComposing || e.keyCode === 229) return;
+    if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); moveLines(e.key === 'ArrowUp' ? -1 : 1); return; }
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && (e.code === 'BracketLeft' || e.code === 'BracketRight')) { e.preventDefault(); headingStep(e.code === 'BracketLeft' ? -1 : 1); }
+  });
+
+  // ---------- 찾아 바꾸기 ----------
+  const rf = { opts: { case: false, word: false, regex: false }, hits: [], now: -1, re: null, timer: 0, origin: 0 };
+  try { Object.assign(rf.opts, JSON.parse(store.get('mdv-rf-opts') || '{}')); } catch {}
+  const rfOpen = () => !$('#replBar').hidden;
+  function rfScan(keepNear) {
+    const inp = $('#rfFind'), q = inp.value, o = rf.opts;
+    rf.hits = []; rf.re = null;
+    inp.classList.remove('err');
+    if (q) {
+      try {
+        let src = o.regex ? q : q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (o.word) src = `(?<![\\p{L}\\p{N}_])(?:${src})(?![\\p{L}\\p{N}_])`;
+        rf.re = new RegExp(src, 'gmu' + (o.case ? '' : 'i'));
+      } catch { inp.classList.add('err'); }
+    }
+    if (rf.re) for (const m of el.editor.value.matchAll(rf.re)) {
+      if (!m[0].length) continue;
+      rf.hits.push({ s: m.index, e: m.index + m[0].length, m });
+      if (rf.hits.length >= 20000) break;
+    }
+    const at = keepNear != null ? keepNear : rf.origin;
+    rf.now = rf.hits.length ? Math.max(0, rf.hits.findIndex((h) => h.s >= at)) : -1;
+    rfPaint();
+  }
+  function rfSchedule() { clearTimeout(rf.timer); rf.timer = setTimeout(() => rfScan(el.editor.selectionStart), 150); }
+  function rfPaint() {
+    const q = $('#rfFind').value;
+    $('#rfCount').textContent = !q ? '' : !rf.re ? L('정규식 오류', 'Bad regex') : rf.hits.length ? `${rf.now + 1}/${rf.hits.length}${rf.hits.length >= 20000 ? '+' : ''}` : L('없음', 'None');
+    if (!rfOpen() || !rf.hits.length) { elFind.innerHTML = ''; return; }
+    // 편집창과 같은 줄 구조로, 찾은 곳만 <mark> (여러 줄에 걸친 것은 줄마다 나눔)
+    const v = el.editor.value, H = rf.hits;
+    let off = 0, k = 0;
+    elFind.innerHTML = v.split('\n').map((line) => {
+      const ls = off, le = off + line.length;
+      off = le + 1;
+      while (k < H.length && H[k].e <= ls) k++;
+      let s = '', p = ls, j = k;
+      while (j < H.length && H[j].s <= le) {
+        const a = Math.max(H[j].s, ls), b = Math.min(H[j].e, le);
+        if (a > p) s += escapeHtml(v.slice(p, a));
+        if (b > a) s += `<mark${j === rf.now ? ' class="now"' : ''}>${escapeHtml(v.slice(a, b))}</mark>`;
+        p = Math.max(p, b);
+        if (H[j].e > le) break; // 다음 줄로 이어짐
+        j++;
+      }
+      k = j;
+      return `<div class="ln">${s}${escapeHtml(v.slice(p, le))}</div>`;
+    }).join('');
+    syncHlWidth();
+    syncHlScroll();
+  }
+  // i 번째 찾은 곳을 고르고 보이게 (입력칸의 포커스는 그대로)
+  function rfShow(i) {
+    if (!rf.hits.length) { rfPaint(); return; }
+    rf.now = (i + rf.hits.length) % rf.hits.length;
+    const h = rf.hits[rf.now], ta = el.editor;
+    ta.setSelectionRange(h.s, h.e);
+    const y = lineToEditorY(ta.value.slice(0, h.s).split('\n').length - 1);
+    if (y < ta.scrollTop + 10 || y > ta.scrollTop + ta.clientHeight - 60) ta.scrollTop = Math.max(0, y - ta.clientHeight / 3);
+    rfPaint();
+  }
+  // 바꿀 글: 정규식이면 $1 · $& · $<이름> · \n · \t 를 받음
+  function rfExpand(m) {
+    const r = $('#rfRepl').value;
+    if (!rf.opts.regex) return r;
+    return r.replace(/\$(\$|&|\d{1,2}|<([^>]+)>)|\\(n|t|\\)/g, (all, d, name, esc) => {
+      if (esc) return esc === 'n' ? '\n' : esc === 't' ? '\t' : '\\';
+      if (d === '$') return '$';
+      if (d === '&') return m[0];
+      if (name !== undefined) return (m.groups && m.groups[name]) ?? '';
+      return +d < m.length ? (m[+d] ?? '') : all;
+    });
+  }
+  function rfReplaceOne() {
+    if (!rf.hits.length) return;
+    const ta = el.editor, h = rf.hits[rf.now];
+    if (ta.selectionStart !== h.s || ta.selectionEnd !== h.e) { rfShow(rf.now); return; } // 먼저 고르고, 한 번 더 누르면 바꿈
+    const rep = rfExpand(h.m);
+    insertText(rep, h.s, h.e);
+    rfScan(h.s + rep.length);
+    rfShow(rf.now);
+    $('#rfRepl').focus();
+  }
+  function rfReplaceAll() {
+    if (!rf.hits.length) return;
+    const v = el.editor.value, n = rf.hits.length;
+    let out = '', p = 0;
+    for (const h of rf.hits) { out += v.slice(p, h.s) + rfExpand(h.m); p = h.e; }
+    replaceAll(out + v.slice(p), L(`모두 바꾸기 (${n}곳)`, `Replace all (${n})`));
+    toast(L(`${n}곳을 바꿨습니다 (Ctrl+Z 로 취소)`, `Replaced ${n} (Ctrl+Z to undo)`));
+    rfScan(0);
+    $('#rfRepl').focus();
+  }
+  function openReplace() {
+    if (!state.current) return;
+    if (!state.editing) setEditing(true);
+    if (viewMode === 'preview') $('#viewSeg [data-v="split"]').click();
+    const bar = $('#replBar'), ta = el.editor, inp = $('#rfFind');
+    const sel = ta.value.slice(ta.selectionStart, ta.selectionEnd);
+    if (sel && !sel.includes('\n') && sel.length <= 200) inp.value = sel;
+    bar.hidden = false;
+    lineTops = null;
+    rf.origin = ta.selectionStart;
+    bar.querySelectorAll('[data-rf]').forEach((b) => b.setAttribute('aria-pressed', String(!!rf.opts[b.dataset.rf])));
+    inp.focus();
+    inp.select();
+    rfScan();
+    if (rf.hits.length) rfShow(rf.now);
+  }
+  function closeReplace() {
+    $('#replBar').hidden = true;
+    elFind.innerHTML = '';
+    rf.hits = [];
+    lineTops = null;
+    el.editor.focus({ preventScroll: true });
+  }
+  $('#rfFind').addEventListener('input', () => { rfScan(); if (rf.hits.length) rfShow(rf.now); });
+  $('#rfFind').addEventListener('keydown', (e) => {
+    if (e.isComposing || e.keyCode === 229) return;
+    if (e.key === 'Enter') { e.preventDefault(); if (e.ctrlKey && e.altKey) rfReplaceAll(); else rfShow(rf.now + (e.shiftKey ? -1 : 1)); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeReplace(); }
+  });
+  $('#rfRepl').addEventListener('keydown', (e) => {
+    if (e.isComposing || e.keyCode === 229) return;
+    if (e.key === 'Enter') { e.preventDefault(); if (e.ctrlKey && e.altKey) rfReplaceAll(); else rfReplaceOne(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeReplace(); }
+  });
+  $('#rfNext').onclick = () => rfShow(rf.now + 1);
+  $('#rfPrev').onclick = () => rfShow(rf.now - 1);
+  $('#rfClose').onclick = closeReplace;
+  $('#rfOne').onclick = rfReplaceOne;
+  $('#rfAll').onclick = rfReplaceAll;
+  $('#replBar').querySelectorAll('[data-rf]').forEach((b) => (b.onclick = () => {
+    rf.opts[b.dataset.rf] = !rf.opts[b.dataset.rf];
+    b.setAttribute('aria-pressed', String(rf.opts[b.dataset.rf]));
+    store.set('mdv-rf-opts', JSON.stringify(rf.opts));
+    rfScan(el.editor.selectionStart);
+    if (rf.hits.length) rfShow(rf.now);
+    $('#rfFind').focus();
+  }));
+  window.addEventListener('keydown', (e) => {
+    const want = IS_MAC ? e.metaKey && e.altKey && !e.shiftKey && e.code === 'KeyF' : e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey && e.key.toLowerCase() === 'h';
+    if (!want || !state.current || el.workspace.hidden) return;
+    e.preventDefault();
+    e.stopPropagation();
+    openReplace();
+  }, true);
 
   /* =========================================================
      바뀐 내용 추적: 줄 표시, 저장 후 바뀐 내용, 되돌리기 기록
@@ -5952,6 +6283,12 @@ ${clone.innerHTML}
       { ko: '인쇄 · PDF로 저장', en: 'Print · save as PDF', kbd: 'Ctrl+P', when: cur, run: () => window.print() },
       { ko: '문서에서 찾기', en: 'Find in document', kbd: 'Ctrl+F', when: cur, run: openFind },
       { ko: '모든 문서에서 찾기 (폴더 전체)', en: 'Search all documents (whole folder)', kbd: 'Ctrl+Shift+F', run: openGlobalSearch },
+      { ko: '찾아 바꾸기 (원본)', en: 'Find and replace (source)', kbd: IS_MAC ? '⌥⌘F' : 'Ctrl+H', when: cur, run: openReplace },
+      { ko: '줄 위로 옮기기', en: 'Move line up', kbd: 'Alt+↑', when: cur && state.editing, run: () => moveLines(-1) },
+      { ko: '줄 아래로 옮기기', en: 'Move line down', kbd: 'Alt+↓', when: cur && state.editing, run: () => moveLines(1) },
+      { ko: '제목 단계 올리기 (## → #)', en: 'Raise heading level (## → #)', kbd: 'Ctrl+Shift+[', when: cur && state.editing, run: () => headingStep(-1) },
+      { ko: '제목 단계 내리기 (# → ##)', en: 'Lower heading level (# → ##)', kbd: 'Ctrl+Shift+]', when: cur && state.editing, run: () => headingStep(1) },
+      { ko: '번호 목록 다시 매기기', en: 'Renumber the numbered list', when: cur && state.editing, run: renumberList },
       { ko: '바뀐 내용 · 되돌리기 기록', en: 'Changes · undo history', kbd: 'Ctrl+Shift+H', when: cur, run: () => openChanges('hist') },
       { ko: '저장 기록 (닫아도 남는 기록)', en: 'Saved versions (kept after closing)', when: cur, run: () => openChanges('ver') },
       { ko: '집중 모드', en: 'Focus mode', kbd: 'Ctrl+.', when: cur, run: () => setZen(true) },
@@ -6137,6 +6474,7 @@ ${clone.innerHTML}
       const exp = document.querySelector('.code-block.expanded');
       if (exp) { toggleExpand(exp, false); return; }
       if (!$('#findBar').hidden) { closeFind(); return; }
+      if (rfOpen()) { closeReplace(); return; }
       if (!document.querySelectorAll('.menu:not([hidden])').length && document.body.classList.contains('zen')) setZen(false);
       if (!$('#ctxMenu').hidden) { closeCtxMenu(); return; }
       closeMenus(); closeSidebar();

@@ -150,9 +150,32 @@ markcont(**mark**down **cont**roller)는 마크다운 파일을 보기 좋게 �
 | <kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> | 들여쓰기 / 내어쓰기 |
 | <kbd>Enter</kbd> | 목록 · 인용을 다음 줄에 이어 씀 (빈 줄에서 누르면 끝냄) |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> | 서식 없이 글자만 붙여 넣기 |
+| <kbd>Ctrl</kbd>+<kbd>H</kbd> (Mac은 <kbd>⌥</kbd>+<kbd>⌘</kbd>+<kbd>F</kbd>) | 원본에서 찾아 바꾸기 |
+| <kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>Alt</kbd>+<kbd>↓</kbd> | 지금 줄(고른 줄들)을 위 · 아래로 옮기기. 번호 목록이면 번호도 차례대로 |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>[</kbd> / <kbd>]</kbd> | 제목 단계 올리기(`##` → `#`) / 내리기(`#` → `##`). 고른 범위의 제목을 한꺼번에 |
 | <kbd>Ctrl</kbd>+<kbd>S</kbd> | 저장 |
 
 편집 도구 모음에는 제목, 목록, 체크리스트, 알림 상자, 코드 블록, 표, 그림 넣기 단추가 있습니다.
+
+- 번호 목록의 번호가 뒤섞였으면 <kbd>Ctrl</kbd>+<kbd>O</kbd> 에서 `>번호` 를 쳐 **번호 목록 다시 매기기**를 고르세요. 첫 항목의 번호부터 차례로 다시 매깁니다.
+- 제목 단계는 코드 블록 안의 `#` 은 건드리지 않고, 하나라도 `#` 보다 올리거나 `######` 보다 내릴 수 없으면 제목끼리의 높낮이가 흐트러지지 않게 바꾸지 않습니다.
+- 모두 <kbd>Ctrl</kbd>+<kbd>Z</kbd> 한 번으로 되돌릴 수 있습니다.
+
+### 찾아 바꾸기 (<kbd>Ctrl</kbd>+<kbd>H</kbd>)
+
+원본 위에 찾기 · 바꾸기 칸이 열리고, 찾은 곳이 원본에 노랗게 칠해집니다.
+
+| 할 일 | 방법 |
+|:---|:---|
+| 다음 · 이전 찾은 곳 | 찾을 글 칸에서 <kbd>Enter</kbd> · <kbd>Shift</kbd>+<kbd>Enter</kbd>, 또는 ⌄ ⌃ 단추 |
+| 하나씩 바꾸기 | 바꿀 글 칸에서 <kbd>Enter</kbd> (또는 **바꾸기**) — 지금 찾은 곳을 바꾸고 다음으로 |
+| 모두 바꾸기 | **모두 바꾸기** 단추 (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Enter</kbd>) |
+| 대소문자 · 단어 단위 · 정규식 | `Aa` · <code><u>ab</u></code> · `.*` 단추 (단어 단위는 한글도 앞뒤 글자를 보고 가림) |
+| 닫기 | <kbd>Esc</kbd> |
+
+- 정규식으로 찾을 때 바꿀 글에 `$1` `$2`(묶음), `$&`(찾은 글 전체), `\n`(줄바꿈)을 쓸 수 있습니다. 예: `(\d+)년` → `$1 년`
+- macOS에서 <kbd>⌘</kbd>+<kbd>H</kbd> 는 「앱 가리기」라서 VS Code처럼 <kbd>⌥</kbd>+<kbd>⌘</kbd>+<kbd>F</kbd> 를 씁니다.
+- 미리보기에서 찾는 것은 <kbd>Ctrl</kbd>+<kbd>F</kbd>, 열어 둔 폴더의 모든 문서에서 찾는 것은 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> 입니다.
 
 ### 붙여 넣기
 

@@ -149,6 +149,13 @@
     '다음 결과': 'Next match',
     '닫기 (Esc)': 'Close (Esc)',
     '찾기 닫기': 'Close find',
+    '찾을 글': 'Find',
+    '바꿀 글': 'Replace with',
+    '찾아 바꾸기 닫기': 'Close find and replace',
+    '바꾸기 (Enter)': 'Replace (Enter)',
+    '바꾸기': 'Replace',
+    '모두 바꾸기 (Ctrl+Alt+Enter)': 'Replace all (Ctrl+Alt+Enter)',
+    '모두 바꾸기': 'Replace all',
     '맨 위로': 'Back to top',
     '여기에 놓으면 열립니다': 'Drop here to open',
     // 창

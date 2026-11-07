@@ -150,9 +150,32 @@ Press **Edit** at the top (<kbd>Ctrl</kbd>+<kbd>E</kbd>) to see the source on th
 | <kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> | Indent / Outdent |
 | <kbd>Enter</kbd> | Continues a list · quote on the next line (press on an empty line to end it) |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> | Paste plain text without formatting |
+| <kbd>Ctrl</kbd>+<kbd>H</kbd> (<kbd>⌥</kbd>+<kbd>⌘</kbd>+<kbd>F</kbd> on Mac) | Find and replace in the source |
+| <kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>Alt</kbd>+<kbd>↓</kbd> | Move the current line (or selected lines) up / down. In a numbered list the numbers stay in order |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>[</kbd> / <kbd>]</kbd> | Raise (`##` → `#`) / lower (`#` → `##`) the heading level. Works on every heading in the selection |
 | <kbd>Ctrl</kbd>+<kbd>S</kbd> | Save |
 
 The editing toolbar has buttons for headings, lists, task lists, callouts, code blocks, tables, and inserting images.
+
+- If the numbers in a numbered list got mixed up, type `>renumber` in <kbd>Ctrl</kbd>+<kbd>O</kbd> and choose **Renumber the numbered list**. It renumbers from the first item's number.
+- Changing heading levels leaves `#` inside code blocks alone, and if any heading can't go above `#` or below `######`, nothing changes so the headings keep their relative levels.
+- Each of these can be undone with a single <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+
+### Find and replace (<kbd>Ctrl</kbd>+<kbd>H</kbd>)
+
+Find and replace boxes open above the source, and matches are painted yellow in the source.
+
+| Task | How |
+|:---|:---|
+| Next · previous match | <kbd>Enter</kbd> · <kbd>Shift</kbd>+<kbd>Enter</kbd> in the Find box, or the ⌄ ⌃ buttons |
+| Replace one by one | <kbd>Enter</kbd> in the Replace box (or **Replace**) — replaces the current match and moves to the next |
+| Replace all | The **Replace all** button (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Enter</kbd>) |
+| Match case · whole word · regex | The `Aa` · <code><u>ab</u></code> · `.*` buttons (whole word also works for Korean by looking at the neighboring letters) |
+| Close | <kbd>Esc</kbd> |
+
+- With a regular expression, the replacement can use `$1` `$2` (groups), `$&` (the whole match) and `\n` (line break). Example: `(\d+)px` → `$1 px`
+- On macOS <kbd>⌘</kbd>+<kbd>H</kbd> is "Hide app", so like VS Code it uses <kbd>⌥</kbd>+<kbd>⌘</kbd>+<kbd>F</kbd>.
+- To find in the preview use <kbd>Ctrl</kbd>+<kbd>F</kbd>; to search every document in the open folders use <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>.
 
 ### Pasting
 
