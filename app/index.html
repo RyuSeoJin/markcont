@@ -822,6 +822,32 @@ body.resizing { cursor: col-resize; user-select: none; }
 /* 그림을 누르면 크게 보기 (나란히 편집 중에는 원본으로 이동하므로 빼고) */
 .workspace:is(:not(.editing), .mode-preview) .markdown-body img:not(.broken, a img, .ex-src img) { cursor: zoom-in; }
 /* 링크 · 각주 미리 보기 */
+/* 발표 모드 */
+.present { position: fixed; inset: 0; z-index: 120; display: flex; flex-direction: column; background: var(--bg); }
+.present[hidden] { display: none; }
+.pr-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 3vh 5vw 1vh; overflow: hidden; }
+.pr-slide { width: min(1100px, 100%); font-size: clamp(18px, 2.15vw, 30px); transform-origin: top center; }
+.pr-slide > :first-child { margin-top: 0; }
+.pr-slide h1 { font-size: 2em; border: 0; } .pr-slide h2 { font-size: 1.55em; border: 0; }
+.pr-notes { flex: none; max-height: 24vh; overflow: auto; margin: 0 5vw; padding: 10px 14px; border-radius: 10px; background: var(--surface-2); color: var(--text); font-size: 15px; line-height: 1.6; white-space: pre-wrap; }
+.pr-notes[hidden] { display: none; }
+.pr-bar { flex: none; display: flex; align-items: center; gap: 6px; padding: 8px 14px 12px; color: var(--muted); font-size: 13px; }
+.pr-btn { height: 32px; min-width: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); cursor: pointer; font-size: 13px; }
+.pr-btn:hover { border-color: var(--accent); }
+.pr-count { min-width: 64px; text-align: center; font-variant-numeric: tabular-nums; }
+.pr-grid { flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; padding: 20px 5vw; }
+.pr-grid[hidden] { display: none; }
+.pr-thumb { position: relative; height: 170px; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); cursor: pointer; }
+.pr-thumb.on { outline: 2px solid var(--accent); }
+.pr-thumb .markdown-body { position: absolute; top: 0; left: 0; width: 1100px; padding: 24px 32px; font-size: 26px; transform: scale(.235); transform-origin: top left; pointer-events: none; }
+.pr-thumb .pr-no { position: absolute; right: 8px; bottom: 6px; font-size: 12px; color: var(--muted); background: var(--surface); padding: 0 6px; border-radius: 6px; }
+.pr-print { display: none; }
+@media print {
+  body.printing-slides > *:not(.pr-print) { display: none !important; }
+  body.printing-slides .pr-print { display: block !important; }
+  .pr-print .pr-page { break-after: page; page-break-after: always; padding: 6mm 4mm; font-size: 15pt; }
+  .pr-print .pr-page:last-child { break-after: auto; page-break-after: auto; }
+}
 .critic-pop {
   position: fixed; z-index: 96; display: flex; flex-direction: column; gap: 8px; max-width: min(360px, calc(100vw - 24px)); padding: 10px 12px;
   background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.16); font-size: 13px;
@@ -1341,6 +1367,10 @@ body.zen .zen-exit:hover { opacity: 1; }
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
           집중 모드<kbd>Ctrl+.</kbd>
         </button>
+        <button class="menu-item" id="mPresent" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4M10 7.5v5l4-2.5z"/></svg>
+          발표하기 (단락마다 한 장)
+        </button>
         <button class="menu-item" id="mFoldAll" disabled>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5-5 5 5"/><path d="M7 20h10M7 4h10"/></svg>
           제목 모두 접기 / 펴기
@@ -1604,6 +1634,23 @@ body.zen .zen-exit:hover { opacity: 1; }
 
 <!-- Claude와 연결 (MCP) -->
 <div class="dg-viewer" id="dgViewer" hidden></div>
+<!-- 발표 모드 -->
+<div class="present" id="present" hidden>
+  <div class="pr-stage" id="prStage"><div class="pr-slide markdown-body" id="prSlide"></div></div>
+  <div class="pr-grid" id="prGrid" hidden></div>
+  <div class="pr-notes" id="prNotes" hidden></div>
+  <div class="pr-bar">
+    <button type="button" class="pr-btn" id="prPrev" title="이전 (←)" aria-label="이전 장">‹</button>
+    <span class="pr-count" id="prCount"></span>
+    <button type="button" class="pr-btn" id="prNext" title="다음 (→ · Space)" aria-label="다음 장">›</button>
+    <span style="flex:1"></span>
+    <button type="button" class="pr-btn" id="prGridBtn" title="모아 보기 (G)">모아 보기</button>
+    <button type="button" class="pr-btn" id="prNotesBtn" title="발표자 노트 (N)">노트</button>
+    <button type="button" class="pr-btn" id="prPrint" title="슬라이드 인쇄 · PDF">인쇄</button>
+    <button type="button" class="pr-btn" id="prClose" title="끝내기 (Esc)" aria-label="발표 끝내기">✕</button>
+  </div>
+</div>
+<div class="pr-print" id="prPrintBox" hidden></div>
 <div class="modal" id="linkFixModal" hidden>
   <div class="modal-card" role="dialog" aria-modal="true" aria-label="링크 고치기">
     <div class="modal-head"><div class="modal-title" id="lfTitle">링크 고치기</div>
@@ -5531,7 +5578,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     el.editor.value = entry.text;
     el.welcome.hidden = true;
     el.workspace.hidden = false;
-    [el.btnEdit, $('#mZen'), $('#mFoldAll'), $('#mExport'), $('#mPortable'), $('#mPrint'), $('#mFind')].forEach((b) => (b.disabled = false));
+    [el.btnEdit, $('#mZen'), $('#mFoldAll'), $('#mExport'), $('#mPortable'), $('#mPrint'), $('#mFind'), $('#mPresent')].forEach((b) => (b.disabled = false));
     document.body.classList.add('has-doc');
     if (!fromHistory) {
       state.hist = state.hist.slice(0, state.histPos + 1);
@@ -7508,6 +7555,7 @@ ${clone.innerHTML}
       { ko: '바뀐 내용 · 되돌리기 기록', en: 'Changes · undo history', kbd: 'Ctrl+Shift+H', when: cur, run: () => openChanges('hist') },
       { ko: '저장 기록 (닫아도 남는 기록)', en: 'Saved versions (kept after closing)', when: cur, run: () => openChanges('ver') },
       { ko: '집중 모드', en: 'Focus mode', kbd: 'Ctrl+.', when: cur, run: () => setZen(true) },
+      { ko: '발표하기 (단락마다 한 장)', en: 'Present (one slide per section)', when: cur, run: startPresent },
       { ko: '제목 모두 접기 · 펴기', en: 'Fold · unfold all headings', when: cur, run: foldAllToggle },
       { ko: settings.headNum ? '제목 번호 끄기' : '제목에 번호 붙여 보기', en: settings.headNum ? 'Hide heading numbers' : 'Number the headings', run: () => { settings.headNum = !settings.headNum; applySettings(true); } },
       { ko: '밝게 · 어둡게', en: 'Light · dark', run: () => el.btnTheme.click() },
@@ -7954,6 +8002,145 @@ ${clone.innerHTML}
       addFiles(params.files.map((h) => ({ name: h.name, path: h.name, handle: h, text: null })), false);
     });
   }
+
+  /* =========================================================
+     발표 모드 — 구분선(---)으로 나뉜 단락이 한 장씩 (구분선이 없으면 # · ## 제목마다)
+     - 원본을 --- 줄로 자르지 않고 그려진 문서의 맨 위 구분선(hr)으로 나눔: 코드 안 · 문서 정보 · 제목 밑줄(---)은 저절로 빠짐
+     - 발표자 노트: 그 장 안에 쓴 <!-- 메모 --> 주석
+     - ← → · Page Up/Down(발표용 리모컨) · Space, G 모아 보기, N 노트, Esc 끝
+     ========================================================= */
+  const pr = { slides: [], notes: [], i: 0 };
+  function slideClone(node) {
+    const c = node.cloneNode(true);
+    c.querySelectorAll('.h-tools, .code-copy, .dg-expand, .code-head button').forEach((x) => x.remove());
+    [c, ...c.querySelectorAll('[id]')].forEach((x) => { if (x.id && !x.closest('svg')) x.removeAttribute('id'); });
+    return c;
+  }
+  function buildSlides() {
+    const kids = [...el.doc.children].filter((n) => !n.classList.contains('front-matter'));
+    const byHr = kids.some((n) => n.tagName === 'HR');
+    const groups = [[]];
+    for (const n of kids) {
+      if (byHr && n.tagName === 'HR') { groups.push([]); continue; }
+      if (!byHr && /^H[12]$/.test(n.tagName) && groups[groups.length - 1].length) groups.push([]);
+      groups[groups.length - 1].push(n);
+    }
+    pr.slides = groups.filter((g) => g.some((n) => n.textContent.trim() || n.querySelector('img, svg, video, table')))
+      .map((nodes) => ({ nodes, line: (nodes.find((n) => n.dataset && n.dataset.line != null) || { dataset: { line: 0 } }).dataset.line * 1 }));
+    // 노트: 맨 위 단계의 <!-- … --> 를 그 줄이 든 장에
+    pr.notes = pr.slides.map(() => []);
+    for (const t of md.parse(splitFrontMatter(source()).body, {})) {
+      if (t.type !== 'html_block' || t.level !== 0 || !/^\s*<!--/.test(t.content)) continue;
+      const at = t.map ? t.map[0] : 0;
+      let k = 0;
+      pr.slides.forEach((s, n) => { if (s.line <= at) k = n; });
+      pr.notes[k].push(t.content.replace(/^\s*<!--/, '').replace(/-->\s*$/, '').trim());
+    }
+  }
+  function prFit() {
+    const stage = $('#prStage'), box = $('#prSlide');
+    box.style.transform = '';
+    stage.style.alignItems = 'center';
+    const avail = stage.clientHeight - 16, h = box.scrollHeight;
+    if (h > avail) { box.style.transform = `scale(${Math.max(0.3, avail / h)})`; stage.style.alignItems = 'flex-start'; }
+  }
+  function prShow(i) {
+    if (!pr.slides.length) return;
+    pr.i = Math.max(0, Math.min(pr.slides.length - 1, i));
+    const box = $('#prSlide');
+    box.innerHTML = '';
+    for (const n of pr.slides[pr.i].nodes) box.append(slideClone(n));
+    $('#prCount').textContent = `${pr.i + 1} / ${pr.slides.length}`;
+    const notes = pr.notes[pr.i] || [];
+    $('#prNotes').textContent = notes.length ? notes.join('\n\n') : L('이 장에는 노트가 없습니다. 장 안에 <!-- 메모 --> 로 씁니다.', 'No notes on this slide. Write them inside the slide as <!-- note -->.');
+    requestAnimationFrame(prFit);
+  }
+  function prGrid(on) {
+    const grid = $('#prGrid');
+    grid.hidden = !on;
+    $('#prStage').hidden = on;
+    if (!on) { requestAnimationFrame(prFit); return; }
+    grid.innerHTML = '';
+    pr.slides.forEach((s, n) => {
+      const th = document.createElement('div');
+      th.className = 'pr-thumb' + (n === pr.i ? ' on' : '');
+      const body = document.createElement('div');
+      body.className = 'markdown-body';
+      s.nodes.forEach((x) => body.append(slideClone(x)));
+      const no = document.createElement('span');
+      no.className = 'pr-no';
+      no.textContent = n + 1;
+      th.append(body, no);
+      th.onclick = () => { prGrid(false); prShow(n); };
+      grid.append(th);
+    });
+    grid.querySelector('.pr-thumb.on')?.scrollIntoView({ block: 'nearest' });
+  }
+  function startPresent() {
+    closeMenus();
+    if (!state.current) return;
+    buildSlides();
+    if (!pr.slides.length) { toast(L('발표할 내용이 없습니다', 'Nothing to present')); return; }
+    // 지금 보던 곳의 장부터
+    const top = el.preview.getBoundingClientRect().top;
+    let start = 0;
+    pr.slides.forEach((s, n) => { const r = s.nodes[0].getBoundingClientRect(); if (r.top - top < el.preview.clientHeight / 3) start = n; });
+    $('#present').hidden = false;
+    $('#prGrid').hidden = true;
+    $('#prStage').hidden = false;
+    $('#prNotes').hidden = true;
+    try { const p = document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); if (p && p.catch) p.catch(() => {}); } catch {}
+    prShow(start);
+    if (pr.slides.length === 1) toast(L('구분선(---)이나 ## 제목이 없어 한 장으로 보입니다', 'No dividers (---) or ## headings, so it shows as one slide'), 4000);
+  }
+  function prClose() {
+    $('#present').hidden = true;
+    $('#prSlide').innerHTML = '';
+    $('#prGrid').innerHTML = '';
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  }
+  // 슬라이드 인쇄 · PDF: 한 장씩 한 쪽에
+  function prPrint() {
+    const box = $('#prPrintBox');
+    box.innerHTML = '';
+    pr.slides.forEach((s) => {
+      const page = document.createElement('div');
+      page.className = 'pr-page markdown-body';
+      s.nodes.forEach((x) => page.append(slideClone(x)));
+      box.append(page);
+    });
+    box.hidden = false;
+    document.body.classList.add('printing-slides');
+    const done = () => { document.body.classList.remove('printing-slides'); box.hidden = true; box.innerHTML = ''; window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done);
+    setTimeout(() => window.print(), 50);
+  }
+  $('#mPresent').onclick = startPresent;
+  $('#prPrev').onclick = () => prShow(pr.i - 1);
+  $('#prNext').onclick = () => prShow(pr.i + 1);
+  $('#prGridBtn').onclick = () => prGrid($('#prGrid').hidden);
+  $('#prNotesBtn').onclick = () => { $('#prNotes').hidden = !$('#prNotes').hidden; requestAnimationFrame(prFit); };
+  $('#prPrint').onclick = prPrint;
+  $('#prClose').onclick = prClose;
+  $('#prStage').addEventListener('click', (e) => {
+    const tab = e.target.closest('.mc-tab');
+    if (tab) { showTab(tab.closest('.mc-tabs'), tab.dataset.tab); return; }
+    if (!e.target.closest('a, button, input, summary, video, audio')) prShow(pr.i + 1);
+  });
+  window.addEventListener('resize', () => { if (!$('#present').hidden) prFit(); });
+  window.addEventListener('keydown', (e) => {
+    if ($('#present').hidden) return;
+    const k = e.key;
+    const go = (fn) => { e.preventDefault(); e.stopImmediatePropagation(); fn(); };
+    if (k === 'Escape') go(() => (!$('#prGrid').hidden ? prGrid(false) : prClose()));
+    else if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].includes(k)) go(() => prShow(pr.i + 1));
+    else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(k)) go(() => prShow(pr.i - 1));
+    else if (k === 'Home') go(() => prShow(0));
+    else if (k === 'End') go(() => prShow(pr.slides.length - 1));
+    else if (/^[gGoO]$/.test(k) && !e.ctrlKey && !e.metaKey) go(() => prGrid($('#prGrid').hidden));
+    else if (/^[nN]$/.test(k) && !e.ctrlKey && !e.metaKey) go(() => { $('#prNotes').hidden = !$('#prNotes').hidden; requestAnimationFrame(prFit); });
+    else if (!e.ctrlKey && !e.metaKey && !e.altKey) e.stopImmediatePropagation(); // 발표 중에는 다른 단축키가 끼어들지 않게
+  }, true);
 
 
   /* =========================================================

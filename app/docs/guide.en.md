@@ -140,6 +140,23 @@ Shows the documents connected to the current one. Click a row to go to that docu
 | Enlarge code | ⤢ in the code block header | Shows the code full screen |
 | Enlarge a diagram | ⤢ at the top right of a diagram | Wheel or pinch to zoom, drag to pan, "Fit to screen" |
 | Enlarge an image | Click the image | The same zoom view as diagrams. While editing side by side, a click jumps to that line of the source instead |
+| Present | **⋯ → Present** | Shows the sections split by dividers (`---`) one slide at a time, full screen (see below) |
+
+### Presenting
+
+A document that follows the writing rules, with a divider `---` between `##` sections, turns **each section into a slide**. Without dividers, each `#` · `##` heading starts a slide.
+
+| Task | How |
+|:---|:---|
+| Next · previous slide | <kbd>→</kbd> · <kbd>←</kbd>, <kbd>Space</kbd>, <kbd>Page Down</kbd> · <kbd>Page Up</kbd> (presentation remotes), click the screen |
+| First · last slide | <kbd>Home</kbd> · <kbd>End</kbd> |
+| Overview | <kbd>G</kbd> — click a slide to go there |
+| Speaker notes | <kbd>N</kbd> — comments written inside the slide as `<!-- note -->` |
+| Print slides · PDF | The **Print** button at the bottom — one slide per page |
+| End | <kbd>Esc</kbd> |
+
+- It starts from the slide you were reading. Slides with a lot of content are scaled down to fit.
+- `---` inside code blocks, the document info at the top, and `---` right under a line of text (a heading underline) don't split slides.
 
 > [!NOTE]
 > **When markcont goes online** — the Serif font (Google Fonts), YouTube thumbnails, web images in a document, and the styles (CDN) of files saved as HTML are downloaded from external servers, and your IP address is sent to those servers. Everything else works without the internet.
