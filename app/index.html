@@ -6036,7 +6036,7 @@ body.zen .zen-exit:hover { opacity: 1; }
         L('## 📊 데이터', '## 📊 Data'), '', F + L('데이터', 'data'),
         L('# 데이터 이름 (data_id)', '# Data name (data_id)'), L('> 설명', '> Description'),
         L('필드 | 형식 | 필수 | 설명 | 예시', 'Field | Type | Required | Description | Example'),
-        L('이름 | 글자(40) | 필수 | 화면에 보이는 이름 | 예시', 'Name | Text(40) | Required | Name shown on screen | Sample'), F, '', '---', '',
+        L('상품 제목 | 글자(40) | 필수 | 목록 · 상세에 보임 | 기본 상품', 'Item title | Text(40) | Required | Shown in the list · details | Basic plan'), F, '', '---', '', // 예시 칸이 머리줄 이름(이름 · 필수 · 예시)과 겹치면 머리줄로 읽혀서
         L('## 📍 노출 위치', '## 📍 Where it shows'), '', F + L('노출', 'ui'),
         L('- 화면 이름', '- Screen name'), L('  - 버튼 [열기] (들어오는 곳: 메뉴)', '  - [Open] button (entry: menu)'), L('    - 보이는 것', '    - What shows'), F, ''].join('\n') },
     ];
@@ -6075,6 +6075,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       el.editor.value = fillTemplate(tpl.text, name.replace(MD_EXT, ''));
       markDirty();
       setEditing(true);
+      render(); // 미리보기도 바로 (원본만 바꾸면 입력 전까지 비어 있었음)
     });
   }
 
@@ -7532,7 +7533,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       it('흐름도', 'Flowchart', F + 'flow', [F + 'flow', ko ? 'A-01 | 유저 | 시작·종료 | ¦시작 | → A-02' : 'A-01 | user | start | ¦Start | → A-02', ko ? 'A-02 | 시스템 | 조건 | 조건? | 예 → A-03 / 아니오 → A-01' : 'A-02 | system | decision | Condition? | yes → A-03 / no → A-01', ko ? 'A-03 | 유저 | 시작·종료 | 끝 | —' : 'A-03 | user | end | End | —', F].join('\n'), 'flow diagram'),
       it('주고받는 순서', 'Sequence', F + 'sequence', [F + 'sequence', ko ? '나 -> 앱: ¦요청' : 'Me -> App: ¦Request', ko ? '앱 --> 나: 응답' : 'App --> Me: Response', F].join('\n'), 'sequence diagram'),
       it('노출 위치', 'Exposure tree', F + L('노출', 'ui'), [F + L('노출', 'ui'), L('- ¦화면 이름', '- ¦Screen name'), L('  - 버튼 [열기] (들어오는 곳: 메뉴)', '  - [Open] button (entry: menu)'), L('    - 보이는 것', '    - What shows'), F].join('\n'), 'ui exposure'),
-      it('데이터 정의', 'Data definition', F + L('데이터', 'data'), [F + L('데이터', 'data'), L('# ¦데이터 이름 (data_id)', '# ¦Data name (data_id)'), L('필드 | 형식 | 필수 | 설명 | 예시', 'Field | Type | Required | Description | Example'), L('이름 | 글자(40) | 필수 | 화면에 보이는 이름 | 예시', 'Name | Text(40) | Required | Name shown on screen | Sample'), F].join('\n'), 'data schema'),
+      it('데이터 정의', 'Data definition', F + L('데이터', 'data'), [F + L('데이터', 'data'), L('# ¦데이터 이름 (data_id)', '# ¦Data name (data_id)'), L('필드 | 형식 | 필수 | 설명 | 예시', 'Field | Type | Required | Description | Example'), L('상품 제목 | 글자(40) | 필수 | 목록 · 상세에 보임 | 기본 상품', 'Item title | Text(40) | Required | Shown in the list · details | Basic plan'), F].join('\n'), 'data schema'),
       it('수식 블록', 'Math block', '$$', '$$\n¦\n$$', 'math'),
       it('탭', 'Tabs', '::: tabs', ['::: tabs', L('== 첫째', '== First'), '¦', L('== 둘째', '== Second'), L('내용', 'Content'), ':::'].join('\n'), 'tabs'),
       it('단계', 'Steps', '::: steps', ['::: steps', L('1. ¦첫 단계', '1. ¦First step'), L('2. 다음 단계', '2. Next step'), ':::'].join('\n'), 'steps'),
