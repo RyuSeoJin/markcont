@@ -575,6 +575,29 @@ body.side-collapsed .sidebar { display: none; }
 .gs-tx { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gs-tx mark { background: var(--hl-mark, #fff1a8); color: inherit; border-radius: 2px; }
 .gs-more { font-size: 11.5px; color: var(--muted); padding: 2px 6px 6px 56px; }
+/* 연결 탭 */
+.side-tabs button { min-width: 0; padding: 0 2px; }
+.lk-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); padding: 10px 6px 4px; }
+.lk-title:first-child { padding-top: 2px; }
+.lk-title .gs-n { margin-left: auto; font-weight: 400; }
+.lk-empty { font-size: 12.5px; color: var(--muted); padding: 2px 8px 4px; line-height: 1.5; }
+.lk-row {
+  display: flex; align-items: center; gap: 7px; width: 100%; min-height: 30px; padding: 4px 6px; border: 0; border-radius: 7px;
+  background: none; cursor: pointer; text-align: left; font-size: 13px; color: var(--text);
+}
+.lk-row:hover { background: var(--surface-2); }
+.lk-ic { flex: none; width: 16px; text-align: center; font-size: 12px; font-weight: 700; }
+.lk-row.ok .lk-ic { color: var(--c-green); }
+.lk-row.warn .lk-ic { color: var(--c-amber); }
+.lk-row.bad .lk-ic { color: var(--c-red); }
+.lk-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lk-sub { flex: none; max-width: 48%; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lk-all { margin: 12px 6px 0; width: calc(100% - 12px); justify-content: center; font-size: 12.5px; }
+/* 링크 고치기 창 */
+.lf-file { border: 1px solid var(--border); border-radius: 10px; margin: 10px 0; overflow: hidden; }
+.lf-file > summary { cursor: pointer; padding: 9px 12px; font-size: 13px; font-weight: 600; background: var(--surface-2); }
+.lf-file > summary small { font-weight: 400; color: var(--muted); margin-left: 6px; }
+.lf-file .hunk { margin: 8px; }
 .tree-group { font-size: 11.5px; color: var(--muted); font-weight: 700; padding: 10px 8px 4px; }
 .tree-row {
   display: flex; align-items: center; gap: 6px; width: 100%; min-height: 31px; padding: 4px 6px 4px var(--indent, 6px);
@@ -1313,6 +1336,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       <button role="tab" data-tab="files">파일 <span class="tab-count" id="fileCount"></span></button>
       <button role="tab" data-tab="toc">목차</button>
       <button role="tab" data-tab="search" title="모든 문서에서 찾기 (Ctrl+Shift+F)">찾기</button>
+      <button role="tab" data-tab="links" title="이 문서와 이어진 문서 · 깨진 링크">연결</button>
     </div>
     <section class="side-panel" id="filesSection">
       <div class="side-head" id="sideHead" hidden>
@@ -1353,6 +1377,10 @@ body.zen .zen-exit:hover { opacity: 1; }
       </label>
       <div class="gs-status" id="gsStatus" role="status"></div>
       <div class="gs-results" id="gsResults"></div>
+    </section>
+    <section class="side-panel" id="linksPanel" hidden>
+      <div class="gs-status" id="lkStatus" role="status"></div>
+      <div id="lkBody"></div>
     </section>
     <div class="side-resizer" id="sideResizer" title="끌어서 폭 바꾸기"></div>
   </aside>
@@ -1502,6 +1530,15 @@ body.zen .zen-exit:hover { opacity: 1; }
 
 <!-- Claude와 연결 (MCP) -->
 <div class="dg-viewer" id="dgViewer" hidden></div>
+<div class="modal" id="linkFixModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-label="링크 고치기">
+    <div class="modal-head"><div class="modal-title" id="lfTitle">링크 고치기</div>
+      <button class="btn icon ghost" id="lfClose" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body" id="lfBody"></div>
+    <div class="modal-foot" id="lfFoot"></div>
+  </div>
+</div>
 <div class="modal" id="compatModal" hidden>
   <div class="modal-card" role="dialog" aria-modal="true" aria-label="다른 뷰어 호환">
     <div class="modal-head"><div class="modal-title">다른 뷰어에서 다르게 보이는 곳</div>
@@ -1983,12 +2020,13 @@ body.zen .zen-exit:hover { opacity: 1; }
   function findEntry(base, ref) {
     let decoded = ref;
     try { decoded = decodeURIComponent(ref); } catch {}
+    decoded = decoded.normalize('NFC'); // 맥에서 만든 이름(자모가 쪼개진 꼴)도 같은 이름으로
     const withExt = MD_EXT.test(decoded) ? decoded : decoded + '.md';
-    const direct = resolvePath(base, withExt);
-    let hit = state.files.find((f) => f.path === direct);
+    const direct = resolvePath(base.normalize('NFC'), withExt);
+    let hit = state.files.find((f) => f.path.normalize('NFC') === direct);
     if (hit) return hit;
     const name = baseName(withExt).toLowerCase();
-    return state.files.find((f) => f.name.toLowerCase() === name) || null;
+    return state.files.find((f) => f.name.normalize('NFC').toLowerCase() === name) || null;
   }
 
   /* =========================================================
@@ -3273,6 +3311,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     return `${d.getFullYear() !== now.getFullYear() ? d.getFullYear() + '년 ' : ''}${d.getMonth() + 1}월 ${d.getDate()}일 ${hm}`;
   }
   function updateMeta(src) {
+    if (side.tab === 'links') lkSchedule();
     const chars = src.replace(/data:[\w/+.-]+;base64,[A-Za-z0-9+/=]+/g, '').replace(/\s/g, '').length;
     const minutes = Math.max(1, Math.round(chars / 500));
     const cur = state.current, loc = describeLocation(cur);
@@ -3472,7 +3511,9 @@ body.zen .zen-exit:hover { opacity: 1; }
     el.filesSection.hidden = tab !== 'files';
     $('#tocPanel').hidden = tab !== 'toc';
     $('#searchPanel').hidden = tab !== 'search';
+    $('#linksPanel').hidden = tab !== 'links';
     if (tab === 'search') gsShown();
+    if (tab === 'links') lkSchedule(0);
   }
   document.querySelectorAll('.side-tabs button').forEach((b) => (b.onclick = () => { setSideTab(b.dataset.tab); if (b.dataset.tab === 'search') $('#gsInput').focus(); }));
 
@@ -3731,6 +3772,402 @@ body.zen .zen-exit:hover { opacity: 1; }
     setSideTab('search');
     inp.focus();
     inp.select();
+  }
+
+  /* =========================================================
+     링크 색인 — 사이드바 「연결」 탭 · 문서 점검 · 이름을 바꿀 때 링크 고치기
+     - 찾기와 같은 파일 읽기(gsRead: 바뀌지 않은 파일은 다시 읽지 않음). 코드 안의 링크는 markdown-it 이 빼 줌
+     - 이름은 NFC 로 맞춰 비교 (맥에서 만든 이름)
+     - markcont 는 경로가 틀려도 같은 이름의 파일을 찾아 이어 주므로(findEntry), 그런 링크는 「markcont에서만 열림」
+     ========================================================= */
+  const nfc = (s) => String(s == null ? '' : s).normalize('NFC');
+  const safeDecode = (s) => { try { return decodeURIComponent(s); } catch { return s; } };
+  // 찾기용 표: 경로 · 이름 → 문서, 첨부 파일 경로 · 이름
+  function fileMaps() {
+    const byPath = new Map(), byName = new Map(), assetPath = new Map(), assetName = new Map();
+    for (const f of state.files) {
+      if (f.builtin) continue;
+      byPath.set(nfc(f.path), f);
+      const n = nfc(f.name).toLowerCase();
+      if (!byName.has(n)) byName.set(n, f);
+    }
+    for (const k of state.assets.keys()) {
+      assetPath.set(nfc(k), k);
+      const n = nfc(baseName(k)).toLowerCase();
+      if (!assetName.has(n)) assetName.set(n, k);
+    }
+    return { byPath, byName, assetPath, assetName };
+  }
+  // 문서 링크: exact(경로 그대로) · loose(이름만 같음 → GitHub 에서는 깨짐) · builtin(앱 안내 문서) · none
+  function resolveDoc(base, ref, maps, byName) {
+    const dec = nfc(safeDecode(ref)), withExt = MD_EXT.test(dec) ? dec : dec + '.md';
+    const exact = maps.byPath.get(resolvePath(nfc(base), withExt));
+    if (exact) return { entry: exact, how: 'exact' };
+    const loose = maps.byName.get(baseName(withExt).toLowerCase());
+    if (loose) return { entry: loose, how: byName ? 'exact' : 'loose' }; // 위키링크는 원래 이름으로 찾음
+    if (builtinKeyFor(ref)) return { entry: null, how: 'builtin' };
+    return { entry: null, how: 'none' };
+  }
+  function resolveFile(base, ref, maps) {
+    const dec = nfc(safeDecode(ref));
+    const k = maps.assetPath.get(resolvePath(nfc(base), dec));
+    if (k) return { key: k, how: 'exact' };
+    const l = maps.assetName.get(baseName(dec).toLowerCase());
+    return l ? { key: l, how: 'loose' } : { key: null, how: 'none' };
+  }
+  // 제목 줄의 글자 (미리보기의 제목 글자와 같게: 서식은 빼고 글만)
+  function inlineText(tok) {
+    if (!tok || !tok.children) return '';
+    return tok.children.map((c) => (c.type === 'text' || c.type === 'code_inline' ? c.content : c.type === 'softbreak' || c.type === 'hardbreak' ? ' '
+      : c.type === 'wikilink' ? c.meta.alias || (c.meta.file ? c.meta.file + (c.meta.heading ? ' › ' + c.meta.heading : '') : c.meta.heading) : '')).join('');
+  }
+  // 문서 하나의 링크 · 제목 (줄 번호는 0부터, 맨 위 문서 정보는 빈 줄로 바꿔 세므로 원본과 같음)
+  function scanDoc(text) {
+    const tokens = md ? md.parse(splitFrontMatter(text).body, {}) : [];
+    const links = [], heads = [], used = new Map();
+    let at = 0;
+    for (let i = 0; i < tokens.length; i++) {
+      const t = tokens[i];
+      if (t.map) at = t.map[0];
+      if (t.type === 'heading_open') {
+        const title = inlineText(tokens[i + 1]).trim();
+        let slug = slugify(title);
+        const n = used.get(slug) || 0;
+        used.set(slug, n + 1);
+        if (n) slug += '-' + n;
+        heads.push({ level: +t.tag.slice(1), title, slug, line: at });
+        continue;
+      }
+      if (t.type !== 'inline' || !t.children) continue;
+      let line = t.map ? t.map[0] : at;
+      for (const c of t.children) {
+        if (c.type === 'softbreak' || c.type === 'hardbreak') line++;
+        else if (c.type === 'wikilink') links.push({ kind: c.meta.embed ? 'embed' : 'wiki', line, file: c.meta.file, heading: c.meta.heading, raw: c.meta.raw });
+        else if (c.type === 'link_open' && c.markup !== 'linkify' && c.markup !== 'autolink') links.push({ kind: 'md', line, href: c.attrGet('href') || '' });
+        else if (c.type === 'image') links.push({ kind: 'img', line, href: c.attrGet('src') || '' });
+      }
+    }
+    return { links, heads, text };
+  }
+  // 링크가 가리키는 곳: { target(문서) | asset(첨부 파일), hash, how }
+  function linkTarget(from, l, maps) {
+    if (l.kind === 'wiki' || l.kind === 'embed') {
+      if (!l.file) return { target: from, hash: l.heading, how: 'exact', self: true };
+      if (ASSET_EXT.test(l.file)) { const r = resolveFile(from.path, l.file, maps); return { asset: r.key, how: r.how === 'loose' ? 'exact' : r.how, file: true }; }
+      const r = resolveDoc(from.path, l.file, maps, true);
+      return { target: r.entry, hash: l.heading, how: r.how };
+    }
+    const href = (l.href || '').trim();
+    if (!href || hasScheme(href)) return null;
+    const at = href.indexOf('#'), p = at >= 0 ? href.slice(0, at) : href, hash = at >= 0 ? safeDecode(href.slice(at + 1)) : '';
+    if (!p) return { target: from, hash, how: 'exact', self: true };
+    const dp = safeDecode(p);
+    if (l.kind === 'img' || ASSET_EXT.test(dp)) { const r = resolveFile(from.path, p, maps); return { asset: r.key, how: r.how, file: true, img: l.kind === 'img' }; }
+    if (!MD_EXT.test(dp)) return null;
+    const r = resolveDoc(from.path, p, maps, false);
+    return { target: r.entry, hash, how: r.how };
+  }
+  // 상태: ok · loose(markcont에서만 열림) · broken(대상 없음) · anchor(그 제목 없음) · skip(밖의 주소 · 알 수 없음)
+  function judge(from, l, maps, index) {
+    const t = linkTarget(from, l, maps);
+    if (!t) return { status: 'skip' };
+    if (t.file) {
+      if (t.how === 'none') return from.loose ? { status: 'skip' } : { status: 'broken', what: t.img ? 'img' : 'file' };
+      return { status: t.how === 'loose' ? 'loose' : 'ok', asset: t.asset };
+    }
+    if (t.how === 'builtin') return { status: 'ok' };
+    if (t.how === 'none') return { status: 'broken', what: 'doc' };
+    let status = t.how === 'loose' ? 'loose' : 'ok';
+    if (t.hash) {
+      const hs = index && index.get(t.target) ? index.get(t.target).heads : null;
+      if (hs && !hs.some((h) => h.slug === t.hash || h.slug === slugify(t.hash))) status = 'anchor';
+    }
+    return { status, target: t.target, hash: t.hash, self: !!t.self };
+  }
+  const lk = { seq: 0, timer: 0, building: null, all: false, rows: [] };
+  // 열어 둔 폴더 · 따로 연 문서 모두의 링크 (문서 → 훑은 결과)
+  async function linkIndex() {
+    if (lk.building) return lk.building;
+    lk.building = (async () => {
+      const files = gsFiles(), out = new Map();
+      let next = 0;
+      const work = async () => {
+        while (next < files.length) {
+          const f = files[next++], c = await gsRead(f);
+          if (!c) continue;
+          if (!c.scan) c.scan = scanDoc(c.text);
+          out.set(f, c.scan);
+        }
+      };
+      await Promise.all(Array.from({ length: 6 }, work));
+      if (state.current && !out.has(state.current)) out.set(state.current, scanDoc(source()));
+      return out;
+    })();
+    try { return await lk.building; } finally { lk.building = null; }
+  }
+  const lkWhy = (j) => (j.status === 'loose' ? L('markcont에서만 열림 · GitHub에서는 깨짐', 'Opens only in markcont · broken on GitHub')
+    : j.status === 'anchor' ? L('그 제목이 없음', 'Heading not found')
+    : j.what === 'img' ? L('그림을 찾지 못함', 'Image not found') : j.what === 'file' ? L('파일을 찾지 못함', 'File not found') : L('문서를 찾지 못함', 'Document not found'));
+  const lkLabel = (l) => (l.kind === 'wiki' || l.kind === 'embed' ? l.raw : safeDecode(l.href || ''));
+  // 지금 문서: 가리키는 문서(나가는 링크) · 이 문서를 가리키는 문서(백링크) · 깨진 링크
+  function linkReport(index, cur) {
+    const maps = fileMaps(), back = new Map(), out = new Map(), bad = [], allBad = new Map();
+    for (const [from, scan] of index) for (const l of scan.links) {
+      const j = judge(from, l, maps, index);
+      if (j.status === 'skip') continue;
+      if (j.status !== 'ok') { if (!allBad.has(from)) allBad.set(from, []); allBad.get(from).push({ l, j }); }
+      if (from === cur) {
+        if (j.status !== 'ok') bad.push({ l, j });
+        if (j.target && !j.self) {
+          const o = out.get(j.target) || { entry: j.target, n: 0, worst: 'ok' };
+          o.n++;
+          if (j.status !== 'ok') o.worst = j.status;
+          out.set(j.target, o);
+        }
+      } else if (j.target === cur) {
+        if (!back.has(from)) back.set(from, []);
+        back.get(from).push({ l, j });
+      }
+    }
+    return { back, out, bad, allBad };
+  }
+  function lkSchedule(ms = 700) { clearTimeout(lk.timer); lk.timer = setTimeout(lkRender, ms); }
+  async function lkRender() {
+    if (side.tab !== 'links' || $('#linksPanel').hidden) return;
+    const cur = state.current, box = $('#lkBody'), st = $('#lkStatus');
+    if (!cur) { st.textContent = L('문서를 열면 이 문서를 가리키는 문서, 이 문서가 가리키는 문서, 깨진 링크를 보여 줍니다.', 'Open a document to see what links to it, what it links to and its broken links.'); box.innerHTML = ''; return; }
+    const seq = ++lk.seq;
+    if (!box.childElementCount) st.textContent = L('링크를 모으는 중…', 'Collecting links…');
+    let index;
+    try { index = await linkIndex(); } catch { index = new Map([[cur, scanDoc(source())]]); }
+    if (seq !== lk.seq || state.current !== cur) return;
+    const r = linkReport(index, cur), rows = [], E = escapeHtml;
+    const add = (o) => (rows.push(o), rows.length - 1);
+    const lineOf = (e, n) => (((index.get(e) || {}).text || '').split('\n')[n] || '').trim();
+    const name = (e) => E(e.name.replace(MD_EXT, ''));
+    const sec = (title, n) => `<div class="lk-title">${title}<span class="gs-n">${n}</span></div>`;
+    let h = '';
+    // 1) 이 문서를 가리키는 문서
+    const backs = [...r.back].sort((a, b) => a[0].path.localeCompare(b[0].path, undefined, { numeric: true }));
+    h += sec(L('이 문서를 가리키는 문서', 'Linked from'), backs.length);
+    h += backs.length ? backs.map(([from, list]) => `<div class="gs-file"><button type="button" class="gs-head" data-i="${add({ entry: from })}" title="${E(from.path)}">${ICON.md}<span class="gs-name">${name(from)}</span><span class="gs-dir">${E(from.loose ? '' : parentOf(from.path))}</span><span class="gs-n">${list.length}</span></button>` +
+      list.slice(0, 50).map((x) => `<button type="button" class="gs-line" data-i="${add({ entry: from, line: x.l.line })}"><span class="gs-ln">${x.l.line + 1}</span><span class="gs-tx">${E(lineOf(from, x.l.line))}</span></button>`).join('') + '</div>').join('')
+      : `<div class="lk-empty">${gsFiles().length > 1 ? L('이 문서를 가리키는 문서가 없습니다.', 'No document links here.') : L('폴더를 열면 이 문서를 가리키는 문서를 찾습니다.', 'Open a folder to find documents that link here.')}</div>`;
+    // 2) 이 문서가 가리키는 문서
+    const outs = [...r.out.values()].sort((a, b) => a.entry.path.localeCompare(b.entry.path, undefined, { numeric: true }));
+    h += sec(L('이 문서가 가리키는 문서', 'Links to'), outs.length);
+    h += outs.length ? outs.map((o) => `<button type="button" class="lk-row ${o.worst === 'ok' ? 'ok' : 'warn'}" data-i="${add({ entry: o.entry })}" title="${E(o.entry.path)}"><span class="lk-ic">${o.worst === 'ok' ? '✓' : '!'}</span><span class="lk-name">${name(o.entry)}</span><span class="lk-sub">${o.worst === 'ok' ? E(o.entry.loose ? '' : parentOf(o.entry.path)) : E(lkWhy({ status: o.worst }))}</span></button>`).join('')
+      : `<div class="lk-empty">${L('다른 문서를 가리키는 링크가 없습니다.', 'No links to other documents.')}</div>`;
+    // 3) 깨진 링크 · 그림
+    h += sec(L('깨진 링크 · 그림', 'Broken links · images'), r.bad.length);
+    h += r.bad.length ? r.bad.map((x) => `<button type="button" class="lk-row ${x.j.status === 'loose' ? 'warn' : 'bad'}" data-i="${add({ entry: cur, line: x.l.line })}" title="${E(lkLabel(x.l))}"><span class="lk-ic">${x.j.status === 'loose' ? '!' : '✕'}</span><span class="lk-name">${E(lkLabel(x.l))}</span><span class="lk-sub">${E(lkWhy(x.j))} · ${x.l.line + 1}</span></button>`).join('')
+      : `<div class="lk-empty">${L('깨진 링크가 없습니다.', 'No broken links.')}</div>`;
+    // 4) 폴더 전체의 깨진 링크 (누를 때만)
+    const others = [...r.allBad].filter(([e]) => e !== cur);
+    if (gsFiles().length > 1) {
+      if (!lk.all) h += `<button type="button" class="btn lk-all" id="lkAll">${L(`폴더 전체의 깨진 링크 보기 (${others.reduce((s, [, v]) => s + v.length, 0)})`, `Show broken links in the whole folder (${others.reduce((s, [, v]) => s + v.length, 0)})`)}</button>`;
+      else {
+        h += sec(L('폴더 전체의 깨진 링크', 'Broken links in the folder'), others.reduce((s, [, v]) => s + v.length, 0));
+        h += others.length ? others.sort((a, b) => a[0].path.localeCompare(b[0].path, undefined, { numeric: true })).map(([from, list]) => `<div class="gs-file"><button type="button" class="gs-head" data-i="${add({ entry: from })}" title="${E(from.path)}">${ICON.md}<span class="gs-name">${name(from)}</span><span class="gs-dir">${E(from.loose ? '' : parentOf(from.path))}</span><span class="gs-n">${list.length}</span></button>` +
+          list.slice(0, 50).map((x) => `<button type="button" class="gs-line" data-i="${add({ entry: from, line: x.l.line })}"><span class="gs-ln">${x.l.line + 1}</span><span class="gs-tx">${E(lkLabel(x.l))} <small style="color:var(--muted)">· ${E(lkWhy(x.j))}</small></span></button>`).join('') + '</div>').join('')
+          : `<div class="lk-empty">${L('다른 문서에도 깨진 링크가 없습니다.', 'No broken links in other documents either.')}</div>`;
+      }
+    }
+    lk.rows = rows;
+    st.textContent = '';
+    box.innerHTML = h;
+    const all = $('#lkAll');
+    if (all) all.onclick = () => { lk.all = true; lkRender(); };
+  }
+  $('#lkBody').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-i]');
+    if (!b) return;
+    const o = lk.rows[+b.dataset.i];
+    if (!o) return;
+    if (o.entry && state.current !== o.entry && !(await openEntry(o.entry))) return;
+    if (window.innerWidth <= 900) closeSidebar();
+    if (o.line != null) gotoSourceLine(o.line + 1);
+  });
+
+  /* ---------- 링크 고치기: 이름을 바꾼 문서 · 폴더 · 제목을 가리키던 링크를 새 이름으로 ---------- */
+  const writableEntry = (e) => !!e && !e.builtin && ((e.tauriPath && isTauri()) || !!(e.handle && e.handle.createWritable));
+  // 한 줄 안의 `코드` 자리 (그 안의 예시는 건드리지 않음)
+  function codeSpans(line) {
+    const out = [];
+    for (const m of line.matchAll(/(`+)[\s\S]*?(?<!`)\1(?!`)/g)) out.push([m.index, m.index + m[0].length]);
+    return out;
+  }
+  const inSpans = (spans, i) => spans.some(([a, b]) => i >= a && i < b);
+  // 문서 경로 from 에서 to 로 가는 상대 경로 (다른 폴더(작업 공간의 다른 맨 위 폴더)면 이름만)
+  function relLink(from, to) {
+    const a = from.split('/'), b = to.split('/');
+    a.pop();
+    if (a[0] !== b[0]) return b[b.length - 1];
+    let i = 0;
+    while (i < a.length && i < b.length - 1 && a[i] === b[i]) i++;
+    return '../'.repeat(a.length - i) + b.slice(i).join('/');
+  }
+  const urlLike = (dest, plain) => (/%[0-9A-Fa-f]{2}/.test(dest) ? encodeURI(plain) : plain.replace(/[ ()<>]/g, (c) => ({ ' ': '%20', '(': '%28', ')': '%29', '<': '%3C', '>': '%3E' })[c]));
+  // 링크 하나를 바꿈: fix = { file?: 새 대상 경로(문서 · 첨부), heading?: [옛 제목 글자 · 옛 조각, 새 제목 글자, 새 조각] }
+  function rewriteOne(lines, from, l, fix) {
+    const at = l.line;
+    if (l.kind === 'wiki' || l.kind === 'embed') {
+      const line = lines[at] || '', spans = codeSpans(line);
+      let i = line.indexOf(l.raw);
+      while (i >= 0 && inSpans(spans, i)) i = line.indexOf(l.raw, i + 1);
+      if (i < 0) return false;
+      const pre = l.raw.startsWith('!') ? '![[' : '[[', body = l.raw.slice(pre.length, -2);
+      const bar = body.search(/\\?\|/), target = bar >= 0 ? body.slice(0, bar) : body, rest = bar >= 0 ? body.slice(bar) : '';
+      const hashAt = target.indexOf('#');
+      let file = hashAt >= 0 ? target.slice(0, hashAt) : target, head = hashAt >= 0 ? target.slice(hashAt + 1) : '';
+      if (fix.file) {
+        const t = file.trim(), keepExt = MD_EXT.test(t) || ASSET_EXT.test(t);
+        let nf = t.includes('/') ? relLink(from.path, fix.file) : baseName(fix.file);
+        if (!keepExt) nf = nf.replace(MD_EXT, '');
+        file = file.replace(t, nf);
+      }
+      if (fix.heading && head) head = head.replace(head.trim(), fix.heading[1]);
+      const raw = pre + file + (hashAt >= 0 ? '#' + head : '') + rest + ']]';
+      if (raw === l.raw) return false;
+      lines[at] = line.slice(0, i) + raw + line.slice(i + l.raw.length);
+      return true;
+    }
+    // [글](주소) · ![설명](그림) — 그 줄에 없으면 참조 정의([이름]: 주소) 줄에서 찾음
+    const want = nfc(safeDecode(l.href));
+    const re = /\]\(\s*(<[^>\n]*>|[^\s()<>]*(?:\([^\s()]*\)[^\s()<>]*)*)/g;
+    const defRe = /^( {0,3}\[[^\]]+\]:[ \t]*)(<[^>\n]*>|\S+)/;
+    const patch = (dest) => {
+      const angle = dest.startsWith('<'), plain = angle ? dest.slice(1, -1) : dest;
+      const hashAt = plain.indexOf('#');
+      let p = hashAt >= 0 ? plain.slice(0, hashAt) : plain, hash = hashAt >= 0 ? plain.slice(hashAt) : '';
+      if (fix.file) p = urlLike(p, relLink(from.path, fix.file));
+      if (fix.heading && hash) hash = '#' + urlLike(hash.slice(1), fix.heading[2]);
+      const out = p + hash;
+      return angle ? '<' + out + '>' : out;
+    };
+    const tryLine = (k, isDef) => {
+      const line = lines[k];
+      if (line == null) return false;
+      if (isDef) {
+        const m = line.match(defRe);
+        if (!m || nfc(safeDecode(m[2].replace(/^<|>$/g, ''))) !== want) return false;
+        lines[k] = m[1] + patch(m[2]) + line.slice(m[0].length);
+        return true;
+      }
+      const spans = codeSpans(line);
+      for (const m of line.matchAll(re)) {
+        if (inSpans(spans, m.index)) continue;
+        const dest = m[1];
+        if (nfc(safeDecode(dest.replace(/^<|>$/g, ''))) !== want) continue;
+        const start = m.index + m[0].length - dest.length;
+        lines[k] = line.slice(0, start) + patch(dest) + line.slice(start + dest.length);
+        return true;
+      }
+      return false;
+    };
+    if (tryLine(at, false)) return true;
+    for (let k = 0; k < lines.length; k++) if (tryLine(k, true)) return true;
+    return false;
+  }
+  // 고칠 링크들 → 문서마다 { entry, before, after, n }
+  async function planLinkFix(items) {
+    const byFile = new Map();
+    for (const it of items) { if (!byFile.has(it.from)) byFile.set(it.from, []); byFile.get(it.from).push(it); }
+    const plans = [];
+    for (const [from, list] of byFile) {
+      if (!writableEntry(from)) continue;
+      let text;
+      try { text = from === state.current ? source() : await peekText(from); } catch { continue; }
+      const lines = text.split('\n');
+      let n = 0;
+      for (const it of list) if (rewriteOne(lines, from, it.l, it.fix)) n++;
+      const after = lines.join('\n');
+      if (n && after !== text) plans.push({ entry: from, before: text, after, n });
+    }
+    return plans;
+  }
+  // 파일에 쓰기 (저장 기록도 남김). 지금 문서는 편집창에도 반영 (Ctrl+Z 로 되돌릴 수 있게)
+  async function writeDocText(entry, text) {
+    if (entry === state.current) {
+      const wasDirty = state.dirty;
+      applyText(text);
+      if (wasDirty) return 'editor'; // 저장 안 한 고침이 섞여 있어서 파일에는 쓰지 않음
+    }
+    if (entry.tauriPath && isTauri()) entry.lastModified = await tinvoke('save_file', { path: entry.tauriPath, text, keepHistory: true });
+    else if (entry.handle && entry.handle.createWritable) {
+      let before = null;
+      try { before = await readText(await entry.handle.getFile()); } catch {}
+      const w = await entry.handle.createWritable();
+      await w.write(text);
+      await w.close();
+      vers.changed(entry, before, text, 'save');
+      try { entry.lastModified = (await entry.handle.getFile()).lastModified; } catch {}
+    } else throw new Error(L('고칠 수 없는 파일입니다', "This file can't be changed"));
+    if (entry.text != null || entry === state.current) entry.text = text;
+    gs.cache.delete(entry);
+    if (entry === state.current) { state.dirty = false; snapshot(L('링크 고침', 'Links fixed'), { saved: true }); applyChangeMarks(); updateTitle(); }
+    return 'file';
+  }
+  function showLinkFix(plans, intro) {
+    const total = plans.reduce((s, p) => s + p.n, 0);
+    $('#lfTitle').textContent = L('링크 고치기', 'Fix links');
+    $('#lfBody').innerHTML = `<p class="chg-help">${intro} ${L(`문서 ${plans.length}개의 링크 ${total}곳을 바꿉니다. 바꾼 문서는 저장 기록에 남아 되돌릴 수 있습니다.`, `This changes ${total} link${total === 1 ? '' : 's'} in ${plans.length} document${plans.length === 1 ? '' : 's'}. The changed documents are kept in saved versions, so you can go back.`)}</p>` +
+      plans.map((p, i) => `<details class="lf-file"${i < 3 ? ' open' : ''}><summary>${escapeHtml(p.entry.path)}<small>${L(`${p.n}곳`, `${p.n}`)}</small></summary>${diffHtml(p.before, p.after)}</details>`).join('');
+    $('#lfFoot').innerHTML = `<button class="btn" id="lfNo">${L('그대로 두기', 'Leave as is')}</button><span style="flex:1"></span><button class="btn primary" id="lfYes">${L(`링크 ${total}곳 바꾸기`, `Change ${total} link${total === 1 ? '' : 's'}`)}</button>`;
+    $('#linkFixModal').hidden = false;
+    $('#lfNo').onclick = closeLinkFix;
+    $('#lfYes').onclick = async () => {
+      closeLinkFix();
+      let ok = 0, onlyEditor = 0;
+      const failed = [];
+      for (const p of plans) {
+        try { (await writeDocText(p.entry, p.after)) === 'editor' ? onlyEditor++ : ok++; } catch (err) { failed.push(p.entry.path + ': ' + ((err && err.message) || err)); }
+      }
+      if (state.current) render(true);
+      lkSchedule(0);
+      toast(L(`링크를 바꿨습니다: 문서 ${ok + onlyEditor}개`, `Links changed in ${ok + onlyEditor} document${ok + onlyEditor === 1 ? '' : 's'}`) + (onlyEditor ? L(' (지금 문서는 저장하지 않은 고침이 있어 편집창에만 반영)', ' (the current document has unsaved edits, so only the editor was changed)') : '') + (failed.length ? L(` · 못 바꾼 문서 ${failed.length}개`, ` · ${failed.length} failed`) : ''), 5000);
+      if (failed.length) console.warn('[링크 고치기]', failed);
+    };
+  }
+  function closeLinkFix() { $('#linkFixModal').hidden = true; }
+  $('#lfClose').onclick = closeLinkFix;
+  $('#linkFixModal').addEventListener('click', (e) => { if (e.target.id === 'linkFixModal') closeLinkFix(); });
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#linkFixModal').hidden) { e.preventDefault(); e.stopImmediatePropagation(); closeLinkFix(); } }, true);
+  // 이름을 바꾸기 전에: 그 문서(또는 폴더 안의 문서 · 첨부 파일)를 가리키는 링크를 모아 둠
+  async function linksInto(path, kind) {
+    const index = await linkIndex(), maps = fileMaps(), hits = [];
+    const inPath = (p) => !!p && (kind === 'dir' ? p === path || p.startsWith(path + '/') : p === path);
+    for (const [from, scan] of index) for (const l of scan.links) {
+      const t = linkTarget(from, l, maps);
+      if (!t || t.self || t.how === 'none' || t.how === 'builtin') continue;
+      if (t.file ? inPath(t.asset) : t.target && !t.target.loose && inPath(t.target.path)) hits.push({ from, l, target: t.target, asset: t.asset });
+    }
+    return hits;
+  }
+  // 이름을 바꾼 뒤: 새 경로로 고칠지 물음
+  async function offerRenameFix(hits, oldPath, newPath) {
+    const moveP = (p) => (p === oldPath || p.startsWith(oldPath + '/') ? newPath + p.slice(oldPath.length) : p);
+    const items = hits.map((h) => ({ from: h.from, l: h.l, fix: { file: h.asset ? moveP(h.asset) : h.target.path } }));
+    const plans = await planLinkFix(items);
+    if (plans.length) showLinkFix(plans, L(`<b>${escapeHtml(baseName(oldPath))}</b> → <b>${escapeHtml(baseName(newPath))}</b> 로 이름을 바꿨습니다. 이 이름을 가리키던 링크도 바꿀까요?`, `Renamed <b>${escapeHtml(baseName(oldPath))}</b> → <b>${escapeHtml(baseName(newPath))}</b>. Change the links that pointed to it too?`));
+  }
+  // 저장한 뒤: 제목 글이 바뀌었으면(개수 · 단계는 그대로), 그 제목을 가리키던 링크도 고칠지 물음
+  async function offerHeadingFix(entry, before, after) {
+    if (!before || before === after || !md) return;
+    const a = scanDoc(before).heads, b = scanDoc(after).heads;
+    if (a.length !== b.length) return;
+    const pairs = new Map();
+    a.forEach((h, i) => { if (h.level === b[i].level && h.slug !== b[i].slug) pairs.set(h.slug, [h.title, b[i].title, b[i].slug]); });
+    if (!pairs.size || pairs.size > 3) return; // 많이 바뀌었으면 이름 바꾸기가 아니라 다시 쓴 것으로 봄
+    const index = await linkIndex(), maps = fileMaps(), items = [];
+    for (const [from, scan] of index) for (const l of scan.links) {
+      const t = linkTarget(from, l, maps);
+      if (!t || t.file || t.target !== entry || !t.hash) continue;
+      const p = pairs.get(t.hash) || pairs.get(slugify(t.hash));
+      if (p) items.push({ from, l, fix: { heading: p } });
+    }
+    const plans = await planLinkFix(items);
+    if (plans.length) showLinkFix(plans, L(`제목을 「${escapeHtml([...pairs.values()][0][0])}」 → 「${escapeHtml([...pairs.values()][0][1])}」${pairs.size > 1 ? ` 외 ${pairs.size - 1}개` : ''}로 바꿔서, 그 제목을 가리키던 링크가 깨집니다. 새 제목으로 바꿀까요?`, `You renamed the heading “${escapeHtml([...pairs.values()][0][0])}” → “${escapeHtml([...pairs.values()][0][1])}”${pairs.size > 1 ? ` and ${pairs.size - 1} more` : ''}, so links to it are now broken. Point them to the new heading?`));
   }
 
   // 폴더 목록 → 트리 구조
@@ -4187,6 +4624,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       const old = keep.get(f.path);
       if (!old) return f;
       if (f.handle) old.handle = f.handle;
+      if (f.tauriPath) old.tauriPath = f.tauriPath; // 이름을 바꾼 뒤에도 옛 경로에 저장하지 않게
       return old;
     });
     state.files = state.files.filter((f) => f.loose || !inside(f.path)).concat(merged);
@@ -4370,6 +4808,9 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (!name || name === oldName) return;
     const dir = parentOf(path), rel = joinRel(dir, name);
     const curPath = state.current && !state.current.loose ? state.current.path : null;
+    // 이 이름을 가리키는 링크를 미리 모아 둠 (바꾼 뒤 새 이름으로 고칠지 물음)
+    let incoming = [];
+    try { incoming = await linksInto(path, kind); } catch {}
     try {
       if (!(await ensureWrite(root))) return;
       if (name.toLowerCase() !== oldName.toLowerCase() && await exists(dir, name)) { toast(L('같은 이름이 이미 있습니다', 'That name is already taken')); return; }
@@ -4396,14 +4837,20 @@ body.zen .zen-exit:hover { opacity: 1; }
     const moveP = (p) => (under(p, path) ? rel + p.slice(path.length) : p);
     side.collapsed = new Set([...side.collapsed].map(moveP)); saveCollapsed();
     state.extraDirs = new Set([...state.extraDirs].map(moveP));
-    for (const f of state.files) if (!f.loose && under(f.path, path)) { f.path = moveP(f.path); f.name = baseName(f.path); }
+    for (const f of state.files) if (!f.loose && under(f.path, path)) {
+      f.path = moveP(f.path);
+      f.name = baseName(f.path);
+      if (f.tauriPath && root.kind === 'tauri') f.tauriPath = absPath(f.path); // PC 프로그램: 다음 저장이 옛 경로로 가지 않게
+      gs.cache.delete(f);
+    }
     await refreshFolder({ quiet: true, only: root.key });
     if (curPath && under(curPath, path)) {
       const now = state.files.find((f) => f.path === moveP(curPath));
-      if (now) { state.current = now; updateTitle(); updateMeta(source()); }
+      if (now) { state.current = now; updateTitle(); updateMeta(source()); syncMcpState(); }
     }
     renderFileList();
     toast(L('이름을 바꿨습니다: ', 'Renamed: ') + rel);
+    if (incoming.length) offerRenameFix(incoming, path, rel).catch(() => {});
   }
   async function fsDelete(kind, path) {
     const root = path && rootOf(path);
@@ -6056,8 +6503,11 @@ body.zen .zen-exit:hover { opacity: 1; }
       if (quiet) return;
       return saveAs({ reason: L('원래 파일 위치를 알 수 없어서 새 파일로 저장합니다', 'The original location is unknown, so saving as a new file'), skipConfirm: skipConfirm || settings.confirmSave });
     }
+    const prevSaved = cur.text;
     cur.text = text;
     state.dirty = false;
+    gs.cache.delete(cur);
+    if (!quiet) offerHeadingFix(cur, prevSaved, text).catch(() => {}); // 제목을 바꿨으면 그 제목을 가리키던 링크도
     snapshot(L('저장', 'Saved'), { saved: true });
     applyChangeMarks();
     updateTitle();

@@ -85,6 +85,8 @@ Open and close the sidebar with the <kbd>☰</kbd> button in the top left. Drag 
 > [!WARNING]
 > Files deleted in a browser (Chrome · Edge) don't go to the Trash and can't be recovered. Double-check before you delete.
 
+**Renaming keeps links working**: when you rename a file or folder, markcont asks whether to change the `[[links]]` · `[text](file.md)` that pointed to it. It first shows the documents and lines that change, and leaves examples inside code blocks · `code` alone. When you rename a **heading** in a document and save, it also asks whether to fix `[text](doc.md#heading)` · `[[doc#heading]]` links to it. Changed documents are kept in saved versions. (PC app · Chrome · Edge)
+
 ### Contents tab
 
 Builds a table of contents from the document's headings (`#`). The part you're reading is highlighted, and clicking a heading jumps to it.
@@ -105,6 +107,20 @@ Searches **every document** in the open folders. Matching lines are grouped by d
 - Korean consonants (`ㄱㅎ`) also match syllables that start with them (`ㄱㅎ` → 기획).
 - The current document is searched including unsaved edits. Up to 200 lines per document and 3000 lines in total are shown.
 - In the results, move with <kbd>↑</kbd> <kbd>↓</kbd> and open with <kbd>Enter</kbd>. Click a document name to fold its results.
+
+### Links tab
+
+Shows the documents connected to the current one. Click a row to go to that document and line.
+
+| Group | What it shows |
+|:---|:---|
+| Linked from | Documents that link to this one, and the lines (backlinks) |
+| Links to | Documents this one links to |
+| Broken links · images | Documents · headings · images that can't be found, and links that **open only in markcont** |
+| Broken links in the folder | Press the button to see broken links in the other documents too |
+
+> [!NOTE]
+> Even when the path in `[text](folder/file.md)` is wrong, markcont finds a file with the same name and opens it. Such links break on GitHub · VS Code, so they're listed separately as **opens only in markcont**.
 
 ---
 
@@ -306,7 +322,7 @@ Open **⋯ → [Markdown writing rules](Markdown-Writing-Rules.md)**. Give that 
 ## 🎯 One-page summary
 
 1. Open with **Open file · Open folder · drag and drop**. <kbd>Ctrl</kbd>+<kbd>O</kbd> opens a file by typing its name
-2. In the sidebar, use the **Files · Contents · Search** tabs; right-click for **New document · Rename · Delete**
+2. In the sidebar, use the **Files · Contents · Search · Links** tabs; right-click for **New document · Rename · Delete**
 3. **Aa** for view settings, <kbd>Ctrl</kbd>+<kbd>F</kbd> to find in the document, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> to search all documents, <kbd>Ctrl</kbd>+<kbd>.</kbd> for focus mode
 4. <kbd>Ctrl</kbd>+<kbd>E</kbd> to edit, <kbd>Ctrl</kbd>+<kbd>S</kbd> to save
 5. From the **⋯** menu: HTML · PDF export, the guide and the writing rules

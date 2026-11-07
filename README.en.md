@@ -70,6 +70,7 @@ curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh 
 - Quick open · commands <kbd>Ctrl</kbd>+<kbd>O</kbd>: find files by name or initials (`fp` → feature-proposals, Korean initial consonants `ㄱㅎㅅ` → 기획서), commands with `>`, headings with `#` (accents, full-width letters and kana are matched too)
 - A workspace that opens several folders together, folder tree · file search · right-click menu, table of contents, heading folding, find in document, focus mode
 - Search all documents <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>: searches every open folder, groups matches by document and jumps to the line (match case · whole word · regex, Korean initial consonants)
+- Links tab: what links here (backlinks) · what this links to · broken links (including links that open only in markcont); renaming a file · folder · heading also fixes the links that pointed to it
 - A table of contents inside the text with `[[_TOC_]]` (also in print · PDF), and heading numbers (1 · 1.1 · 1.1.1) shown without changing the source
 - Live editing: source with line numbers and syntax colors, a marker for where you're editing, scroll sync
 - Editor basics: find and replace <kbd>Ctrl</kbd>+<kbd>H</kbd> (match case · whole word · regex), move lines <kbd>Alt</kbd>+<kbd>↑</kbd><kbd>↓</kbd>, raise · lower heading levels, renumber numbered lists
