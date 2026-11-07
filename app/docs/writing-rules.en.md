@@ -784,7 +784,13 @@ Check **where it works** first, and if the document will be opened elsewhere too
 <sub>The GitHub and Obsidian columns show behavior with default settings as of November 2026. It may differ by version or plugins.</sub>
 
 > [!TIP]
-> Even if you use ❌ syntax, **▾ → Save for other viewers…** makes a standard copy. Bold followed by CJK text and highlight · inserted · deleted text · suggestion marks become HTML tags, extra callouts become one of the 5 standard types + a title, foldable callouts become `<details>`, wikilinks become normal links, image sizes become `<img width>`, tables of contents become lists of heading links, and markcont diagrams become **Mermaid**. Chemistry `\ce{}` can't be converted, so it's left as is and flagged.
+> Even if you use ❌ syntax, **▾ → Save for other viewers…** makes a standard copy. Here's what changes in the copy.
+>
+> - Bold followed by CJK text, highlight · inserted · deleted text, and suggestion marks → HTML tags
+> - Extra callouts → one of the 5 standard types + a title, foldable callouts → `<details>`
+> - Wikilinks → normal links, image sizes → `<img width>`
+> - Tables of contents → lists of heading links, markcont diagrams → **Mermaid**
+> - Chemistry `\ce{}` can't be converted, so it's left as is and flagged.
 
 ### Callouts: 11 types and collapsing
 
