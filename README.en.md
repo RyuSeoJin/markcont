@@ -82,6 +82,8 @@ curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh 
 - Paste as markdown: screenshots become image files in an `images` folder next to the document, Excel cells become tables, text from the web · Notion · Google Docs · Word keeps its headings · lists · links, and a URL pasted over selected text becomes a link
 - Saved versions that survive closing: a copy is kept on every save and every time Claude or another program edits the file, so you can go back for 14 days
 - Auto-reload of changed files, Save as HTML · Word (.docx), Print · PDF (page numbers · a cover with `cover: yes` · page breaks with `<!-- page break -->`, tables · images aren't cut at page boundaries)
+- Reading extras: remembers where you left off in each document, reading time (characters for Korean, words for English), line · paragraph spacing, color themes (Paper · High contrast), your own CSS
+- Documents from elsewhere look right: Obsidian hidden notes `%%note%%` (left out of the view and exports) and GitHub emoji codes `:rocket:` (the 410 common ones)
 - Copy with formatting: tables · callouts · code colors stay when you paste into mail · Notion · Google Docs · a blog, and math · diagrams go in as images (in light colors, even in the dark theme)
 - Presentation mode: sections split by dividers (`---`) become slides, with overview · speaker notes (`<!-- -->`) · slide printing
 - Save for other viewers: a copy with markcont-only syntax converted to standard markdown (diagrams to Mermaid), plus a marker for spots that look different

@@ -128,7 +128,9 @@ Shows the documents connected to the current one. Click a row to go to that docu
 
 | Feature | Where | Description |
 |:---|:---|:---|
-| View settings | **Aa** button at the top | Text size, Sans · Serif, body width, callout style, code line numbers, heading numbers (1 · 1.1), review before saving |
+| View settings | **Aa** button at the top | Text size, Sans · Serif, body width, line spacing · paragraph spacing, color theme (Default · Paper · High contrast), callout style, code line numbers, heading numbers (1 · 1.1), review before saving, your own CSS |
+| Where you left off | Automatic | Remembers where you were reading in each document and goes back there when you open it again |
+| Reading time | The info line above the document | "~N min read" — counts Korean · Chinese · Japanese at 500 characters a minute and other languages at 230 words a minute, then adds them up (code blocks left out) |
 | Language | View settings (Aa) → Language, or the first screen of the tour | Switch between 한국어 and English |
 | Light · Dark | ☾ / ☀ button at the top | Dark mode |
 | Fold a heading | ⌄ button next to a heading | Folds the content under that heading |
@@ -141,6 +143,9 @@ Shows the documents connected to the current one. Click a row to go to that docu
 | Enlarge a diagram | ⤢ at the top right of a diagram | Wheel or pinch to zoom, drag to pan, "Fit to screen" |
 | Enlarge an image | Click the image | The same zoom view as diagrams. While editing side by side, a click jumps to that line of the source instead |
 | Present | **⋯ → Present** | Shows the sections split by dividers (`---`) one slide at a time, full screen (see below) |
+
+- **Your own CSS**: open **Style documents with your own CSS** at the bottom of View settings and write something like `h2 { color: teal; }` — it applies right away. Only the document changes, so the menus stay usable even if you make a mistake, and emptying the box brings everything back.
+- **Hidden notes** `%%note%%` don't show up when viewing, printing or exporting (chapter 9 of the [writing rules](writing-rules.en.md)).
 
 ### Presenting
 

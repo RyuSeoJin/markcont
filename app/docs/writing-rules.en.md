@@ -774,6 +774,8 @@ Check **where it works** first, and if the document will be opened elsewhere too
 | Document info | `name: value` between `---` lines at the very top | ✅ info box | ⚠️ table | ✅ |
 | Table of contents | `[[_TOC_]]` on a line of its own | ✅ | ❌ plain text | ❌ |
 | Page break | `<!-- page break -->` on a line of its own | ✅ print · PDF · Word | ⚠️ hidden (no break) | ⚠️ hidden (no break) |
+| Hidden note | `%%note%%` | ✅ hidden | ❌ plain text | ✅ hidden |
+| Emoji code | `:rocket:` | ✅ the 410 common ones | ✅ | ❌ plain text |
 | Collapsible content | `<details>` | ✅ | ✅ | ✅ |
 | Keyboard keys | `<kbd>Ctrl</kbd>` | ✅ | ✅ | ✅ |
 | Source · result side by side | ```` ```markdown example ```` | ✅ | ❌ shown as code | ❌ shown as code |
@@ -1016,6 +1018,16 @@ tags:
 - It's an HTML comment, so other viewers show nothing (and don't break the page).
 - To make the first page a cover, write `cover: yes` in the document info at the top instead of a page break.
 
+### Hidden notes · emoji codes
+
+```markdown example
+Visible text %%a note just for me%% more text :rocket:
+```
+
+- Text wrapped in `%%` is a **hidden note** (same as Obsidian), and it can span lines. It stays only in the source: it isn't shown, printed, saved as HTML or Word, or copied with formatting, and **Save for other viewers** removes it (GitHub shows it as plain text).
+- `%%` inside code or math, `%%` right after a number (`50%%`) and a `%%` with no closing pair aren't treated as notes.
+- GitHub **emoji codes** like `:rocket:` become emoji for the 410 common ones (including every gitmoji commit emoji). Codes not on the list stay as text, and emoticons like `:)` or `<3` aren't converted (same as GitHub).
+
 ### Line breaks
 
 | What you want | How to write |
@@ -1048,7 +1060,7 @@ Write **bold** and add a ==highlight== too.
 | `<style>` · `<script>` | Removed (for security) | Format with Markdown syntax |
 | `~subscript~` | Plain text (strikethrough on GitHub) | `<sub>…</sub>` |
 | `^superscript^` | Plain text | `<sup>…</sup>` |
-| `:smile:` emoji codes | Plain text | Type the 😄 emoji directly |
+| `:emoji:` codes not on the list | Plain text (only the 410 common ones become emoji) | Type the 😄 emoji directly |
 
 ---
 

@@ -48,6 +48,23 @@
   --code-bg: #20242a; --quote: #b5bcc4;
   --c-blue: #4493f8; --c-green: #3fb950; --c-purple: #ab7df8; --c-amber: #d29922; --c-red: #f85149;
 }
+/* 색 테마 (보기 설정): 종이 — 누런 종이 · 따뜻한 어둠, 또렷하게 — 흰 바탕 검은 글 · 검은 바탕 흰 글 */
+:root[data-tint="paper"]:not([data-theme="dark"]) {
+  --bg: #f3ecdc; --surface: #fbf7ee; --surface-2: #efe6d2; --border: #e0d5bd;
+  --text: #3a3027; --muted: #7b6c5a; --accent-soft: #ece4d2; --code-bg: #f0e8d6; --quote: #5b4c3d;
+}
+:root[data-tint="paper"][data-theme="dark"] {
+  --bg: #1c1915; --surface: #23201b; --surface-2: #2b2721; --border: #3a342b;
+  --text: #e8dfcf; --muted: #a99c88; --accent-soft: #2e2a22; --code-bg: #28241e; --quote: #cdc2ae;
+}
+:root[data-tint="contrast"]:not([data-theme="dark"]) {
+  --bg: #ffffff; --surface: #ffffff; --surface-2: #f1f1f1; --border: #c4c4c4;
+  --text: #000000; --muted: #404040; --accent: #0a4ad0; --accent-soft: #e3ebfd; --code-bg: #f2f2f2; --quote: #1a1a1a;
+}
+:root[data-tint="contrast"][data-theme="dark"] {
+  --bg: #000000; --surface: #0a0a0a; --surface-2: #161616; --border: #3d3d3d;
+  --text: #ffffff; --muted: #c8c8c8; --accent: #8db5ff; --accent-soft: #14213a; --code-bg: #121212; --quote: #ececec;
+}
 
 .markdown-body {
   max-width: var(--doc-width, 820px);
@@ -55,7 +72,7 @@
   color: var(--text);
   font-family: var(--doc-font, var(--font));
   font-size: var(--doc-size, 16.5px);
-  line-height: 1.8;
+  line-height: var(--doc-lh, 1.8); /* 줄 간격 · 문단 간격은 보기 설정에서 */
   word-break: keep-all;
   overflow-wrap: anywhere;
 }
@@ -71,7 +88,7 @@
 .markdown-body h4 { font-size: 1.05em; }
 .markdown-body h5, .markdown-body h6 { font-size: .95em; color: var(--muted); }
 .markdown-body p, .markdown-body ul, .markdown-body ol, .markdown-body dl,
-.markdown-body blockquote, .markdown-body pre, .markdown-body .table-wrap { margin: 0 0 1.1em; }
+.markdown-body blockquote, .markdown-body pre, .markdown-body .table-wrap { margin: 0 0 var(--doc-para, 1.1em); }
 .markdown-body a { color: var(--accent); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
 .markdown-body a:hover { border-bottom-color: var(--accent); }
 .markdown-body strong { font-weight: 700; }
@@ -591,6 +608,9 @@ button, input, select { font: inherit; color: inherit; }
 .check-row { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; cursor: pointer; }
 .check-row input { margin-top: 3px; accent-color: var(--accent); }
 .check-row small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+.user-css summary { font-size: 14px; cursor: pointer; }
+.user-css textarea { display: block; width: 100%; margin-top: 8px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text); font: 12.5px/1.5 var(--mono); resize: vertical; }
+.user-css small { display: block; color: var(--muted); font-size: 12px; margin-top: 4px; }
 
 .layout { display: flex; height: calc(100% - 56px); }
 .sidebar {
@@ -1351,6 +1371,18 @@ body.zen .zen-exit:hover { opacity: 1; }
           <div class="seg" id="widthSeg"><button data-v="narrow">좁게</button><button data-v="normal">보통</button><button data-v="wide">넓게</button></div>
         </div>
         <div class="set-row">
+          <div class="set-label"><span>줄 간격</span></div>
+          <div class="seg" id="lhSeg"><button data-v="tight">좁게</button><button data-v="normal">보통</button><button data-v="loose">넓게</button></div>
+        </div>
+        <div class="set-row">
+          <div class="set-label"><span>문단 간격</span></div>
+          <div class="seg" id="paraSeg"><button data-v="tight">좁게</button><button data-v="normal">보통</button><button data-v="loose">넓게</button></div>
+        </div>
+        <div class="set-row">
+          <div class="set-label"><span>색 테마</span></div>
+          <div class="seg" id="tintSeg"><button data-v="plain">기본</button><button data-v="paper">종이</button><button data-v="contrast">또렷하게</button></div>
+        </div>
+        <div class="set-row">
           <div class="set-label"><span>알림 상자 모양</span></div>
           <div class="seg" id="calloutSeg"><button data-v="soft">💡 NOTE</button><button data-v="icon">ⓘ 참고</button></div>
         </div>
@@ -1368,6 +1400,13 @@ body.zen .zen-exit:hover { opacity: 1; }
         </div>
         <div class="set-row">
           <label class="check-row"><input type="checkbox" id="optCompat"><span>문서 점검 안내 보기<small>깨진 링크 · 제목 단계 · 표 · 긴 문장, 다른 뷰어에서 다르게 보이는 곳을 문서 위에 알려 줍니다 (문서 정보 「뷰어: markcont」 면 그 문서는 다른 뷰어 안내만 끔)</small></span></label>
+        </div>
+        <div class="set-row">
+          <details class="user-css" id="userCssBox">
+            <summary>내 CSS로 문서 꾸미기</summary>
+            <textarea id="userCss" spellcheck="false" rows="5" placeholder="h2 { color: teal; }&#10;p { text-indent: 1em; }"></textarea>
+            <small>문서 안만 바뀝니다. h2 · p 처럼 문서 속 요소 이름으로 씁니다. HTML로 저장 · 서식 복사에도 들어갑니다.</small>
+          </details>
         </div>
         <div class="set-row">
           <div class="set-label"><span>언어</span><span id="langHint">Language</span></div>
@@ -1772,6 +1811,7 @@ body.zen .zen-exit:hover { opacity: 1; }
 <script src="i18n.js"></script>
 <script src="diagram.js"></script>
 <script src="portable.js"></script>
+<script src="emoji.js"></script>
 <script src="paste.js"></script>
 <script src="docx.js"></script>
 <script src="richcopy.js"></script>
@@ -1840,15 +1880,28 @@ body.zen .zen-exit:hover { opacity: 1; }
   /* =========================================================
      설정 (글자 크기, 글꼴, 폭, 줄바꿈, 스크롤 맞춤)
      ========================================================= */
-  const settings = Object.assign({ size: 16.5, font: 'sans', width: 'normal', sync: true, compatHint: true, callout: 'soft', lines: false, headNum: false, confirmSave: true, mcpSuggest: false }, store.json('mdv-settings', {}));
+  const settings = Object.assign({ size: 16.5, font: 'sans', width: 'normal', lh: 'normal', para: 'normal', tint: 'plain', sync: true, compatHint: true, callout: 'soft', lines: false, headNum: false, confirmSave: true, mcpSuggest: false }, store.json('mdv-settings', {}));
   delete settings.breaks; // 없앤 설정 (엔터 한 번도 줄바꿈으로 보기)
   const WIDTHS = { narrow: '680px', normal: '820px', wide: '1060px' };
+  const LINE_H = { tight: '1.6', normal: '1.8', loose: '2.05' }, PARA_GAP = { tight: '.7em', normal: '1.1em', loose: '1.6em' };
+  // 내 CSS: 문서 안(.markdown-body)에만 걸리게 감쌈 — 잘못 써도 메뉴 · 사이드바는 그대로라 지울 수 있음
+  //  (「.markdown-body h2」처럼 써도 되게 앞의 .markdown-body 는 & 로 바꿈)
+  const userCssText = () => { const c = (store.get('mdv-user-css') || '').trim(); return c ? `.markdown-body {\n${c.replace(/(^|[{},;]\s*)\.markdown-body\b/g, '$1&')}\n}` : ''; };
+  function applyUserCss() {
+    let st = document.getElementById('userCssStyle');
+    if (!st) { st = document.createElement('style'); st.id = 'userCssStyle'; document.head.append(st); }
+    st.textContent = userCssText();
+  }
   let serifLoaded = false;
   function applySettings(rerender) {
     const r = document.documentElement.style;
     r.setProperty('--doc-size', settings.size + 'px');
     r.setProperty('--doc-width', WIDTHS[settings.width] || WIDTHS.normal);
     r.setProperty('--doc-font', settings.font === 'serif' ? 'var(--serif)' : 'var(--font)');
+    r.setProperty('--doc-lh', LINE_H[settings.lh] || LINE_H.normal);
+    r.setProperty('--doc-para', PARA_GAP[settings.para] || PARA_GAP.normal);
+    if (settings.tint && settings.tint !== 'plain') document.documentElement.dataset.tint = settings.tint;
+    else delete document.documentElement.dataset.tint;
     if (settings.font === 'serif' && !serifLoaded) {
       serifLoaded = true;
       const l = document.createElement('link');
@@ -1860,6 +1913,9 @@ body.zen .zen-exit:hover { opacity: 1; }
     $('#sizeRange').value = settings.size;
     document.querySelectorAll('#fontSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === settings.font));
     document.querySelectorAll('#widthSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === settings.width));
+    document.querySelectorAll('#lhSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === settings.lh));
+    document.querySelectorAll('#paraSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === settings.para));
+    document.querySelectorAll('#tintSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === (settings.tint || 'plain')));
     document.querySelectorAll('#calloutSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === settings.callout));
     document.querySelectorAll('#langSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === LANG));
     $('#optLines').checked = settings.lines;
@@ -1876,6 +1932,17 @@ body.zen .zen-exit:hover { opacity: 1; }
   $('#sizeUp').onclick = () => setSize(settings.size + 0.5);
   $('#fontSeg').onclick = (e) => { if (e.target.dataset.v) { settings.font = e.target.dataset.v; applySettings(); } };
   $('#widthSeg').onclick = (e) => { if (e.target.dataset.v) { settings.width = e.target.dataset.v; applySettings(); } };
+  $('#lhSeg').onclick = (e) => { if (e.target.dataset.v) { settings.lh = e.target.dataset.v; applySettings(); lineTops = null; } };
+  $('#paraSeg').onclick = (e) => { if (e.target.dataset.v) { settings.para = e.target.dataset.v; applySettings(); lineTops = null; } };
+  $('#tintSeg').onclick = (e) => { if (e.target.dataset.v) { settings.tint = e.target.dataset.v; applySettings(); } };
+  $('#userCss').value = store.get('mdv-user-css') || '';
+  let userCssTimer = 0;
+  $('#userCss').addEventListener('input', (e) => {
+    clearTimeout(userCssTimer);
+    userCssTimer = setTimeout(() => { store.set('mdv-user-css', e.target.value); applyUserCss(); requestAnimationFrame(drawAllDataLinks); }, 250);
+  });
+  $('#userCss').addEventListener('keydown', (e) => e.stopPropagation()); // 메뉴 안에서 치는 글자가 단축키로 가지 않게
+  applyUserCss();
   // 언어 바꾸기: 저장하고 화면을 다시 불러옴 (저장 안 한 내용이 있으면 먼저 묻기)
   $('#langSeg').onclick = (e) => {
     const v = e.target.closest('button')?.dataset.v;
@@ -2193,6 +2260,17 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (hm) add(hm[1] ?? hm[2] ?? hm[3]);
     return { lang, title, hl: [...lines].sort((x, y) => x - y) };
   }
+  // GitHub 이모지 코드 :smile: → 😄 (목록에 있는 것만. 웃음 표시 :) · <3 은 그대로 — GitHub 과 같음). 코드 안은 markdown-it 이 이미 빼 둠
+  function emojiRule(state, silent) {
+    const src = state.src, pos = state.pos;
+    if (src.charCodeAt(pos) !== 0x3A /* : */ || !window.MarkEmoji) return false;
+    const m = /^:([a-z0-9_+-]{1,40}):/.exec(src.slice(pos, pos + 44));
+    const e = m && window.MarkEmoji[m[1]];
+    if (!e) return false;
+    if (!silent) { const t = state.push('emoji_code', '', 0); t.content = e; t.markup = m[1]; }
+    state.pos += m[0].length;
+    return true;
+  }
   function buildMd() {
     if (!libsOk) return;
     md = makeMd(true);
@@ -2226,6 +2304,8 @@ body.zen .zen-exit:hover { opacity: 1; }
     md.inline.ruler.after('escape', 'math_inline', mathInline);
     md.block.ruler.before('fence', 'math_block', mathBlock, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
     md.inline.ruler.before('link', 'wikilink', wikiRule);
+    md.inline.ruler.push('emoji_code', emojiRule); // :smile: (자주 쓰는 것만, emoji.js)
+    md.renderer.rules.emoji_code = (t, i) => `<span class="emoji" title=":${escapeHtml(t[i].markup)}:">${t[i].content}</span>`;
     md.block.ruler.before('paragraph', 'toc_inline', tocRule);
     md.block.ruler.before('fence', 'mc_container', containerRule, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
     md.block.ruler.before('html_block', 'page_break', pageBreakRule, { alt: ['paragraph', 'reference', 'blockquote'] });
@@ -2257,7 +2337,7 @@ body.zen .zen-exit:hover { opacity: 1; }
         let hl;
         try { hl = window.hljs && hljs.getLanguage('markdown') ? hljs.highlight(src, { language: 'markdown', ignoreIllegals: true }).value : escapeHtml(src); }
         catch { hl = escapeHtml(src); }
-        const out = md.render(src, { nested: true, depth: depth + 1, docId: 'ex' + depth + '-' + idx }); // docId: 예시 안 각주 번호가 본문과 겹치지 않게
+        const out = md.render(stripNotes(src), { nested: true, depth: depth + 1, docId: 'ex' + depth + '-' + idx }); // docId: 예시 안 각주 번호가 본문과 겹치지 않게
         const line = t.map && !depth ? ` data-line="${t.map[0]}"` : '';
         return `<div class="md-example"${line}>` +
           `<div class="ex-pane ex-src"><div class="ex-label">${L('✏️ 이렇게 쓰면', '✏️ Write this')}</div><pre><code class="language-markdown">${hl}</code></pre></div>` +
@@ -2400,6 +2480,8 @@ body.zen .zen-exit:hover { opacity: 1; }
     return text.trim().toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').replace(/\s+/g, '-') || 'section';
   }
 
+  // Obsidian 숨은 메모 %%…%% 지우기 (portable.js: 「다른 뷰어용으로 저장」과 같은 규칙)
+  const stripNotes = (src) => (window.MarkPortable && MarkPortable.stripNotes ? MarkPortable.stripNotes(src) : src);
   // YAML front matter: 줄 번호가 어긋나지 않게 같은 수의 빈 줄로 바꿔 둠
   function splitFrontMatter(src) {
     const m = src.match(/^---\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/);
@@ -2474,7 +2556,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (!$('#findBar').hidden) setTimeout(() => runFind($('#findInput').value.trim()), 0);
     const { fm, body } = splitFrontMatter(src);
     state.docOpts = docOptions(fm);
-    let html = md.render(body);
+    let html = md.render(stripNotes(body));
     html = DOMPurify.sanitize(html, { ADD_ATTR: ['target'], FORBID_TAGS: ['style'] });
     el.doc.innerHTML = (state.docOpts.cover ? coverHtml(fm, body) : '') + (fm ? frontMatterHtml(fm) : '') + html;
     postProcess();
@@ -3255,7 +3337,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     try { const c = await gsRead(entry); text = c ? c.text : await peekText(entry); } catch { return fail(L('문서를 읽지 못했습니다', "Couldn't read the document")); }
     const part = sliceSource(text, heading, Infinity);
     if (heading && !part.found) return fail(L(`「${heading}」 제목을 찾지 못했습니다`, `Heading “${heading}” not found`));
-    body.innerHTML = DOMPurify.sanitize(md.render(part.md, { nested: true, depth: 1, docId: 'emb' + ++embedSeq }), { ADD_ATTR: ['target'], FORBID_TAGS: ['style'] });
+    body.innerHTML = DOMPurify.sanitize(md.render(stripNotes(part.md), { nested: true, depth: 1, docId: 'emb' + ++embedSeq }), { ADD_ATTR: ['target'], FORBID_TAGS: ['style'] });
     embedProcess(body, entry, chain.concat(entry.path));
   }
   // 다른 뷰어용으로 저장: 한 줄에 홀로 있는 ![[문서#제목]] 을 그 내용으로 펼침 (두 단계까지, 코드 안은 그대로)
@@ -3392,7 +3474,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     let hash = a.dataset.hash || a.dataset.heading || '';
     try { hash = decodeURIComponent(hash); } catch {}
     const s = sliceSource(text, hash);
-    box.innerHTML = DOMPurify.sanitize(md.render(s.md, { nested: true, depth: 1, docId: 'pv' }), { ADD_ATTR: ['target'], FORBID_TAGS: ['style'] });
+    box.innerHTML = DOMPurify.sanitize(md.render(stripNotes(s.md), { nested: true, depth: 1, docId: 'pv' }), { ADD_ATTR: ['target'], FORBID_TAGS: ['style'] });
     previewProcess(box, base, builtin);
     if (!box.textContent.trim() && !box.querySelector('img')) box.innerHTML = `<p class="lp-more">${L('비어 있는 문서입니다', 'This document is empty')}</p>`;
     if (s.cut) box.insertAdjacentHTML('beforeend', `<div class="lp-more">${L('… 이어지는 내용은 링크를 눌러 보세요', '… Click the link to read the rest')}</div>`);
@@ -3802,10 +3884,20 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (LANG === 'en') return d.toLocaleDateString('en', { month: 'short', day: 'numeric', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined }) + ' ' + hm;
     return `${d.getFullYear() !== now.getFullYear() ? d.getFullYear() + '년 ' : ''}${d.getMonth() + 1}월 ${d.getDate()}일 ${hm}`;
   }
+  // 읽는 시간: 한국어 · 중국어 · 일본어는 분당 500자, 영어 등은 분당 230낱말로 따로 세어 더함 (코드 블록 · 주소 · 그림 데이터는 뺌)
+  const CJK_CH = /[ㄱ-ㆎ가-힣぀-ヿ㐀-鿿豈-﫿]/g;
+  function readMinutes(src) {
+    const text = stripNotes(splitFrontMatter(src).body)
+      .replace(/^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?^ {0,3}\1[ \t]*$/gm, ' ')
+      .replace(/data:[\w/+.-]+;base64,[A-Za-z0-9+/=]+/g, ' ').replace(/\b(?:https?|ftp):\/\/\S+/g, ' ');
+    const cjk = (text.match(CJK_CH) || []).length;
+    const words = (text.replace(CJK_CH, ' ').match(/[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu) || []).length;
+    return Math.max(1, Math.round(cjk / 500 + words / 230));
+  }
   function updateMeta(src) {
     if (side.tab === 'links') lkSchedule();
     const chars = src.replace(/data:[\w/+.-]+;base64,[A-Za-z0-9+/=]+/g, '').replace(/\s/g, '').length;
-    const minutes = Math.max(1, Math.round(chars / 500));
+    const minutes = readMinutes(src);
     const cur = state.current, loc = describeLocation(cur);
     el.docMeta.innerHTML = '';
     const line = document.createElement('div');
@@ -4307,7 +4399,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   }
   // 문서 하나의 링크 · 제목 (줄 번호는 0부터, 맨 위 문서 정보는 빈 줄로 바꿔 세므로 원본과 같음)
   function scanDoc(text, env = {}) {
-    const tokens = md ? md.parse(splitFrontMatter(text).body, env) : [];
+    const tokens = md ? md.parse(stripNotes(splitFrontMatter(text).body), env) : [];
     return scanParsed(tokens, text);
   }
   function scanParsed(tokens, text) {
@@ -4679,7 +4771,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     const groups = [];
     const add = (key, title, items) => { if (items.length) groups.push({ key, title, items }); };
     const env = {};
-    const tokens = md ? md.parse(splitFrontMatter(src).body, env) : [];
+    const tokens = md ? md.parse(stripNotes(splitFrontMatter(src).body), env) : [];
     const scan = scanParsed(tokens, src), lines = src.split('\n');
     // 1) 깨진 링크 · 그림
     if (!index) { index = new Map(); for (const [e, c] of gs.cache) if (c.scan) index.set(e, c.scan); }
@@ -5698,8 +5790,46 @@ body.zen .zen-exit:hover { opacity: 1; }
     openEntry(first);
   }
 
+  /* ---------- 읽던 위치 기억 (문서마다) ---------- */
+  // 화면 맨 위에 걸친 블록의 원본 줄 번호로 남김: 글자 크기 · 폭 · 창 크기가 바뀌어도 같은 곳으로 돌아감
+  const READ_KEY = 'mdv-readpos';
+  let readTimer = 0, readPath = '';
+  function saveReadPos() {
+    clearTimeout(readTimer);
+    const cur = state.current;
+    if (!cur || cur.isNew || cur.path !== readPath || !el.preview.clientHeight) return; // 편집만 보기처럼 결과가 안 보이면 그대로 둠
+    const top = el.preview.getBoundingClientRect().top;
+    let line = 0;
+    for (const n of el.doc.querySelectorAll('[data-line]')) {
+      if (n.getBoundingClientRect().bottom > top + 8) { line = +n.dataset.line || 0; break; }
+    }
+    const all = store.json(READ_KEY, {});
+    if (line > 0) all[cur.path] = { line, t: Date.now() }; else delete all[cur.path];
+    const keys = Object.keys(all);
+    if (keys.length > 300) keys.sort((a, b) => all[a].t - all[b].t).slice(0, keys.length - 300).forEach((k) => delete all[k]);
+    store.set(READ_KEY, JSON.stringify(all));
+  }
+  el.preview.addEventListener('scroll', () => { clearTimeout(readTimer); readTimer = setTimeout(saveReadPos, 400); }, { passive: true });
+  function restoreReadPos() {
+    const cur = state.current;
+    readPath = cur ? cur.path : '';
+    const p = cur && store.json(READ_KEY, {})[cur.path];
+    if (!p || !p.line) return;
+    const go = () => {
+      let best = null;
+      for (const n of el.doc.querySelectorAll('[data-line]')) { const l = +n.dataset.line; if (l <= p.line && (!best || l >= +best.dataset.line)) best = n; }
+      if (!best || !best.offsetParent) return null;
+      el.preview.scrollTop += best.getBoundingClientRect().top - el.preview.getBoundingClientRect().top - 8;
+      return el.preview.scrollTop;
+    };
+    const at = go();
+    // 그림 · 다이어그램이 늦게 그려져 자리가 밀리면 한 번 더 (그사이 다른 곳으로 옮겨 갔으면 그대로 둠)
+    if (at != null) setTimeout(() => { if (state.current === cur && Math.abs(el.preview.scrollTop - at) < 2) go(); }, 450);
+  }
+
   async function openEntry(entry, { fromHistory = false } = {}) {
     if (state.dirty && entry !== state.current && !confirm(L('저장하지 않은 변경 사항이 있습니다. 버리고 다른 파일을 열까요?', 'You have unsaved changes. Discard them and open another file?'))) return false;
+    if (state.current && entry !== state.current) saveReadPos(); // 떠나는 문서의 위치를 먼저 남김
     if (entry.text == null) {
       try {
         if (entry.tauriPath && !entry.file && !entry.handle) {
@@ -5732,6 +5862,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     render();
     el.preview.scrollTop = 0;
     el.editor.scrollTop = 0;
+    restoreReadPos(); // 읽던 곳으로 (링크의 #제목으로 열면 부른 쪽이 그 뒤에 옮김)
     revealCurrent();
     renderFileList();
     el.fileList.querySelector('.tree-row.current')?.scrollIntoView({ block: 'nearest' });
@@ -7838,6 +7969,8 @@ body.zen .zen-exit:hover { opacity: 1; }
     });
   }
 
+  // 보기 설정을 HTML 저장 · 숨은 틀에 옮길 CSS 변수
+  const docVars = () => `:root{--doc-size:${settings.size}px;--doc-width:${WIDTHS[settings.width]};--doc-font:${settings.font === 'serif' ? 'var(--serif)' : 'var(--font)'};--doc-lh:${LINE_H[settings.lh] || LINE_H.normal};--doc-para:${PARA_GAP[settings.para] || PARA_GAP.normal};}`;
   // 내보내기 · 서식 복사 · Word 저장 전에 그린 문서를 정리한 사본: 단추 빼기, 접힌 곳 · 탭 펴기, 찾기 표시 지우기
   function cleanClone(node) {
     const clone = node.cloneNode(true);
@@ -7854,8 +7987,8 @@ body.zen .zen-exit:hover { opacity: 1; }
     const clone = cleanClone(node);
     clone.querySelectorAll('details').forEach((d) => (d.open = true));
     const fr = await MarkRich.frame({
-      css: $('#doc-css').textContent,
-      vars: `:root{--doc-size:${settings.size}px;--doc-width:${WIDTHS[settings.width]};--doc-font:${settings.font === 'serif' ? 'var(--serif)' : 'var(--font)'};}`,
+      css: $('#doc-css').textContent + '\n' + userCssText(),
+      vars: docVars(),
       width: el.doc.getBoundingClientRect().width,
       sheets: ['vendor/katex/katex.min.css', 'vendor/hljs-github.min.css'],
     });
@@ -7884,10 +8017,10 @@ body.zen .zen-exit:hover { opacity: 1; }
     const theme = document.documentElement.dataset.theme;
     const hl = theme === 'dark' ? 'github-dark' : 'github';
     const title = escapeHtml(state.current.name.replace(MD_EXT, ''));
-    const vars = `:root{--doc-size:${settings.size}px;--doc-width:${WIDTHS[settings.width]};--doc-font:${settings.font === 'serif' ? 'var(--serif)' : 'var(--font)'};}`;
+    const vars = docVars();
     const serif = settings.font === 'serif' ? '\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap">' : '';
     const out = `<!doctype html>
-<html lang="ko" data-theme="${theme}">
+<html lang="ko" data-theme="${theme}"${settings.tint && settings.tint !== 'plain' ? ` data-tint="${settings.tint}"` : ''}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7897,6 +8030,7 @@ body.zen .zen-exit:hover { opacity: 1; }
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/${hl}.min.css">
 <style>${$('#doc-css').textContent}
 ${vars}
+${userCssText()}
 body { margin: 0; background: var(--bg); padding: 48px 16px 96px; }
 @media print { body { background: #fff; padding: 0; } }
 </style>
@@ -8555,7 +8689,7 @@ ${clone.innerHTML}
       .map((nodes) => ({ nodes, line: (nodes.find((n) => n.dataset && n.dataset.line != null) || { dataset: { line: 0 } }).dataset.line * 1 }));
     // 노트: 맨 위 단계의 <!-- … --> 를 그 줄이 든 장에
     pr.notes = pr.slides.map(() => []);
-    for (const t of md.parse(splitFrontMatter(source()).body, {})) {
+    for (const t of md.parse(stripNotes(splitFrontMatter(source()).body), {})) {
       if (t.type !== 'html_block' || t.level !== 0 || !/^\s*<!--/.test(t.content)) continue;
       const at = t.map ? t.map[0] : 0;
       let k = 0;

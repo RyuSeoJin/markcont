@@ -1,5 +1,6 @@
 // markcont 전용 문법을 다른 뷰어(GitHub · VS Code · Obsidian 등)에서도 통하는 표준 마크다운으로 바꿉니다.
-// - convert(src, { keepCritic }): 바꾼 글과 바꾼 곳 목록
+// - convert(src, { keepCritic }): 바꾼 글과 바꾼 곳 목록 (keepCritic: 교정 표기 · 숨은 메모 %%…%% 를 그대로 둠)
+// - stripNotes(src): 숨은 메모 %%…%% 를 지움 (줄 수는 그대로)
 // - 코드 블록 · 인라인 코드 · 수식 안은 건드리지 않습니다.
 (function () {
   const L = (ko, en) => (window.L ? window.L(ko, en) : ko);
@@ -30,6 +31,7 @@
     embedDoc: () => [L('문서 넣기 ![[문서#제목]]', 'Embedded document ![[doc#heading]]'), L('다른 뷰어용으로 저장할 때 내용을 펼쳐 넣음 (못 읽으면 링크로)', 'expanded into the content when saving for other viewers (a link if it can’t be read)')],
     container: () => [L('::: 블록 (탭 · 단계 · 파일 트리)', '::: blocks (tabs · steps · file tree)'), L('탭은 굵은 제목 + 내용, 단계 · 트리는 일반 목록으로', 'tabs to bold titles + content, steps · trees to plain lists')],
     critic: () => [L('교정 표기 {++추가++} 등', 'Suggestion marks {++added++} etc.'), L('다른 뷰어용으로 저장할 때만 <ins> · <del> · <mark> 태그로 (메모는 숨은 주석)', 'to <ins> · <del> · <mark> tags only when saving for other viewers (comments become hidden HTML comments)')],
+    hiddenNote: () => [L('숨은 메모 %%…%%', 'Hidden note %%…%%'), L('지움 (다른 뷰어에서는 글자 그대로 보여서)', 'removed (other viewers show it as plain text)')],
   };
   // ::: 블록 (탭 · 단계 · 파일 트리)
   const CONTAINER_OPEN = /^\s{0,3}:::\s*(tabs|탭|steps|단계|tree|트리)\s*$/i;
@@ -42,6 +44,36 @@
       else { const m = lines[k].match(CONTAINER_OPEN); if (m) { if (!depth) return /^(tabs|탭)$/i.test(m[1]); depth--; } }
     }
     return false;
+  }
+  // Obsidian 숨은 메모 %%…%% (여러 줄도): markcont 는 보기 · HTML 저장 · 서식 복사 · Word 에서 빼고, 다른 뷰어용으로 저장할 때 지움
+  //  (GitHub 등은 글자 그대로 보여서, 남에게 보내는 파일에 메모가 따라가지 않게)
+  //  - 지운 자리의 줄바꿈은 남겨 원본 줄 번호(data-line)가 어긋나지 않게
+  //  - 코드 블록 · `코드` · $$ 수식 블록 · $수식$ 안의 %% 는 그대로 (그 자리를 빈칸으로 가린 뒤 짝을 찾음)
+  //  - 닫는 %% 가 없거나 숫자 바로 뒤의 %%(50%% 같은 글)는 메모로 보지 않음 — 뒤의 글을 다 숨기지 않게
+  function maskCodeMath(src) {
+    let fence = null, math = false;
+    const blank = (s) => s.replace(/[^\n]/g, ' ');
+    return src.split('\n').map((l) => {
+      const f = l.match(/^ {0,3}(`{3,}|~{3,})/);
+      if (fence) { if (f && f[1][0] === fence[0] && f[1].length >= fence.length && /^ {0,3}(`+|~+)\s*$/.test(l)) fence = null; return blank(l); }
+      if (f) { fence = f[1]; return blank(l); }
+      if (/^\s*\$\$/.test(l) && !/^\s*\$\$.*\S.*\$\$\s*$/.test(l)) { math = !math; return blank(l); }
+      if (math) return blank(l);
+      return l.replace(/\\./g, '  ').replace(/(`+)[^`][\s\S]*?\1(?!`)/g, blank).replace(/\$(?=[^\s$])[^$\n]*?[^\s$]\$|\$[^\s$]\$/g, blank);
+    }).join('\n');
+  }
+  function stripNotes(src) {
+    if (!src || !src.includes('%%')) return src;
+    const flat = maskCodeMath(src), ranges = [];
+    let open = -1;
+    for (let k = flat.indexOf('%%'); k >= 0; k = flat.indexOf('%%', k + 2)) {
+      if (open >= 0) { ranges.push([open, k + 2]); open = -1; }
+      else if (!(k > 0 && /\d/.test(flat[k - 1]))) open = k;
+    }
+    if (!ranges.length) return src;
+    let out = '', last = 0;
+    for (const [a, b] of ranges) { out += src.slice(last, a) + src.slice(a, b).replace(/[^\n]/g, ''); last = b; }
+    return out + src.slice(last);
   }
   // 교정 표기 (CriticMarkup) 한 줄 안: {++추가++} {--삭제--} {~~옛~>새~~} {>>메모<<} {==표시==}
   const CRITIC_LINE = /(\{\+\+.+?\+\+\}|\{--.+?--\}|\{~~.*?~>.*?~~\}|\{>>.+?<<\}|\{==.+?==\})/;
@@ -162,9 +194,12 @@
 
   // opts.keepCritic: 교정 표기는 그대로 둠 (이 문서를 표준 문법으로 바꿀 때 — 받아들이기 전의 제안을 지우지 않게)
   function convert(src, opts = {}) {
-    const lines = String(src).replace(/\r\n?/g, '\n').split('\n');
+    const raw = String(src).replace(/\r\n?/g, '\n');
+    // 숨은 메모 %%…%% 는 지움 (지운 줄을 바꾼 곳으로 알림). 이 문서 자체를 바꿀 때(keepCritic)는 교정 표기처럼 내 메모도 그대로
+    const lines = (opts.keepCritic ? raw : stripNotes(raw)).split('\n');
     const out = [], changes = [], notes = [];
     const note = (ln, kind, text) => changes.push({ line: ln, kind, text: (text || '').trim().slice(0, 80) });
+    if (!opts.keepCritic && raw.includes('%%')) raw.split('\n').forEach((l, k) => { if (l !== lines[k]) note(k + 1, 'hiddenNote', l); });
     let fn = 0, toc = null;
 
     // 인라인: 코드 · 수식 조각은 그대로 두고 나머지만 바꿈
@@ -350,6 +385,7 @@
 
   window.MarkPortable = {
     convert,
+    stripNotes,
     describe(kind) { return (KINDS[kind] || (() => [kind, '']))(); },
     // 바꿀 수 없어 경고만 하는 종류
     warnOnly: (kind) => kind === 'chem' || kind === 'diagramErr' || kind === 'cjkEmphErr' || kind === 'critic',

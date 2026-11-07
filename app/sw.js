@@ -31,6 +31,7 @@ const APP_FILES = [
   './paste.js',
   './docx.js',
   './richcopy.js',
+  './emoji.js',
   './vendor/highlight.min.js',
   './vendor/hljs-github-dark.min.css',
   './vendor/hljs-github.min.css',
