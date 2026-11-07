@@ -108,12 +108,16 @@
     label = label.replace(/[[\]]/g, (c, i, s) => (s[i - 1] === '\\' ? c : '\\' + c));
     return `${m[1]}[${label}](${urlOf(href)})${m[3]}`;
   }
-  // KaTeX 로 그린 수식 → $…$ (원래 TeX 가 annotation 에 들어 있음)
+  // KaTeX 로 그린 수식 → $…$ (원래 TeX 는 annotation 에, markcont 에서 복사한 것은 data-tex 에 들어 있음)
   function math(n) {
-    const tex = n.querySelector('annotation[encoding="application/x-tex"]');
-    if (!tex) return escText(collapse(n.textContent));
+    const ann = n.querySelector('annotation[encoding="application/x-tex"]');
+    const tex = n.getAttribute('data-tex') || (ann && ann.textContent);
+    if (!tex) {
+      const vis = n.querySelector('.katex-html');
+      return escText(collapse((vis || n).textContent));
+    }
     const display = !!n.closest('.katex-display');
-    return display ? `$$${tex.textContent.trim()}$$` : `$${tex.textContent.trim()}$`;
+    return display ? `$$${tex.trim()}$$` : `$${tex.trim()}$`;
   }
 
   // ---------- 블록 ----------

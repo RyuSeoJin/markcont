@@ -762,6 +762,7 @@ Check **where it works** first, and if the document will be opened elsewhere too
 | YouTube thumbnail | A YouTube URL alone on a line | ✅ | ❌ link | ❌ link |
 | Document info | `name: value` between `---` lines at the very top | ✅ info box | ⚠️ table | ✅ |
 | Table of contents | `[[_TOC_]]` on a line of its own | ✅ | ❌ plain text | ❌ |
+| Page break | `<!-- page break -->` on a line of its own | ✅ print · PDF · Word | ⚠️ hidden (no break) | ⚠️ hidden (no break) |
 | Collapsible content | `<details>` | ✅ | ✅ | ✅ |
 | Keyboard keys | `<kbd>Ctrl</kbd>` | ✅ | ✅ | ✅ |
 | Source · result side by side | ```` ```markdown example ```` | ✅ | ❌ shown as code | ❌ shown as code |
@@ -969,6 +970,7 @@ tags:
 |:---|:---|
 | `badges: done=green, pending=orange, open=red` | Table cells that start with those words show as colored badges (blue · green · orange · red · purple · gray) |
 | `viewer: markcont` | A markcont-only document: hides the "⚠ spots look different in other viewers" notice |
+| `cover: yes` | Makes the first page of print · PDF · Word a cover: title (`title`) · summary (`summary`) · the rest of the info. The cover has no page number |
 
 ### Table of contents · heading numbers
 
@@ -985,6 +987,23 @@ tags:
 - It's the same syntax as GitLab and Azure DevOps. Typora's `[toc]` and VitePress's `[[toc]]` work too.
 - Save for other viewers turns it into a list of heading links.
 - To see heading numbers (1 · 1.1 · 1.1.1) without writing them, use **View settings (Aa) → Number the headings**. The source text stays as it is. Headings that already have a number, like `1️⃣`, `1.` or `3-1.`, are skipped, and counting continues from their number.
+
+### Page break (print · PDF · Word)
+
+```markdown
+## Chapter 1
+
+…
+
+<!-- page break -->
+
+## Chapter 2
+```
+
+- Write `<!-- page break -->` on a line of its own, with blank lines around it, and print · PDF · Word start a new page from there. On screen it shows only as a dashed line.
+- `<!-- pagebreak -->` · `<!-- page-break -->` · `<!-- newpage -->` · `<!-- 쪽 나눔 -->` work too.
+- It's an HTML comment, so other viewers show nothing (and don't break the page).
+- To make the first page a cover, write `cover: yes` in the document info at the top instead of a page break.
 
 ### Line breaks
 

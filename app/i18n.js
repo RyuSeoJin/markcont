@@ -155,6 +155,7 @@
     '찾기 닫기': 'Close find',
     '찾을 글': 'Find',
     '발표하기 (단락마다 한 장)': 'Present (one slide per section)',
+    'Word 파일로 저장 (.docx)': 'Save as Word (.docx)',
     '이전 (←)': 'Previous (←)',
     '이전 장': 'Previous slide',
     '다음 (→ · Space)': 'Next (→ · Space)',

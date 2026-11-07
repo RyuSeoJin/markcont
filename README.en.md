@@ -80,7 +80,7 @@ curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh 
 - Table editing: move between cells with <kbd>Tab</kbd>, align columns (measuring Korean character widths), add · delete · move rows and columns, sort by a column
 - Paste as markdown: screenshots become image files in an `images` folder next to the document, Excel cells become tables, text from the web · Notion · Google Docs · Word keeps its headings · lists · links, and a URL pasted over selected text becomes a link
 - Saved versions that survive closing: a copy is kept on every save and every time Claude or another program edits the file, so you can go back for 14 days
-- Auto-reload of changed files, Save as HTML, Print · PDF
+- Auto-reload of changed files, Save as HTML · Word (.docx), Print · PDF (page numbers · a cover with `cover: yes` · page breaks with `<!-- page break -->`, tables · images aren't cut at page boundaries)
 - Presentation mode: sections split by dividers (`---`) become slides, with overview · speaker notes (`<!-- -->`) · slide printing
 - Save for other viewers: a copy with markcont-only syntax converted to standard markdown (diagrams to Mermaid), plus a marker for spots that look different
 - Document check: broken links · images, skipped heading levels, footnotes, table rows with a different cell count, long sentences and writing rules in one list

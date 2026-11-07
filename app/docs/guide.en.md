@@ -255,6 +255,7 @@ Open the window with the **History** button in the editing toolbar (<kbd>Ctrl</k
 | For other viewers | **▾ → Save for other viewers…** next to the Save button — a copy with markcont-only syntax converted to standard syntax (looks the same on GitHub · VS Code; the original stays as it is) |
 | As an HTML file | **⋯ → Save as HTML** — a single file that looks just like the screen |
 | As a PDF | In **⋯ → Print · Save as PDF**, choose "Save as PDF" |
+| As a Word file | **⋯ → Save as Word (.docx)** — to send to a company or keep editing in Word · Hancom Office |
 
 - Files opened with Open file · Open folder are **saved straight to the original file**.
 - Before saving, markcont **shows you what will change and asks once more** (Cancel · Save as new file · Save). To turn this off, turn off **Aa → Review changes before saving**, or check **Don't ask again** in the confirmation window.
@@ -275,6 +276,14 @@ Open the window with the **History** button in the editing toolbar (<kbd>Ctrl</k
   With no issues and only markcont-only syntax, it shows **⚠ N spots look different in other viewers** instead. To hide it, turn off **Aa → Show the document check**.
 - If another program changes the file, markcont **reloads it automatically.** If you have unsaved changes, it won't overwrite them and lets you know instead.
 - Every save is kept in **Saved versions**. If you saved something by mistake, go back to the older content with the **History** button → **Saved versions**.
+
+**Print · PDF · Word**
+
+- Page numbers (`3 / 12`) are printed at the bottom of each page and the document title at the top. This works in Chrome · Edge 131 or later and the Windows PC app; in other browsers, turn on **Headers and footers** in the print window.
+- Tables · images · diagrams · math · callouts are kept off page boundaries where possible and move to the next page instead. Code lines longer than the paper are wrapped (the line numbers of that code block are left out then).
+- To start a new page at a spot of your choice, write `<!-- page break -->` on a line there. On screen it shows only as a dashed line.
+- Write `cover: yes` in the document info at the top, and the first page becomes a **cover** (title · summary · the rest of the info, like the author). The cover has no page number.
+- Word files keep heading levels · lists · tables · code · callouts · images, and diagrams become images. Math goes in as TeX text (`E=mc^2`). The paper size follows your region (Letter for the US · Canada, A4 elsewhere).
 
 ---
 
@@ -358,4 +367,4 @@ Open **⋯ → [Markdown writing rules](Markdown-Writing-Rules.md)**. Give that 
 2. In the sidebar, use the **Files · Contents · Search · Links** tabs; right-click for **New document · Rename · Delete**
 3. **Aa** for view settings, <kbd>Ctrl</kbd>+<kbd>F</kbd> to find in the document, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> to search all documents, <kbd>Ctrl</kbd>+<kbd>.</kbd> for focus mode
 4. <kbd>Ctrl</kbd>+<kbd>E</kbd> to edit, <kbd>Ctrl</kbd>+<kbd>S</kbd> to save
-5. From the **⋯** menu: HTML · PDF export, the guide and the writing rules
+5. From the **⋯** menu: HTML · PDF · Word export, the guide and the writing rules
