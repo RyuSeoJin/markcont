@@ -4907,8 +4907,9 @@ body.zen .zen-exit:hover { opacity: 1; }
     return text.split(/(?<=[.!?。])\s+/);
   }
   // 표 줄의 칸 수 (\| 는 칸 나눔이 아님 · GFM 처럼 `코드` 안의 | 도 나눔)
+  //  알림 상자 · 인용 안의 표는 줄 앞의 > 를 떼고 셈 (떼지 않으면 칸이 하나 더 많게 잡힘)
   function tableCells(line) {
-    let t = line.trim();
+    let t = line.replace(/^\s*(?:>\s?)+/, '').trim();
     if (t.startsWith('|')) t = t.slice(1);
     if (/(^|[^\\])\|$/.test(t)) t = t.slice(0, -1);
     return t.split(/(?<!\\)\|/).length;
