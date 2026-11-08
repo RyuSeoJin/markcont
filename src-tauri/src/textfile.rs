@@ -197,3 +197,169 @@ pub fn write(path: &Path, text: &str, want: Want<'_>) -> io::Result<()> {
     let disk = if complete { None } else { read(path).ok().map(|(_, f)| f) };
     fs::write(path, encode(text, pick(want, disk, text))?)
 }
+
+// 테스트: cargo test --manifest-path src-tauri/Cargo.toml (CI 의 check.yml 이 돌림)
+// 입력 바이트는 파이썬(cp949 · utf-16 코덱)으로 따로 만든 것. 같은 라이브러리로 만들고 확인하는 순환을 피함
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{fs, io};
+
+    /// "# 회의록\r\n\r\n- 똠방각하 · 참석\r\n" (EUC-KR · CP949, '똠'은 완성형 밖 글자)
+    const EUC_KR_CRLF: &[u8] = &[0x23, 0x20, 0xC8, 0xB8, 0xC0, 0xC7, 0xB7, 0xCF, 0x0D, 0x0A, 0x0D, 0x0A, 0x2D, 0x20, 0x8C, 0x63, 0xB9, 0xE6, 0xB0, 0xA2, 0xC7, 0xCF, 0x20, 0xA1, 0xA4, 0x20, 0xC2, 0xFC, 0xBC, 0xAE, 0x0D, 0x0A];
+    /// 위 글의 "참석" 뒤에 " (고침)"을 더한 것
+    const EUC_KR_CRLF_EDITED: &[u8] = &[0x23, 0x20, 0xC8, 0xB8, 0xC0, 0xC7, 0xB7, 0xCF, 0x0D, 0x0A, 0x0D, 0x0A, 0x2D, 0x20, 0x8C, 0x63, 0xB9, 0xE6, 0xB0, 0xA2, 0xC7, 0xCF, 0x20, 0xA1, 0xA4, 0x20, 0xC2, 0xFC, 0xBC, 0xAE, 0x20, 0x28, 0xB0, 0xED, 0xC4, 0xA7, 0x29, 0x0D, 0x0A];
+    /// BOM + "# 문서\r\n첫째 😀\r\n" (UTF-16LE, 이모지는 서로게이트 쌍)
+    const UTF16LE_CRLF: &[u8] = &[0xFF, 0xFE, 0x23, 0x00, 0x20, 0x00, 0x38, 0xBB, 0x1C, 0xC1, 0x0D, 0x00, 0x0A, 0x00, 0xAB, 0xCC, 0xF8, 0xC9, 0x20, 0x00, 0x3D, 0xD8, 0x00, 0xDE, 0x0D, 0x00, 0x0A, 0x00];
+    /// BOM + "# BE\n둘째\n" (UTF-16BE)
+    const UTF16BE_LF: &[u8] = &[0xFE, 0xFF, 0x00, 0x23, 0x00, 0x20, 0x00, 0x42, 0x00, 0x45, 0x00, 0x0A, 0xB4, 0x58, 0xC9, 0xF8, 0x00, 0x0A];
+
+    /// 테스트마다 따로 쓰는 임시 파일 (끝나면 지움)
+    struct Temp(std::path::PathBuf);
+    impl Temp {
+        fn new(name: &str, bytes: Option<&[u8]>) -> Temp {
+            let p = std::env::temp_dir().join(format!("markcont-textfile-{}-{name}", std::process::id()));
+            let _ = fs::remove_file(&p);
+            if let Some(b) = bytes {
+                fs::write(&p, b).unwrap();
+            }
+            Temp(p)
+        }
+    }
+    impl Drop for Temp {
+        fn drop(&mut self) {
+            let _ = fs::remove_file(&self.0);
+        }
+    }
+
+    /// 바이트를 읽은 그대로 다시 씀 → (\n 으로 맞춘 글, 글자 방식, 다시 쓴 바이트)
+    fn roundtrip(bytes: &[u8]) -> (String, Format, Vec<u8>) {
+        let (raw, bom, enc) = decode(bytes.to_vec());
+        let fmt = Format { eol: eol_of(&raw), bom, enc };
+        let text = to_lf(&raw);
+        let out = encode(&text, fmt).unwrap();
+        (text, fmt, out)
+    }
+
+    #[test]
+    fn eol_detection() {
+        assert_eq!(eol_of("a\r\nb\r\n"), "\r\n");
+        assert_eq!(eol_of("a\nb\n"), "\n");
+        assert_eq!(eol_of(""), "\n");
+        assert_eq!(eol_of("한 줄"), "\n");
+        assert_eq!(eol_of("a\r\nb\nc\r\n"), "\r\n"); // 많이 쓴 쪽
+        assert_eq!(eol_of("a\r\nb\nc\n"), "\n");
+        assert_eq!(eol_of("a\r\nb\n"), "\n"); // 같으면 \n
+    }
+
+    #[test]
+    fn line_endings_normalize_and_restore() {
+        assert_eq!(to_lf("a\r\nb\rc\n"), "a\nb\nc\n");
+        assert_eq!(to_lf("a\nb"), "a\nb");
+        assert_eq!(with_eol("a\nb\n", "\r\n"), "a\r\nb\r\n");
+        assert_eq!(with_eol("a\r\nb\n", "\r\n"), "a\r\nb\r\n"); // 섞여 있어도 한쪽으로
+        assert_eq!(with_eol("a\r\nb\r\n", "\n"), "a\nb\n");
+    }
+
+    #[test]
+    fn utf8_without_bom_roundtrip() {
+        let src = "# 제목\n본문 \u{1F600}\n";
+        let (text, fmt, out) = roundtrip(src.as_bytes());
+        assert_eq!(text, src);
+        assert!(fmt.enc == Enc::Utf8 && !fmt.bom && fmt.eol == "\n");
+        assert_eq!(out, src.as_bytes());
+    }
+
+    #[test]
+    fn utf8_with_bom_and_crlf_roundtrip() {
+        let src = "\u{feff}# 제목\r\n본문\r\n";
+        let (text, fmt, out) = roundtrip(src.as_bytes());
+        assert_eq!(text, "# 제목\n본문\n");
+        assert!(fmt.enc == Enc::Utf8 && fmt.bom && fmt.eol == "\r\n");
+        assert_eq!(out, src.as_bytes());
+    }
+
+    #[test]
+    fn euc_kr_roundtrip() {
+        let (text, fmt, out) = roundtrip(EUC_KR_CRLF);
+        assert_eq!(text, "# 회의록\n\n- 똠방각하 · 참석\n");
+        assert!(fmt.enc == Enc::EucKr && !fmt.bom && fmt.eol == "\r\n");
+        assert_eq!(out, EUC_KR_CRLF);
+    }
+
+    #[test]
+    fn euc_kr_edit_keeps_encoding() {
+        let (text, fmt, _) = roundtrip(EUC_KR_CRLF);
+        let edited = text.replace("참석", "참석 (고침)");
+        assert_eq!(encode(&edited, fmt).unwrap(), EUC_KR_CRLF_EDITED);
+    }
+
+    #[test]
+    fn euc_kr_refuses_characters_it_cannot_hold() {
+        let (text, fmt, _) = roundtrip(EUC_KR_CRLF);
+        let err = encode(&(text + "끝 \u{2705} — \u{1F4CC}\n"), fmt).unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        let msg = err.to_string();
+        assert!(msg.contains('\u{2705}') && msg.contains('—') && msg.contains('\u{1F4CC}'), "{msg}");
+    }
+
+    #[test]
+    fn utf16le_roundtrip() {
+        let (text, fmt, out) = roundtrip(UTF16LE_CRLF);
+        assert_eq!(text, "# 문서\n첫째 \u{1F600}\n");
+        assert!(fmt.enc == Enc::Utf16Le && fmt.bom && fmt.eol == "\r\n");
+        assert_eq!(out, UTF16LE_CRLF);
+    }
+
+    #[test]
+    fn utf16be_roundtrip() {
+        let (text, fmt, out) = roundtrip(UTF16BE_LF);
+        assert_eq!(text, "# BE\n둘째\n");
+        assert!(fmt.enc == Enc::Utf16Be && fmt.bom && fmt.eol == "\n");
+        assert_eq!(out, UTF16BE_LF);
+    }
+
+    #[test]
+    fn pick_prefers_given_then_disk_then_defaults() {
+        let disk = Format { eol: "\r\n", bom: false, enc: Enc::EucKr };
+        // 정하지 않은 것은 지금 파일의 방식
+        let f = pick(Want::default(), Some(disk), "a\n");
+        assert!(f.eol == "\r\n" && !f.bom && f.enc == Enc::EucKr);
+        // 정해 준 것이 먼저
+        let f = pick(Want { eol: Some("\n"), bom: Some(true), enc: Some("utf-8") }, Some(disk), "a\n");
+        assert!(f.eol == "\n" && f.bom && f.enc == Enc::Utf8);
+        // 새 파일: 받은 글의 줄 끝, BOM 없는 UTF-8
+        let f = pick(Want::default(), None, "a\r\nb\r\n");
+        assert!(f.eol == "\r\n" && !f.bom && f.enc == Enc::Utf8);
+        assert!(Enc::from_name("UTF-16LE") == Enc::Utf16Le && Enc::from_name("euc-kr") == Enc::EucKr && Enc::from_name("?") == Enc::Utf8);
+    }
+
+    #[test]
+    fn write_keeps_existing_file_format() {
+        // 화면 · MCP 가 \n 글을 넘겨도 원래 파일의 글자 방식(EUC-KR · CRLF / UTF-16LE · CRLF)을 지킴
+        let euc = Temp::new("euc.md", Some(EUC_KR_CRLF));
+        let (text, fmt) = read(&euc.0).unwrap();
+        assert!(fmt.enc == Enc::EucKr && fmt.eol == "\r\n");
+        write(&euc.0, &text.replace("참석", "참석 (고침)"), Want::default()).unwrap();
+        assert_eq!(fs::read(&euc.0).unwrap(), EUC_KR_CRLF_EDITED);
+
+        let utf16 = Temp::new("utf16.md", Some(UTF16LE_CRLF));
+        let (text, _) = read(&utf16.0).unwrap();
+        write(&utf16.0, &text, Want::default()).unwrap();
+        assert_eq!(fs::read(&utf16.0).unwrap(), UTF16LE_CRLF);
+    }
+
+    #[test]
+    fn unencodable_write_leaves_file_untouched() {
+        let t = Temp::new("euc-bad.md", Some(EUC_KR_CRLF));
+        assert!(write(&t.0, "이모지 \u{1F600}\n", Want::default()).is_err());
+        assert_eq!(fs::read(&t.0).unwrap(), EUC_KR_CRLF);
+    }
+
+    #[test]
+    fn new_file_is_plain_utf8() {
+        let t = Temp::new("new.md", None);
+        write(&t.0, "# 새 문서\n", Want::default()).unwrap();
+        assert_eq!(fs::read(&t.0).unwrap(), "# 새 문서\n".as_bytes());
+    }
+}
