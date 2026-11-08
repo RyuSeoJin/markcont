@@ -13,10 +13,12 @@ use std::{fs, path::PathBuf, time::UNIX_EPOCH};
 struct OpenedFile {
     path: String,
     name: String,
-    /// 줄 끝을 \n 으로 맞춘 글 (편집창과 같게, textfile.rs)
+    /// 줄 끝을 \n 으로 맞추고 맨 앞 BOM 을 뗀 글 (편집창과 같게, textfile.rs)
     text: String,
-    /// 원래 줄 끝 ("\r\n" · "\n"). 화면이 저장할 때 save_file 의 eol 로 돌려줌
+    /// 원래 글자 방식: 줄 끝("\r\n" · "\n") · BOM · 인코딩("utf-8" · "euc-kr"). 화면이 저장할 때 save_file 에 돌려줌
     eol: &'static str,
+    bom: bool,
+    enc: &'static str,
     modified: u64,
 }
 
@@ -30,11 +32,11 @@ fn modified_ms(p: &PathBuf) -> u64 {
         .unwrap_or(0)
 }
 
-/// UTF-8(아니면 EUC-KR)로 읽고 줄 끝을 \n 으로 맞춥니다. 원래 줄 끝은 eol 로 알려 줍니다.
+/// UTF-8(아니면 EUC-KR)로 읽고 BOM 을 떼고 줄 끝을 \n 으로 맞춥니다. 원래 글자 방식은 eol · bom · enc 로 알려 줍니다.
 #[tauri::command]
 fn read_file(path: String) -> Result<OpenedFile, String> {
     let p = PathBuf::from(&path);
-    let (text, eol) = textfile::read(&p).map_err(|e| e.to_string())?;
+    let (text, fmt) = textfile::read(&p).map_err(|e| e.to_string())?;
     let name = p
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
@@ -44,19 +46,23 @@ fn read_file(path: String) -> Result<OpenedFile, String> {
         path,
         name,
         text,
-        eol,
+        eol: fmt.eol,
+        bom: fmt.bom,
+        enc: fmt.enc(),
     })
 }
 
 /// keep_history 가 true 면 바뀌기 전 내용과 새 내용을 저장 기록에 남깁니다 (history.rs)
-/// eol: 쓸 줄 끝 (read_file 이 알려 준 원래 줄 끝). 없으면 지금 파일의 줄 끝을 따릅니다
+/// eol · bom · enc: 쓸 글자 방식 (read_file 이 알려 준 원래 방식). 없는 것은 지금 파일의 방식을 따릅니다.
+/// EUC-KR 에 없는 글자를 EUC-KR 로 쓰려 하면 쓰지 않고 오류 (화면은 저장 전에 UTF-8 로 바꿀지 먼저 물음)
 #[tauri::command]
-fn save_file(path: String, text: String, keep_history: Option<bool>, eol: Option<String>) -> Result<u64, String> {
+fn save_file(path: String, text: String, keep_history: Option<bool>, eol: Option<String>, bom: Option<bool>, enc: Option<String>) -> Result<u64, String> {
     let p = PathBuf::from(&path);
+    let want = textfile::Want { eol: eol.as_deref(), bom, enc: enc.as_deref() };
     if keep_history.unwrap_or(false) {
-        history::write_with_history(&p, &text, eol.as_deref(), "save").map_err(|e| e.to_string())?;
+        history::write_with_history(&p, &text, want, "save").map_err(|e| e.to_string())?;
     } else {
-        textfile::write(&p, &text, eol.as_deref()).map_err(|e| e.to_string())?;
+        textfile::write(&p, &text, want).map_err(|e| e.to_string())?;
     }
     Ok(modified_ms(&p))
 }
