@@ -3,7 +3,7 @@ title: markcont User guide
 version: 1.9.3
 ---
 
-# 📘 markcont User guide
+# markcont User guide
 
 markcont (**mark**down **cont**roller) is a program for viewing Markdown files nicely and editing them right where you read them.
 This guide is laid out so a first-time user can follow it step by step.
@@ -189,7 +189,7 @@ Press **Edit** at the top (<kbd>Ctrl</kbd>+<kbd>E</kbd>) to see the source on th
 | Flowchart | A ```` ```flow ```` chart + a node table |
 | Data definition · exposure | ```` ```data ```` cards + a ```` ```ui ```` tree |
 
-- They all follow the [writing rules](writing-rules.en.md) (one top title, an emoji on each `##` section, `---` between sections).
+- They all follow the [writing rules](writing-rules.en.md) (one top title with no emoji, an emoji on each `##` section, `---` between sections).
 - Documents in a **`templates`** folder inside an open folder show up in the template list too. Write `{{title}}` · `{{date}}` · `{{time}}` in them and they become the new document's name · today's date · the current time. Dates go in as `2026-11-07`, not `11/7`, since countries read the day and month in different orders.
 
 ### Autocomplete · the `/` menu

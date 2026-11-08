@@ -6148,7 +6148,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   };
 
   /* ---------- 새 문서 템플릿 ---------- */
-  // 작성 규칙(맨 위 제목 하나 · ## 단락마다 이모지 · 단락 사이 ---)을 따르는 뼈대 + 열어 둔 폴더의 templates/ · 템플릿/ 안 문서
+  // 작성 규칙(맨 위 제목 하나는 이모지 없이 · ## 단락마다 이모지 · 단락 사이 ---)을 따르는 뼈대 + 열어 둔 폴더의 templates/ · 템플릿/ 안 문서
   //  - {{title}} · {{date}} · {{time}} 을 채움 (한국어 {{제목}} · {{날짜}} · {{시간}} 도). 날짜는 나라마다 읽는 순서가 다른 11/7 대신 2026-11-07
   const pad2 = (n) => String(n).padStart(2, '0');
   const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
@@ -6167,7 +6167,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       { ko: '빈 문서', en: 'Blank document', sub: L('제목만', 'Title only'), name: L('새 문서', 'Untitled'), text: '# {{title}}\n\n' },
       { ko: '기능 기획서', en: 'Feature spec', sub: L('목표 · 기능 · 흐름 · 예외 · 확인 목록', 'Goal · feature · flow · exceptions · checklist'), name: L('기능 기획서', 'Feature spec'), text: [
         ...fm(['author: ', 'date: {{date}}']),
-        '# 📝 {{title}}', '', L('이 기능이 무엇이고 왜 만드는지 한두 줄로 적습니다.', 'Say in a line or two what this feature is and why we build it.'), '',
+        '# {{title}}', '', L('이 기능이 무엇이고 왜 만드는지 한두 줄로 적습니다.', 'Say in a line or two what this feature is and why we build it.'), '',
         L('## 🎯 목표', '## 🎯 Goal'), '', L('- 사용자가 무엇을 할 수 있게 되는지 적습니다.', '- What users will be able to do.'), '', '---', '',
         L('## ✨ 기능', '## ✨ Feature'), '', L('### 화면', '### Screens'), '', L('- 어떤 화면에 무엇이 보이는지', '- What shows on which screen'), '',
         L('### 동작', '### Behavior'), '', L('| 상황 | 동작 |', '| When | What happens |'), '|:---|:---|', '|  |  |', '', '---', '',
@@ -6176,17 +6176,17 @@ body.zen .zen-exit:hover { opacity: 1; }
         L('## ✅ 확인 목록', '## ✅ Checklist'), '', L('- [ ] 확인할 것', '- [ ] Something to check'), ''].join('\n') },
       { ko: '회의록', en: 'Meeting notes', sub: L('참석 · 안건 · 정한 것 · 할 일', 'Attendees · agenda · decisions · to-dos'), name: `${today()} ${L('회의록', 'Meeting notes')}`, text: [
         ...fm(['date: {{date}}']),
-        '# 🗓️ {{title}}', '', L('{{date}} 회의에서 나눈 이야기와 정한 것을 적습니다.', 'What we discussed and decided in the meeting on {{date}}.'), '',
+        '# {{title}}', '', L('{{date}} 회의에서 나눈 이야기와 정한 것을 적습니다.', 'What we discussed and decided in the meeting on {{date}}.'), '',
         L('## 👥 참석', '## 👥 Attendees'), '', L('- 이름', '- Name'), '', '---', '',
         L('## 💬 안건', '## 💬 Agenda'), '', L('### 1. 첫 안건', '### 1. First item'), '', L('- 나온 이야기', '- What was said'), '', '---', '',
         L('## ✅ 정한 것', '## ✅ Decisions'), '', L('- 정한 것', '- Decision'), '', '---', '',
         L('## 🎯 할 일', '## 🎯 To-dos'), '', L('- [ ] 담당 · 할 일 · 기한', '- [ ] Owner · task · due date'), ''].join('\n') },
       { ko: '흐름도', en: 'Flowchart', sub: L('```flow 흐름도 + 도형 설명 표', '```flow chart + node table'), name: L('흐름도', 'Flowchart'), text: [
-        '# 🔀 {{title}}', '', L('이 흐름이 무엇을 하는지 한두 줄로 적습니다.', 'Say in a line or two what this flow does.'), '',
+        '# {{title}}', '', L('이 흐름이 무엇을 하는지 한두 줄로 적습니다.', 'Say in a line or two what this flow does.'), '',
         L('## 🔀 흐름도', '## 🔀 Flowchart'), '', F + 'flow', ...flow, F, '', '---', '',
         L('## 📊 도형 설명', '## 📊 Nodes'), '', L('| 코드 | 설명 |', '| Code | Notes |'), '|:---|:---|', L('| A-03 | 판정 기준을 적습니다 |', '| A-03 | How the condition is decided |'), ''].join('\n') },
       { ko: '데이터 정의 · 노출 위치', en: 'Data definition · exposure', sub: L('```데이터 카드 + ```노출 나무', '```data cards + ```ui tree'), name: L('데이터 정의', 'Data definition'), text: [
-        '# 📊 {{title}}', '', L('이 데이터가 어디에 쓰이는지 한두 줄로 적습니다.', 'Say in a line or two where this data is used.'), '',
+        '# {{title}}', '', L('이 데이터가 어디에 쓰이는지 한두 줄로 적습니다.', 'Say in a line or two where this data is used.'), '',
         L('## 📊 데이터', '## 📊 Data'), '', F + L('데이터', 'data'),
         L('# 데이터 이름 (data_id)', '# Data name (data_id)'), L('> 설명', '> Description'),
         L('필드 | 형식 | 필수 | 설명 | 예시', 'Field | Type | Required | Description | Example'),

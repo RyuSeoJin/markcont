@@ -3,7 +3,7 @@ title: Workflow Writing Rules
 version: 1.0
 ---
 
-# 🧭 Workflow Writing Rules
+# Workflow Writing Rules
 
 How to write **workflows that need a wide view** — like the flow-node data and exposure locations in a planning document — so they read well in markcont.
 The flowchart syntax follows section 7-2 of the [Markdown writing rules](Markdown-Writing-Rules.md); this document covers only **what to keep in mind for large flows**.

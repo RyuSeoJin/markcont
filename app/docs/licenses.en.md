@@ -1,4 +1,4 @@
-# 📄 Open-source licenses
+# Open-source licenses
 
 markcont uses the open-source software below. Many thanks to everyone who made it.
 

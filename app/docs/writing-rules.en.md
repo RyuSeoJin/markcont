@@ -1,9 +1,9 @@
 ---
 title: Rules for Good-Looking Markdown
-version: 1.2
+version: 1.3
 ---
 
-# 📐 Rules for Good-Looking Markdown
+# Rules for Good-Looking Markdown
 
 Follow these rules and your documents will be easy to take in at a glance in markcont.
 When you ask an AI to write a document, give it this file too and use one of these prompts, **depending on where the document will be read**.
@@ -29,14 +29,14 @@ When you ask an AI to write a document, give it this file too and use one of the
 
 | Rule | Like this | Why |
 |:---|:---|:---|
-| **Only one** title (`#`) per document | `# 👋 About the project` | The top title becomes the document's name |
+| **Only one** title (`#`) per document, no emoji | `# About the project` | The top title becomes the document's name. Emoji go on sections (`##`) only, so the name and the sections look different |
 | Big sections use `##` + **one emoji** | `## 🚀 Getting started` | Sections stand out right away in the outline and the text |
 | Small sections use `###`, no emoji | `### How to install` | They look lighter than big sections |
 | A divider `---` between `##` sections | | Section boundaries are clear on screen |
 | A **one- or two-line summary** right under the title | | Readers can decide right away whether to read on |
 
 ```markdown example
-# 👋 About the project
+# About the project
 
 A quick overview of the app our team is building.
 
@@ -55,7 +55,7 @@ Download the installer and run it.
 
 | Emoji | Use for | Emoji | Use for |
 |:---:|:---|:---:|:---|
-| 👋 | Document title, greetings | 🚀 | Getting started, key features |
+| 👋 | Introductions, greetings | 🚀 | Getting started, key features |
 | ✨ | Basic features, highlights | ✅ | To-dos, checklists |
 | 📊 | Tables, comparisons, numbers | 💬 | Emphasis, notices |
 | 💻 | Code, commands | 🔗 | Links, references |
@@ -1074,7 +1074,7 @@ Write **bold** and add a ==highlight== too.
 
 ## 🎯 One-page summary
 
-1. One `#` title, one emoji per `##` section, `---` between sections
+1. One `#` title (no emoji), one emoji per `##` section, `---` between sections
 2. Emphasis goes in callouts (NOTE · TIP · IMPORTANT · WARNING · CAUTION), up to two per section
 3. Tables for comparisons and settings, checklists for to-dos
 4. Language names on code blocks, `diff` for changes
