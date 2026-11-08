@@ -15,7 +15,7 @@ struct OpenedFile {
     name: String,
     /// 줄 끝을 \n 으로 맞추고 맨 앞 BOM 을 뗀 글 (편집창과 같게, textfile.rs)
     text: String,
-    /// 원래 글자 방식: 줄 끝("\r\n" · "\n") · BOM · 인코딩("utf-8" · "euc-kr"). 화면이 저장할 때 save_file 에 돌려줌
+    /// 원래 글자 방식: 줄 끝("\r\n" · "\n") · BOM · 인코딩("utf-8" · "euc-kr" · "utf-16le" · "utf-16be"). 화면이 저장할 때 save_file 에 돌려줌
     eol: &'static str,
     bom: bool,
     enc: &'static str,
@@ -48,7 +48,7 @@ fn read_file(path: String) -> Result<OpenedFile, String> {
         text,
         eol: fmt.eol,
         bom: fmt.bom,
-        enc: fmt.enc(),
+        enc: fmt.enc.name(),
     })
 }
 

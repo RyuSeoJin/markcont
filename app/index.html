@@ -2407,13 +2407,17 @@ body.zen .zen-exit:hover { opacity: 1; }
   if (window.MarkPortable) MarkPortable.parsers = () => (md ? { cjk: md, std: mdStd || (mdStd = makeMd(false)) } : null);
 
   /* =========================================================
-     파일 읽기 · 쓰기 (UTF-8이 아니면 한글 EUC-KR로 다시 시도)
+     파일 읽기 · 쓰기 (UTF-16 은 맨 앞 BOM 으로 알아보고, 그 밖에는 UTF-8 → 아니면 한글 EUC-KR로 다시 시도)
      - 읽은 글은 맨 앞 BOM 을 떼고 줄 끝을 \n 으로 맞춤: 편집창(<textarea>)이 \r\n 을 \n 으로 바꿔 담으므로, 그대로 두면 고치지 않은 줄까지 모두 바뀐 줄로 보임
      - 파일의 글자 방식(줄 끝 entry.eol · BOM entry.bom · 인코딩 entry.enc)은 기억해 두었다가 저장할 때 되돌려 씀 (저장하면서 파일이 몰래 바뀌지 않게)
      - EUC-KR 파일에 EUC-KR 에 없는 글자(이모지 · — 등)를 쓰려 하면 UTF-8 로 바꿀지 먼저 물음
      ========================================================= */
-  // 바이트 → { raw: 글(줄 끝은 그대로), bom: 맨 앞에 UTF-8 BOM 이 있었는지, enc: 'utf-8' | 'euc-kr' }
+  // 바이트 → { raw: 글(줄 끝은 그대로), bom: 맨 앞에 BOM 이 있었는지, enc: 'utf-8' | 'euc-kr' | 'utf-16le' | 'utf-16be' }
   function decodeBuf(buf) {
+    // UTF-16 은 맨 앞 BOM(FF FE · FE FF)으로만 알아봄 (Windows PowerShell 5.1 의 Out-File · > 가 이렇게 씀)
+    const head = new Uint8Array(buf, 0, Math.min(2, buf.byteLength));
+    if (head[0] === 0xff && head[1] === 0xfe) return { raw: new TextDecoder('utf-16le').decode(buf), bom: true, enc: 'utf-16le' };
+    if (head[0] === 0xfe && head[1] === 0xff) return { raw: new TextDecoder('utf-16be').decode(buf), bom: true, enc: 'utf-16be' };
     try {
       const s = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(buf);
       const raw = s.replace(/^\uFEFF+/, '');
@@ -2463,9 +2467,17 @@ body.zen .zen-exit:hover { opacity: 1; }
     }
     return out;
   }
-  // 파일에 쓸 내용: 줄 끝 · BOM · 인코딩을 f({ eol, bom, enc }) 대로. EUC-KR 이면 바이트, 아니면 글(UTF-8 로 써짐)
+  // 파일에 쓸 내용: 줄 끝 · BOM · 인코딩을 f({ eol, bom, enc }) 대로. EUC-KR · UTF-16 이면 바이트, 아니면 글(UTF-8 로 써짐)
   function encodeDoc(text, f = {}) {
     const body = withEol(text, f.eol);
+    if (f.enc === 'utf-16le' || f.enc === 'utf-16be') {
+      // UTF-16 은 늘 맨 앞 BOM 과 함께 (BOM 으로 알아보므로). 글의 UTF-16 단위를 바이트 순서만 맞춰 그대로 씀
+      const le = f.enc === 'utf-16le', out = new Uint8Array(body.length * 2 + 2);
+      const put = (i, u) => { out[i] = le ? u & 0xff : u >> 8; out[i + 1] = le ? u >> 8 : u & 0xff; };
+      put(0, 0xfeff);
+      for (let i = 0; i < body.length; i++) put(2 + i * 2, body.charCodeAt(i));
+      return out;
+    }
     if (f.enc !== 'euc-kr') return f.bom ? '\uFEFF' + body : body;
     const m = eucKrTable(), out = new Uint8Array(body.length * 2);
     let n = 0;

@@ -307,7 +307,7 @@ fn run_tool(name: &str, args: &Value) -> Result<String, String> {
             let p = resolve(&st, &cur)?;
             let (text, fmt) = crate::textfile::read(&p).map_err(|e| e.to_string())?;
             // EUC-KR 파일이면 미리 알려 둠 (이모지 같은 글자로 고치면 쓰지 못하므로)
-            let note = if !fmt.euc_kr {
+            let note = if fmt.enc != crate::textfile::Enc::EucKr {
                 ""
             } else if is_en() {
                 "\nEncoding: EUC-KR (Korean). Emoji and characters like — © can't be written to this file."
