@@ -1,5 +1,6 @@
 # PC 프로그램 코드 확인 (설치 파일은 만들지 않음)
-# src-tauri 를 고쳐 main 에 올리면 Windows 에서 컴파일만 해 봅니다.
+# src-tauri 를 고쳐 main 에 올리면 Windows 에서 컴파일해 보고 테스트를 돌립니다.
+# 테스트: 글 파일 읽기 · 쓰기(줄 끝 · BOM · EUC-KR · UTF-16, src-tauri/src/textfile.rs)
 name: PC 프로그램 코드 확인
 
 on:
@@ -26,3 +27,5 @@ jobs:
         run: npm run icons
       - name: 컴파일 확인
         run: cargo check --manifest-path src-tauri/Cargo.toml
+      - name: 테스트
+        run: cargo test --manifest-path src-tauri/Cargo.toml

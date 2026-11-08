@@ -5,6 +5,8 @@
 //  - 위치: <설정 폴더>/history/<경로 해시>/<시각(ms)>-<종류>.md  (+ path.txt 에 원래 경로)
 //  - 한도: 파일마다 최근 50개, 14일이 지난 것은 지움
 //  - 바로 앞 기록과 내용이 같으면 새로 남기지 않음
+//  - 글 내용만 남김: 줄 끝은 \n 으로 맞추고 BOM · 인코딩은 빼고 UTF-8 로
+//    (화면 · MCP 서버가 같은 내용을 줄 끝만 달리 두 번 남기지 않게. 파일의 글자 방식은 쓸 때 되돌림)
 use serde::Serialize;
 use std::fs;
 use std::io::Write;
@@ -107,7 +109,8 @@ pub fn read(path: &Path, id: &str) -> Result<String, String> {
     if parse_id(id).is_none() || id.contains('/') || id.contains('\\') {
         return Err("bad id".into());
     }
-    fs::read(dir_of(path).join(id)).map(|b| String::from_utf8_lossy(&b).into_owned()).map_err(|e| e.to_string())
+    // 예전에 \r\n 그대로 남긴 기록도 \n 으로 맞춰 돌려줌
+    fs::read(dir_of(path).join(id)).map(|b| crate::textfile::to_lf(&String::from_utf8_lossy(&b))).map_err(|e| e.to_string())
 }
 
 /// 기록 하나 더하기. 바로 앞 기록과 같으면 건너뜀.
@@ -117,12 +120,13 @@ pub fn add(path: &Path, text: &str, kind: &str) -> Result<(), String> {
     if text.len() > MAX_BYTES || !KINDS.contains(&kind) {
         return Ok(());
     }
+    let text = crate::textfile::to_lf(text);
     let dir = dir_of(path);
     let list = entries(&dir);
     let check = if kind == "before" { 10 } else { 1 };
     for (_, id) in list.iter().take(check) {
         if let Ok(prev) = fs::read(dir.join(id)) {
-            if prev == text.as_bytes() {
+            if crate::textfile::to_lf(&String::from_utf8_lossy(&prev)) == text {
                 return Ok(());
             }
         }
@@ -150,32 +154,22 @@ pub fn add(path: &Path, text: &str, kind: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// 파일을 새 내용으로 쓰기 직전: 지금 디스크 내용이 기록에 없으면 "바뀌기 전"으로 남김
-pub fn before_write(path: &Path, new_text: &str) {
-    let Ok(bytes) = fs::read(path) else { return };
-    let old = decode(bytes);
-    if old != new_text {
-        let _ = add(path, &old, "before");
-    }
-}
-
-/// UTF-8 로 읽고, 아니면 한글 EUC-KR(CP949)로 읽습니다 (main.rs · mcp.rs 와 같음)
-fn decode(bytes: Vec<u8>) -> String {
-    match String::from_utf8(bytes) {
-        Ok(s) => s.trim_start_matches('\u{feff}').to_string(),
-        Err(e) => {
-            let b = e.into_bytes();
-            let (t, _, _) = encoding_rs::EUC_KR.decode(&b);
-            t.into_owned()
+/// 바뀌기 전 내용 → 쓰기 → 새 내용 을 차례로 남기며 저장.
+/// want: 쓸 글자 방식(줄 끝 · BOM · 인코딩). 정하지 않은 것은 지금 파일의 방식을 따름 (textfile.rs)
+/// EUC-KR 파일에 EUC-KR 에 없는 글자가 있으면 쓰지 않고 오류 (파일 · 기록 모두 그대로)
+pub fn write_with_history(path: &Path, text: &str, want: crate::textfile::Want<'_>, kind: &str) -> std::io::Result<()> {
+    let lf = crate::textfile::to_lf(text);
+    let old = crate::textfile::read(path).ok(); // (글, 글자 방식). 파일이 없으면 None
+    let fmt = crate::textfile::pick(want, old.as_ref().map(|(_, f)| *f), text);
+    let bytes = crate::textfile::encode(&lf, fmt)?;
+    // 지금 디스크 내용이 기록에 없으면 "바뀌기 전"으로 남김
+    if let Some((old_text, _)) = &old {
+        if *old_text != lf {
+            let _ = add(path, old_text, "before");
         }
     }
-}
-
-/// 바뀌기 전 내용 → 쓰기 → 새 내용 을 차례로 남기며 저장
-pub fn write_with_history(path: &Path, text: &str, kind: &str) -> std::io::Result<()> {
-    before_write(path, text);
-    fs::write(path, text)?;
-    let _ = add(path, text, kind);
+    fs::write(path, bytes)?;
+    let _ = add(path, &lf, kind);
     Ok(())
 }
 

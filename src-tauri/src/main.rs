@@ -4,6 +4,7 @@
 
 mod history;
 mod mcp;
+mod textfile;
 
 use serde::Serialize;
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
@@ -12,7 +13,12 @@ use std::{fs, path::PathBuf, time::UNIX_EPOCH};
 struct OpenedFile {
     path: String,
     name: String,
+    /// 줄 끝을 \n 으로 맞추고 맨 앞 BOM 을 뗀 글 (편집창과 같게, textfile.rs)
     text: String,
+    /// 원래 글자 방식: 줄 끝("\r\n" · "\n") · BOM · 인코딩("utf-8" · "euc-kr" · "utf-16le" · "utf-16be"). 화면이 저장할 때 save_file 에 돌려줌
+    eol: &'static str,
+    bom: bool,
+    enc: &'static str,
     modified: u64,
 }
 
@@ -26,22 +32,11 @@ fn modified_ms(p: &PathBuf) -> u64 {
         .unwrap_or(0)
 }
 
-/// UTF-8 로 읽고, 아니면 한글 EUC-KR(CP949)로 읽습니다.
-fn decode(bytes: Vec<u8>) -> String {
-    match String::from_utf8(bytes) {
-        Ok(s) => s.trim_start_matches('\u{feff}').to_string(),
-        Err(e) => {
-            let bytes = e.into_bytes();
-            let (text, _, _) = encoding_rs::EUC_KR.decode(&bytes);
-            text.into_owned()
-        }
-    }
-}
-
+/// UTF-8(아니면 EUC-KR)로 읽고 BOM 을 떼고 줄 끝을 \n 으로 맞춥니다. 원래 글자 방식은 eol · bom · enc 로 알려 줍니다.
 #[tauri::command]
 fn read_file(path: String) -> Result<OpenedFile, String> {
     let p = PathBuf::from(&path);
-    let bytes = fs::read(&p).map_err(|e| e.to_string())?;
+    let (text, fmt) = textfile::read(&p).map_err(|e| e.to_string())?;
     let name = p
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
@@ -50,18 +45,24 @@ fn read_file(path: String) -> Result<OpenedFile, String> {
         modified: modified_ms(&p),
         path,
         name,
-        text: decode(bytes),
+        text,
+        eol: fmt.eol,
+        bom: fmt.bom,
+        enc: fmt.enc.name(),
     })
 }
 
 /// keep_history 가 true 면 바뀌기 전 내용과 새 내용을 저장 기록에 남깁니다 (history.rs)
+/// eol · bom · enc: 쓸 글자 방식 (read_file 이 알려 준 원래 방식). 없는 것은 지금 파일의 방식을 따릅니다.
+/// EUC-KR 에 없는 글자를 EUC-KR 로 쓰려 하면 쓰지 않고 오류 (화면은 저장 전에 UTF-8 로 바꿀지 먼저 물음)
 #[tauri::command]
-fn save_file(path: String, text: String, keep_history: Option<bool>) -> Result<u64, String> {
+fn save_file(path: String, text: String, keep_history: Option<bool>, eol: Option<String>, bom: Option<bool>, enc: Option<String>) -> Result<u64, String> {
     let p = PathBuf::from(&path);
+    let want = textfile::Want { eol: eol.as_deref(), bom, enc: enc.as_deref() };
     if keep_history.unwrap_or(false) {
-        history::write_with_history(&p, &text, "save").map_err(|e| e.to_string())?;
+        history::write_with_history(&p, &text, want, "save").map_err(|e| e.to_string())?;
     } else {
-        fs::write(&p, text).map_err(|e| e.to_string())?;
+        textfile::write(&p, &text, want).map_err(|e| e.to_string())?;
     }
     Ok(modified_ms(&p))
 }

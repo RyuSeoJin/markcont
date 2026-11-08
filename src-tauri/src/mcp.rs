@@ -7,6 +7,8 @@
 //  - 고치거나 새로 만드는 것은 마크다운 · 텍스트 파일(.md .markdown .mdown .mkd .txt)만
 //  - 지우기 · 이름 바꾸기 · 명령 실행은 하지 않습니다
 //  - stdout 에는 MCP 메시지 말고 아무것도 쓰지 않습니다
+//  - 읽은 글은 줄 끝을 \n 으로 맞춰 건네고, 고친 파일은 원래 글자 방식(줄 끝 · BOM · 인코딩)으로 씁니다 (textfile.rs)
+//    EUC-KR 파일에 EUC-KR 에 없는 글자(이모지 등)를 쓰려 하면 고치지 않고 Claude에게 까닭을 알려 줍니다
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fs;
@@ -92,15 +94,9 @@ fn is_md(path: &Path) -> bool {
     let ext = path.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
     MD_EXT.contains(&ext.as_str())
 }
-fn decode(bytes: Vec<u8>) -> String {
-    match String::from_utf8(bytes) {
-        Ok(s) => s.trim_start_matches('\u{feff}').to_string(),
-        Err(e) => {
-            let b = e.into_bytes();
-            let (t, _, _) = encoding_rs::EUC_KR.decode(&b);
-            t.into_owned()
-        }
-    }
+/// 파일 내용 (줄 끝을 \n 으로 맞춘 글)
+fn read_text(path: &Path) -> std::io::Result<String> {
+    crate::textfile::read(path).map(|(text, _)| text)
 }
 
 /// "폴더이름/안쪽/파일.md" 또는 절대 경로 → 열어 둔 폴더 안의 실제 경로 (밖이면 오류)
@@ -309,8 +305,16 @@ fn run_tool(name: &str, args: &Value) -> Result<String, String> {
                 return Ok(tr("markcont에서 지금 열린 문서가 없습니다 (또는 열어 둔 폴더 밖의 문서입니다).", "No document is open in markcont (or it is outside the open folders).").into());
             };
             let p = resolve(&st, &cur)?;
-            let text = fs::read(&p).map(decode).map_err(|e| e.to_string())?;
-            let mut out = (if is_en() { format!("Path: {}\n\n----- Content -----\n{}", display(&st, &p), text) } else { format!("경로: {}\n\n----- 내용 -----\n{}", display(&st, &p), text) });
+            let (text, fmt) = crate::textfile::read(&p).map_err(|e| e.to_string())?;
+            // EUC-KR 파일이면 미리 알려 둠 (이모지 같은 글자로 고치면 쓰지 못하므로)
+            let note = if fmt.enc != crate::textfile::Enc::EucKr {
+                ""
+            } else if is_en() {
+                "\nEncoding: EUC-KR (Korean). Emoji and characters like — © can't be written to this file."
+            } else {
+                "\n인코딩: EUC-KR(한글 완성형). 이모지나 — © 같은 글자는 이 파일에 쓸 수 없습니다."
+            };
+            let mut out = (if is_en() { format!("Path: {}{note}\n\n----- Content -----\n{}", display(&st, &p), text) } else { format!("경로: {}{note}\n\n----- 내용 -----\n{}", display(&st, &p), text) });
             if let Some(sel) = st.selection.as_ref().filter(|s| !s.trim().is_empty()) {
                 out.push_str(&(if is_en() { format!("\n----- Selected by the user -----\n{sel}") } else { format!("\n----- 사용자가 선택한 부분 -----\n{sel}") }));
             }
@@ -322,7 +326,7 @@ fn run_tool(name: &str, args: &Value) -> Result<String, String> {
             if !is_md(&p) {
                 return Err(tr("마크다운 · 텍스트 파일만 읽을 수 있습니다.", "Only markdown and text files can be read.").into());
             }
-            let text = fs::read(&p).map(decode).map_err(|e| (if is_en() { format!("Couldn't read: {e}") } else { format!("읽지 못했습니다: {e}") }))?;
+            let text = read_text(&p).map_err(|e| (if is_en() { format!("Couldn't read: {e}") } else { format!("읽지 못했습니다: {e}") }))?;
             log_activity("read", &p);
             Ok(text)
         }
@@ -337,8 +341,8 @@ fn run_tool(name: &str, args: &Value) -> Result<String, String> {
             }
             let mut hits = vec![];
             'outer: for f in files {
-                if let Ok(bytes) = fs::read(&f) {
-                    for (i, line) in decode(bytes).lines().enumerate() {
+                if let Ok(text) = read_text(&f) {
+                    for (i, line) in text.lines().enumerate() {
                         if line.to_lowercase().contains(&q) {
                             hits.push(format!("{}:{}: {}", display(&st, &f), i + 1, line.chars().take(200).collect::<String>()));
                             if hits.len() >= 100 {
@@ -358,12 +362,13 @@ fn run_tool(name: &str, args: &Value) -> Result<String, String> {
             if !is_md(&p) {
                 return Err(tr("마크다운 · 텍스트 파일만 고칠 수 있습니다.", "Only markdown and text files can be edited.").into());
             }
-            let old = arg("old_text");
-            let new = arg("new_text");
+            // 파일이 \r\n 이어도 \n 으로 맞춰 찾음 (쓸 때는 write_with_history 가 원래 글자 방식으로 되돌림)
+            let old = crate::textfile::to_lf(&arg("old_text"));
+            let new = crate::textfile::to_lf(&arg("new_text"));
             if old.is_empty() {
                 return Err(tr("old_text 가 비어 있습니다.", "old_text is empty.").into());
             }
-            let text = fs::read(&p).map(decode).map_err(|e| (if is_en() { format!("Couldn't read: {e}") } else { format!("읽지 못했습니다: {e}") }))?;
+            let text = read_text(&p).map_err(|e| (if is_en() { format!("Couldn't read: {e}") } else { format!("읽지 못했습니다: {e}") }))?;
             let n = text.matches(&old).count();
             if n == 0 {
                 return Err(tr("old_text 를 파일에서 찾지 못했습니다. read_file 로 지금 내용을 다시 확인하세요.", "old_text was not found in the file. Check the current content again with read_file.").into());
@@ -371,7 +376,7 @@ fn run_tool(name: &str, args: &Value) -> Result<String, String> {
             if n > 1 {
                 return Err((if is_en() { format!("old_text appears {n} times. Include more surrounding text so it matches only one place.") } else { format!("old_text 가 {n}번 나옵니다. 앞뒤 글을 더 넣어 한 곳만 가리키게 하세요.") }));
             }
-            crate::history::write_with_history(&p, &text.replacen(&old, &new, 1), "claude").map_err(|e| (if is_en() { format!("Couldn't write: {e}") } else { format!("쓰지 못했습니다: {e}") }))?;
+            crate::history::write_with_history(&p, &text.replacen(&old, &new, 1), crate::textfile::Want::default(), "claude").map_err(|e| (if is_en() { format!("Couldn't write: {e}") } else { format!("쓰지 못했습니다: {e}") }))?;
             log_activity("write", &p);
             Ok((if is_en() { format!("Edited {}.", display(&st, &p)) } else { format!("{} 을(를) 고쳤습니다.", display(&st, &p)) }))
         }
@@ -384,7 +389,8 @@ fn run_tool(name: &str, args: &Value) -> Result<String, String> {
             if existed && st.suggest_only {
                 return Err(tr(SUGGEST_ONLY_KO, SUGGEST_ONLY_EN).into());
             }
-            crate::history::write_with_history(&p, &arg("content"), "claude").map_err(|e| (if is_en() { format!("Couldn't write: {e}") } else { format!("쓰지 못했습니다: {e}") }))?;
+            // 있던 파일은 그 글자 방식(줄 끝 · BOM · 인코딩)을 따름 (새 파일은 받은 글의 줄 끝, BOM 없는 UTF-8)
+            crate::history::write_with_history(&p, &arg("content"), crate::textfile::Want::default(), "claude").map_err(|e| (if is_en() { format!("Couldn't write: {e}") } else { format!("쓰지 못했습니다: {e}") }))?;
             log_activity("write", &p);
             Ok(if is_en() { format!("{} {}.", if existed { "Rewrote" } else { "Created" }, display(&st, &p)) } else { format!("{} 을(를) {}.", display(&st, &p), if existed { "새 내용으로 썼습니다" } else { "새로 만들었습니다" }) })
         }
@@ -393,8 +399,8 @@ fn run_tool(name: &str, args: &Value) -> Result<String, String> {
             if !is_md(&p) {
                 return Err(tr("마크다운 · 텍스트 파일만 고칠 수 있습니다.", "Only markdown and text files can be edited.").into());
             }
-            let old = arg("old_text");
-            let new = arg("new_text");
+            let old = crate::textfile::to_lf(&arg("old_text"));
+            let new = crate::textfile::to_lf(&arg("new_text"));
             let note = arg("comment");
             if old.is_empty() {
                 return Err(tr("old_text 가 비어 있습니다. 글을 더할 때는 넣을 자리 앞의 글을 old_text 에, 그 글에 더할 글을 붙여 new_text 에 넣으세요.", "old_text is empty. To add text, put the text before the spot in old_text and that text plus the addition in new_text.").into());
@@ -405,7 +411,7 @@ fn run_tool(name: &str, args: &Value) -> Result<String, String> {
             if has_blank_line(&old) || has_blank_line(&new) {
                 return Err(tr("제안은 한 문단 안에서만 할 수 있습니다. 문단마다 나눠서 suggest_edit 를 여러 번 쓰세요.", "A suggestion must stay within one paragraph. Call suggest_edit once per paragraph.").into());
             }
-            let text = fs::read(&p).map(decode).map_err(|e| (if is_en() { format!("Couldn't read: {e}") } else { format!("읽지 못했습니다: {e}") }))?;
+            let text = read_text(&p).map_err(|e| (if is_en() { format!("Couldn't read: {e}") } else { format!("읽지 못했습니다: {e}") }))?;
             let n = text.matches(&old).count();
             if n == 0 {
                 return Err(tr("old_text 를 파일에서 찾지 못했습니다. read_file 로 지금 내용을 다시 확인하세요.", "old_text was not found in the file. Check the current content again with read_file.").into());
@@ -428,7 +434,7 @@ fn run_tool(name: &str, args: &Value) -> Result<String, String> {
             let memo = note.trim().replace("<<}", "<< }");
             let memo = if memo.is_empty() { String::new() } else { format!("{{>>{memo}<<}}") };
             let out = format!("{}{head}{mark}{memo}{tail}{}", &text[..at], &text[at + old.len()..]);
-            crate::history::write_with_history(&p, &out, "claude").map_err(|e| (if is_en() { format!("Couldn't write: {e}") } else { format!("쓰지 못했습니다: {e}") }))?;
+            crate::history::write_with_history(&p, &out, crate::textfile::Want::default(), "claude").map_err(|e| (if is_en() { format!("Couldn't write: {e}") } else { format!("쓰지 못했습니다: {e}") }))?;
             log_activity("write", &p);
             Ok(if is_en() { format!("Left a suggestion in {}: {mark}. The user accepts or rejects it in markcont.", display(&st, &p)) } else { format!("{} 에 제안을 남겼습니다: {mark}. 사용자가 markcont에서 받아들이거나 버립니다.", display(&st, &p)) })
         }
