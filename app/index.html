@@ -797,7 +797,8 @@ body.resizing { cursor: col-resize; user-select: none; }
 .toc a.l2 { padding-left: 22px; }
 .toc a.l3 { padding-left: 34px; font-size: 13px; }
 
-.main { flex: 1; min-width: 0; position: relative; }
+/* overflow-x: clip — 안쪽 무엇이 옆으로 넘쳐도 페이지 폭이 늘지 않게. 휴대폰 브라우저는 넘친 만큼 화면을 넓혀서 전체가 밀려 보임 */
+.main { flex: 1; min-width: 0; position: relative; overflow-x: clip; }
 .workspace { height: 100%; display: grid; grid-template-columns: 1fr; }
 .workspace.editing { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .workspace > .editor-pane, .workspace > .preview-pane { min-width: 0; overflow-x: hidden; }
@@ -1229,13 +1230,14 @@ body.zen .zen-exit:hover { opacity: 1; }
 
 /* 문서 안 찾기 */
 .find-bar {
-  position: absolute; top: 12px; right: 20px; z-index: 35; display: flex; align-items: center; gap: 4px;
+  position: absolute; top: 12px; right: 20px; z-index: 35; display: flex; align-items: center; gap: 4px; max-width: calc(100% - 40px);
   padding: 6px 6px 6px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0,0,0,.12);
 }
-.find-bar input { width: 200px; border: 0; outline: 0; background: none; font-size: 14px; }
-.find-bar .find-count { font-size: 12.5px; color: var(--muted); min-width: 44px; text-align: right; }
-.find-bar .btn { height: 30px; }
+/* min-width: 0 — 입력칸은 기본 폭(글꼴에 따라 휴대폰에서 280px 가까이) 아래로 줄지 않아서, 그대로 두면 단추가 화면 밖으로 밀림 */
+.find-bar input { width: 200px; min-width: 0; border: 0; outline: 0; background: none; font-size: 14px; }
+.find-bar .find-count { flex: none; font-size: 12.5px; color: var(--muted); min-width: 44px; text-align: right; }
+.find-bar .btn { flex: none; height: 30px; }
 
 /* 떠 있는 둥근 단추 */
 .fab {
@@ -1266,7 +1268,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   .fab-find { right: 18px; }
   .fab-top { right: 18px; bottom: 84px; }
   body:not(.has-doc) .fab-edit, body:not(.has-doc) .fab-find { display: none; }
-  .find-bar { left: 10px; right: 10px; top: 8px; }
+  .find-bar { left: 10px; right: 10px; top: 8px; max-width: none; }
   .find-bar input { flex: 1; width: auto; }
   body .menu, body .sidebar { top: 68px; }
   body .scrim.show { inset: 64px 0 0; }
@@ -2379,7 +2381,7 @@ body.zen .zen-exit:hover { opacity: 1; }
         try { hl = window.hljs && hljs.getLanguage('markdown') ? hljs.highlight(src, { language: 'markdown', ignoreIllegals: true }).value : escapeHtml(src); }
         catch { hl = escapeHtml(src); }
         const out = md.render(stripNotes(src), { nested: true, depth: depth + 1, docId: 'ex' + depth + '-' + idx }); // docId: 예시 안 각주 번호가 본문과 겹치지 않게
-        const line = t.map && !depth ? ` data-line="${t.map[0]}"` : '';
+        const line = t.map && !depth ? ` data-line="${t.map[0]}" data-end="${t.map[1]}"` : ''; // data-end: 스크롤 맞춤이 원본 줄을 '이렇게 쓰면' 칸에 맞추는 데 씀
         return `<div class="md-example"${line}>` +
           `<div class="ex-pane ex-src"><div class="ex-label">${L('✏️ 이렇게 쓰면', '✏️ Write this')}</div><pre><code class="language-markdown">${hl}</code></pre></div>` +
           `<div class="ex-pane ex-out"><div class="ex-label">${L('👀 이렇게 보입니다', '👀 Looks like this')}</div><div class="ex-body">${out}</div></div></div>\n`;
@@ -3657,8 +3659,22 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (det) det.open = true;
     const panel = m.closest('.mc-tab-panel[hidden]'); // 숨은 탭 안에서 찾았으면 그 탭을 엶
     if (panel) showTab(panel.closest('.mc-tabs'), panel.dataset.tab);
-    m.scrollIntoView({ block: 'center' });
+    revealInPreview(m);
     $('#findCount').textContent = `${find.now + 1}/${find.hits.length}`;
+  }
+  // 미리보기 안에서만 굴려 가운데에 보이게 함. scrollIntoView는 화면 전체까지 움직여서,
+  // 휴대폰 자판이 떠 있으면 맨 윗줄과 찾기 막대가 위로 밀려 가려짐. 자판에 가린 아래쪽은 빼고 가운데를 잡음
+  function revealInPreview(node) {
+    const pv = el.preview;
+    for (let a = node.parentElement; a && a !== pv; a = a.parentElement) { // 옆 · 아래로 굴러가는 표 · 코드 칸 안이면 그 칸부터
+      const cs = getComputedStyle(a), ar = a.getBoundingClientRect(), nr = node.getBoundingClientRect();
+      if (a.scrollWidth > a.clientWidth + 1 && /auto|scroll/.test(cs.overflowX) && (nr.left < ar.left || nr.right > ar.right)) a.scrollLeft += nr.left - ar.left - (a.clientWidth - nr.width) / 2;
+      if (a.scrollHeight > a.clientHeight + 1 && /auto|scroll/.test(cs.overflowY) && (nr.top < ar.top || nr.bottom > ar.bottom)) a.scrollTop += nr.top - ar.top - (a.clientHeight - nr.height) / 2;
+    }
+    const pr = pv.getBoundingClientRect(), nr = node.getBoundingClientRect(), vv = window.visualViewport;
+    const top = Math.max(pr.top, vv ? vv.offsetTop : 0);
+    const bottom = Math.min(pr.bottom, vv ? vv.offsetTop + vv.height : innerHeight);
+    pv.scrollTop += nr.top + nr.height / 2 - (top + Math.max(0, bottom - top) / 2);
   }
   /* ---------- ::: tabs — 같은 이름의 탭은 문서 전체에서 같이 바뀌고, 고른 탭을 기억 ---------- */
   const tabPref = () => store.json('mdv-tab-pref', []);
@@ -7658,11 +7674,18 @@ body.zen .zen-exit:hover { opacity: 1; }
     const base = el.preview.getBoundingClientRect().top - el.preview.scrollTop;
     const out = [];
     let lastLine = -1, lastTop = -1;
+    const add = (line, top) => { if (line > lastLine && top >= lastTop) { out.push({ line, top }); lastLine = line; lastTop = top; } };
     for (const n of el.doc.querySelectorAll('[data-line]')) {
       if (!n.offsetParent) continue;
-      const line = +n.dataset.line;
-      const top = n.getBoundingClientRect().top - base;
-      if (line > lastLine && top >= lastTop) { out.push({ line, top }); lastLine = line; lastTop = top; }
+      add(+n.dataset.line, n.getBoundingClientRect().top - base);
+      // ```markdown example: 원본의 예시 줄은 '이렇게 쓰면' 칸의 같은 줄에, 닫는 ``` 줄은 그 칸 끝에 맞춤.
+      // 블록 전체로 나누면 좁은 화면(두 칸이 위아래로 붙음)에서 원본 줄이 아래 '이렇게 보입니다' 쪽에 맞춰짐
+      const code = n.dataset.end && n.querySelector(':scope > .ex-src code');
+      if (code) {
+        const r = code.getBoundingClientRect();
+        add(+n.dataset.line + 1, r.top - base);
+        add(+n.dataset.end - 1, r.bottom - base);
+      }
     }
     return out;
   }
