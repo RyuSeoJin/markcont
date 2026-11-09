@@ -117,6 +117,7 @@ Shows the documents connected to the current one. Click a row to go to that docu
 | Linked from | Documents that link to this one, and the lines (backlinks) |
 | Links to | Documents this one links to |
 | Broken links · images | Documents · headings · images that can't be found, and links that **open only in markcont** |
+| Links outside the open folder | Links that point outside the open folder (`../`), so markcont can't tell whether they exist. They aren't counted as broken. Open a parent folder to check them |
 | Broken links in the folder | Press the button to see broken links in the other documents too |
 
 > [!NOTE]
@@ -299,18 +300,21 @@ Open the window with the **History** button in the editing toolbar (<kbd>Ctrl</k
   | Group | What it looks at |
   |:---|:---|
   | Broken links · images | Documents · headings · images that can't be found, links that open only in markcont |
+  | Invisible characters | Control characters, zero-width spaces, text-direction controls, hidden tag characters and the like. The editor marks each spot in red, and **Remove invisible characters** below the list removes them all at once (characters that are part of something, like the joiners inside emoji, are left alone) |
+  | Links outside the open folder, not checked | Links · images that point outside the open folder (`../`). Listed separately and not counted in **⚠ N issues found** |
   | Skipped heading levels | `####` right after `##` |
   | Footnotes | Footnote notes that are never used, footnote numbers without a note |
   | Table rows with a different number of cells | Rows with more or fewer cells than the header |
   | Long sentences | Sentences over 100 Korean characters · 40 English words |
   | Writing rules | More than one title (`#`), 3+ callouts or 2+ highlights in one section (`##`) |
+  | Writing rules (documents that follow them) | Emoji in the top title or a `###`, a `##` with no emoji or more than one, a missing `---` between `##` sections, a bold line used as a heading. Checked only when a `##` section has an emoji or the document info has `viewer: markcont` |
   | Looks different in other viewers | markcont-only syntax (`==highlight==`, `[!INFO]`, ```` ```flow ````, etc.) — **Convert this document** converts it all at once |
 
   With no issues and only markcont-only syntax, it shows **⚠ N spots look different in other viewers** instead. To hide it, turn off **Aa → Show the document check**.
 - If another program changes the file, markcont **reloads it automatically.** If you have unsaved changes, it won't overwrite them and lets you know instead.
 - Every save is kept in **Saved versions**. If you saved something by mistake, go back to the older content with the **History** button → **Saved versions**.
 
-**Print · PDF · Word**
+### Print · PDF · Word
 
 - Page numbers (`3 / 12`) are printed at the bottom of each page and the document title at the top. This works in Chrome · Edge 131 or later and the Windows PC app; in other browsers, turn on **Headers and footers** in the print window.
 - Tables · images · diagrams · math · callouts are kept off page boundaries where possible and move to the next page instead. Code lines longer than the paper are wrapped (the line numbers of that code block are left out then).

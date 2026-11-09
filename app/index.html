@@ -714,6 +714,7 @@ body.side-collapsed .sidebar { display: none; }
 .lk-row.ok .lk-ic { color: var(--c-green); }
 .lk-row.warn .lk-ic { color: var(--c-amber); }
 .lk-row.bad .lk-ic { color: var(--c-red); }
+.lk-row.info .lk-ic { color: var(--muted); }
 .lk-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lk-sub { flex: none; max-width: 48%; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lk-all { margin: 12px 6px 0; width: calc(100% - 12px); justify-content: center; font-size: 12.5px; }
@@ -864,6 +865,8 @@ body.resizing { cursor: col-resize; user-select: none; }
 }
 .editor-hl .ln.cur { background: color-mix(in srgb, var(--accent) 7%, transparent); box-shadow: -64px 0 0 color-mix(in srgb, var(--accent) 7%, transparent); }
 .editor-hl .ln.cur::before { color: var(--accent); opacity: 1; }
+/* 보이지 않는 글자: 자리를 차지하지 않게 그림자로만 표시 (폭이 0인 글자도 빨간 세로줄로 보임) */
+.editor-hl .t-inv { background: color-mix(in srgb, var(--c-red) 35%, transparent); box-shadow: 0 0 0 1px var(--c-red); border-radius: 1px; }
 .t-h { color: var(--hl-h); }
 .t-b { color: var(--hl-b); }
 .t-i { color: var(--hl-i); }
@@ -1006,6 +1009,7 @@ body.resizing { cursor: col-resize; user-select: none; }
 .compat-row .what b { font-weight: 600; }
 .compat-row .what small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; font-family: var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .compat-row.warn .what b::before { content: '⚠ '; color: var(--c-amber); }
+.compat-row.info .what b::before { content: '↗ '; color: var(--muted); }
 .markdown-body .flash-line { outline: 2px solid var(--c-amber); outline-offset: 4px; border-radius: 4px; }
 .meta-facts { display: flex; gap: 10px; flex-wrap: wrap; }
 .meta-facts span + span::before { content: "·"; margin-right: 10px; }
@@ -2518,6 +2522,13 @@ body.zen .zen-exit:hover { opacity: 1; }
     }
     return parts.join('/');
   }
+  // 상대 경로가 열어 둔 폴더 밖(위 폴더)으로 나가는지: 그 폴더를 열지 않았으니 대상이 있는지 확인할 수 없음
+  //  (따로 연 문서는 들어 있는 폴더를 모르므로 .. 이 있으면 밖으로 봄)
+  function leavesRoot(base, rel) {
+    if (!/(^|\/)\.\.(\/|$)/.test(rel)) return false;
+    const r = rootOf(base);
+    return !r || !resolvePath(base, rel).startsWith(r.key + '/');
+  }
   const hasScheme = (u) => /^([a-z][a-z0-9+.-]*:|\/\/)/i.test(u);
   const baseName = (p) => p.split('/').pop();
 
@@ -2631,7 +2642,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     return rows;
   }
   // 문서 정보로 정하는 markcont 보기 옵션
-  //  - 뷰어: markcont   → 「다른 뷰어에서 다르게 보이는 곳」 안내를 띄우지 않음
+  //  - 뷰어: markcont   → 「다른 뷰어에서 다르게 보이는 곳」 안내를 띄우지 않음 · 문서 점검이 작성 규칙(이모지 · 구분선 · 굵은 소제목)까지 봄
   //  - 배지: 확정=초록, 승인 전=주황, 미결=빨강 → 그 말로 시작하는 표 칸을 색 배지로
   const BADGE_TINT = { 파랑: 'blue', 파란색: 'blue', blue: 'blue', 초록: 'green', 초록색: 'green', 녹색: 'green', green: 'green', 주황: 'amber', 노랑: 'amber', orange: 'amber', yellow: 'amber', amber: 'amber', 빨강: 'red', 빨간색: 'red', red: 'red', 보라: 'purple', purple: 'purple', 회색: 'gray', gray: 'gray', grey: 'gray' };
   function docOptions(fm) {
@@ -2940,6 +2951,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       const entry = findEntry(base, p);
       a.dataset.path = entry ? entry.path : '';
       if (!entry && builtinKeyFor(p)) a.dataset.builtin = builtinKeyFor(p);
+      else if (!entry && leavesRoot(base, p)) a.dataset.outside = '1'; // 누르면 「위 폴더를 열어 주세요」
       if (hash) a.dataset.hash = hash;
     });
 
@@ -2975,9 +2987,7 @@ body.zen .zen-exit:hover { opacity: 1; }
             .catch(() => img.replaceWith(missingImage(src, false)));
           return;
         }
-        const r = rootOf(base);
-        const outside = /^\.\.\//.test(rel) && (!r || !resolvePath(base, rel).startsWith(r.key + '/'));
-        img.replaceWith(missingImage(src, outside));
+        img.replaceWith(missingImage(src, leavesRoot(base, rel)));
       }
     });
 
@@ -3206,6 +3216,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       }
       if (a.classList.contains('missing')) { toast(L('이 문서를 찾지 못했습니다. 폴더 열기로 열면 이동할 수 있어요.', "Couldn't find this document. Open its folder with Open folder to follow the link.")); return; }
       const entry = state.files.find((f) => f.path === a.dataset.path);
+      if (!entry && a.dataset.outside) { toast(L('열어 둔 폴더 밖의 문서입니다. 그 문서가 들어 있는 위 폴더를 열면 링크로 이동할 수 있어요.', 'This document is outside the open folder. Open a parent folder that contains it to follow the link.'), 3600); return; }
       if (!entry) { toast(L('이 파일은 열려 있지 않습니다. 폴더 열기로 폴더를 열면 링크로 이동할 수 있어요.', "This file isn't open. Open its folder with Open folder to follow the link."), 3200); return; }
       const ok = await openEntry(entry);
       const hash = a.dataset.hash || (a.dataset.heading ? slugify(a.dataset.heading) : '');
@@ -4592,16 +4603,22 @@ body.zen .zen-exit:hover { opacity: 1; }
     const r = resolveDoc(from.path, p, maps, false);
     return { target: r.entry, hash, how: r.how };
   }
-  // 상태: ok · loose(markcont에서만 열림) · broken(대상 없음) · anchor(그 제목 없음) · skip(밖의 주소 · 알 수 없음)
+  // 상태: ok · loose(markcont에서만 열림) · broken(대상 없음) · anchor(그 제목 없음)
+  //      · outside(열어 둔 폴더 밖이라 확인할 수 없음 — 문제로 세지 않음) · skip(밖의 주소 · 알 수 없음)
+  const linkLeaves = (from, l) => {
+    if (l.kind === 'wiki' || l.kind === 'embed') return false;
+    const h = (l.href || '').trim(), at = h.indexOf('#');
+    return leavesRoot(nfc(from.path), nfc(safeDecode(at >= 0 ? h.slice(0, at) : h)));
+  };
   function judge(from, l, maps, index) {
     const t = linkTarget(from, l, maps);
     if (!t) return { status: 'skip' };
     if (t.file) {
-      if (t.how === 'none') return from.loose ? { status: 'skip' } : { status: 'broken', what: t.img ? 'img' : 'file' };
+      if (t.how === 'none') return from.loose ? { status: 'skip' } : { status: linkLeaves(from, l) ? 'outside' : 'broken', what: t.img ? 'img' : 'file' };
       return { status: t.how === 'loose' ? 'loose' : 'ok', asset: t.asset };
     }
     if (t.how === 'builtin') return { status: 'ok' };
-    if (t.how === 'none') return { status: 'broken', what: 'doc' };
+    if (t.how === 'none') return { status: linkLeaves(from, l) ? 'outside' : 'broken', what: 'doc' };
     let status = t.how === 'loose' ? 'loose' : 'ok';
     if (t.hash) {
       const hs = index && index.get(t.target) ? index.get(t.target).heads : null;
@@ -4631,15 +4648,17 @@ body.zen .zen-exit:hover { opacity: 1; }
     try { return await lk.building; } finally { lk.building = null; }
   }
   const lkWhy = (j) => (j.status === 'loose' ? L('markcont에서만 열림 · GitHub에서는 깨짐', 'Opens only in markcont · broken on GitHub')
+    : j.status === 'outside' ? L('열어 둔 폴더 밖 · 위 폴더를 열면 확인됨', 'Outside the open folder · open a parent folder to check')
     : j.status === 'anchor' ? L('그 제목이 없음', 'Heading not found')
     : j.what === 'img' ? L('그림을 찾지 못함', 'Image not found') : j.what === 'file' ? L('파일을 찾지 못함', 'File not found') : L('문서를 찾지 못함', 'Document not found'));
   const lkLabel = (l) => (l.kind === 'wiki' || l.kind === 'embed' ? l.raw : safeDecode(l.href || ''));
   // 지금 문서: 가리키는 문서(나가는 링크) · 이 문서를 가리키는 문서(백링크) · 깨진 링크
   function linkReport(index, cur) {
-    const maps = fileMaps(), back = new Map(), out = new Map(), bad = [], allBad = new Map();
+    const maps = fileMaps(), back = new Map(), out = new Map(), bad = [], allBad = new Map(), away = [];
     for (const [from, scan] of index) for (const l of scan.links) {
       const j = judge(from, l, maps, index);
       if (j.status === 'skip') continue;
+      if (j.status === 'outside') { if (from === cur) away.push({ l, j }); continue; } // 깨진 링크와 따로 (가리키는 문서도 없음)
       if (j.status !== 'ok') { if (!allBad.has(from)) allBad.set(from, []); allBad.get(from).push({ l, j }); }
       if (from === cur) {
         if (j.status !== 'ok') bad.push({ l, j });
@@ -4654,7 +4673,7 @@ body.zen .zen-exit:hover { opacity: 1; }
         back.get(from).push({ l, j });
       }
     }
-    return { back, out, bad, allBad };
+    return { back, out, bad, allBad, away };
   }
   function lkSchedule(ms = 700) { clearTimeout(lk.timer); lk.timer = setTimeout(lkRender, ms); }
   async function lkRender() {
@@ -4687,6 +4706,11 @@ body.zen .zen-exit:hover { opacity: 1; }
     h += sec(L('깨진 링크 · 그림', 'Broken links · images'), r.bad.length);
     h += r.bad.length ? r.bad.map((x) => `<button type="button" class="lk-row ${x.j.status === 'loose' ? 'warn' : 'bad'}" data-i="${add({ entry: cur, line: x.l.line })}" title="${E(lkLabel(x.l))}"><span class="lk-ic">${x.j.status === 'loose' ? '!' : '✕'}</span><span class="lk-name">${E(lkLabel(x.l))}</span><span class="lk-sub">${E(lkWhy(x.j))} · ${x.l.line + 1}</span></button>`).join('')
       : `<div class="lk-empty">${L('깨진 링크가 없습니다.', 'No broken links.')}</div>`;
+    // 3-1) 열어 둔 폴더 밖을 가리켜 확인하지 못한 링크 (있을 때만, 깨진 링크로 세지 않음)
+    if (r.away.length) {
+      h += sec(L('폴더 밖이라 확인하지 못한 링크', 'Links outside the open folder'), r.away.length);
+      h += r.away.map((x) => `<button type="button" class="lk-row info" data-i="${add({ entry: cur, line: x.l.line })}" title="${E(lkLabel(x.l))}"><span class="lk-ic">↗</span><span class="lk-name">${E(lkLabel(x.l))}</span><span class="lk-sub">${E(lkWhy(x.j))} · ${x.l.line + 1}</span></button>`).join('');
+    }
     // 4) 폴더 전체의 깨진 링크 (누를 때만)
     const others = [...r.allBad].filter(([e]) => e !== cur);
     if (gsFiles().length > 1) {
@@ -4914,10 +4938,67 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (/(^|[^\\])\|$/.test(t)) t = t.slice(0, -1);
     return t.split(/(?<!\\)\|/).length;
   }
+  // 보이지 않는 글자: 화면에는 안 보이는데 복사 · 찾기 · 다른 프로그램(또는 AI에게 준 문서)에서 문제를 일으키는 글자
+  //  정규식 대신 코드 번호로 셈 (이 소스에도 숨은 글자가 생기지 않게). [시작, 끝, 종류]
+  const INVISIBLE = [
+    [0x00, 0x08, 'ctrl'], [0x0B, 0x0C, 'ctrl'], [0x0E, 0x1F, 'ctrl'], [0x7F, 0x9F, 'ctrl'],
+    [0xAD, 0xAD, 'shy'], [0x180E, 0x180E, 'other'], [0x200B, 0x200B, 'zwsp'], [0x200C, 0x200C, 'zwnj'], [0x200D, 0x200D, 'zwj'],
+    [0x200E, 0x200F, 'bidi'], [0x202A, 0x202E, 'bidi'], [0x2060, 0x2060, 'wj'], [0x2061, 0x2064, 'other'], [0x2066, 0x2069, 'bidi'],
+    [0x3164, 0x3164, 'filler'], [0xFEFF, 0xFEFF, 'bom'], [0xFFA0, 0xFFA0, 'filler'], [0xFFF9, 0xFFFB, 'other'],
+  ];
+  const invisibleName = (k) => ({
+    ctrl: L('제어 문자', 'Control character'), shy: L('숨은 하이픈', 'Soft hyphen'), zwsp: L('폭 없는 공백', 'Zero-width space'),
+    zwnj: L('폭 없는 비결합자', 'Zero-width non-joiner'), zwj: L('폭 없는 결합자', 'Zero-width joiner'), bidi: L('글자 방향 제어 문자', 'Text-direction control'),
+    wj: L('단어 결합자', 'Word joiner'), filler: L('한글 채움 문자', 'Hangul filler'), bom: L('BOM 표시', 'Byte order mark'),
+    tag: L('숨은 태그 글자', 'Hidden tag character'), other: L('보이지 않는 기호', 'Invisible symbol'),
+  })[k];
+  // 이모지 끝 · 처음 (가족 · 직업 이모지처럼 폭 없는 결합자로 잇는 이모지), 비결합자를 쓰는 글자(히브리 · 아랍 · 인도 글자)
+  const emojiEnd = (c) => (c >= 0xDC00 && c <= 0xDFFF) || c === 0xFE0F || (c >= 0x2000 && c <= 0x2BFF);
+  const emojiStart = (c) => (c >= 0xD800 && c <= 0xDBFF) || (c >= 0x2000 && c <= 0x2BFF);
+  const joinScript = (c) => (c >= 0x0590 && c <= 0x0DFF) || (c >= 0xFB1D && c <= 0xFDFF) || (c >= 0xFE70 && c <= 0xFEFC);
+  // 글 안의 보이지 않는 글자 [{ i(위치), len, cp(코드 번호), kind }]
+  //  쓰는 글자는 뺌: 이모지 사이의 폭 없는 결합자(가족 이모지 등), 히브리 · 아랍 · 인도 글자 옆의 비결합자, 깃발 🏴 뒤의 태그 글자(잉글랜드 · 스코틀랜드 깃발)
+  function findInvisible(s) {
+    const out = [];
+    for (let i = 0; i < s.length; i++) {
+      const c = s.charCodeAt(i);
+      if ((c >= 0x20 && c < 0x7F) || (c >= 0xAC00 && c <= 0xD7A3) || c === 0x09 || c === 0x0A || c === 0x0D) continue; // 대부분 (영문 · 숫자 · 한글)
+      // 태그 글자 U+E0000–E007F (서로게이트 DB40 + DC00–DC7F): 글 속에 몰래 숨긴 글에 쓰임
+      if (c === 0xDB40 && i + 1 < s.length && s.charCodeAt(i + 1) >= 0xDC00 && s.charCodeAt(i + 1) <= 0xDC7F) {
+        let j = i;
+        while (j >= 2 && s.charCodeAt(j - 2) === 0xDB40 && s.charCodeAt(j - 1) >= 0xDC00 && s.charCodeAt(j - 1) <= 0xDC7F) j -= 2;
+        if (!(j >= 2 && s.charCodeAt(j - 2) === 0xD83C && s.charCodeAt(j - 1) === 0xDFF4)) out.push({ i, len: 2, cp: 0xE0000 + s.charCodeAt(i + 1) - 0xDC00, kind: 'tag' });
+        i++;
+        continue;
+      }
+      const hit = INVISIBLE.find(([a, b]) => c >= a && c <= b);
+      if (!hit) continue;
+      const p = i > 0 ? s.charCodeAt(i - 1) : 0, n = i + 1 < s.length ? s.charCodeAt(i + 1) : 0;
+      if (hit[2] === 'zwj' && emojiEnd(p) && emojiStart(n)) continue;
+      if (hit[2] === 'zwnj' && (joinScript(p) || joinScript(n))) continue;
+      out.push({ i, len: 1, cp: c, kind: hit[2] });
+    }
+    return out;
+  }
+  const cpLabel = (cp) => 'U+' + cp.toString(16).toUpperCase().padStart(4, '0');
+  // 보이지 않는 글자를 모두 뺀 글 (「보이지 않는 글자 지우기」)
+  function dropInvisible(s) {
+    let out = '', at = 0;
+    for (const f of findInvisible(s)) { out += s.slice(at, f.i); at = f.i + f.len; }
+    return out + s.slice(at);
+  }
+  // 편집기 색칠 층: 보이지 않는 글자를 빨간 표시로 감쌈 (글자는 그대로라 입력 칸과 위치가 어긋나지 않음)
+  function markInvisible(html) {
+    const found = findInvisible(html);
+    if (!found.length) return html;
+    let out = '', at = 0;
+    for (const f of found) { out += html.slice(at, f.i) + '<span class="t-inv">' + html.slice(f.i, f.i + f.len) + '</span>'; at = f.i + f.len; }
+    return out + html.slice(at);
+  }
   // index: 다른 문서의 제목까지 볼 때 (없으면 이미 읽어 둔 문서만으로)
   function runCheck(src, cur, index) {
     const groups = [];
-    const add = (key, title, items) => { if (items.length) groups.push({ key, title, items }); };
+    const add = (key, title, items, info) => { if (items.length) groups.push({ key, title, items, info }); }; // info: 알려만 주고 문제 수에는 넣지 않음
     const env = {};
     const tokens = md ? md.parse(stripNotes(splitFrontMatter(src).body), env) : [];
     const scan = scanParsed(tokens, src), lines = src.split('\n');
@@ -4925,12 +5006,43 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (!index) { index = new Map(); for (const [e, c] of gs.cache) if (c.scan) index.set(e, c.scan); }
     index = new Map(index);
     index.set(cur, scan);
-    const maps = fileMaps(), bad = [];
+    const maps = fileMaps(), bad = [], away = [];
     for (const l of scan.links) {
       const j = judge(cur, l, maps, index);
-      if (j.status !== 'ok' && j.status !== 'skip') bad.push({ line: l.line, what: j.status === 'loose' ? L('markcont에서만 열리는 링크', 'Link that opens only in markcont') : j.what === 'img' ? L('깨진 그림', 'Broken image') : L('깨진 링크', 'Broken link'), text: lkLabel(l) + ' · ' + lkWhy(j), warn: j.status === 'loose' });
+      if (j.status === 'outside') away.push({ line: l.line, what: j.what === 'img' ? L('폴더 밖의 그림', 'Image outside the folder') : L('폴더 밖의 링크', 'Link outside the folder'), text: lkLabel(l) + ' · ' + lkWhy(j), info: true });
+      else if (j.status !== 'ok' && j.status !== 'skip') bad.push({ line: l.line, what: j.status === 'loose' ? L('markcont에서만 열리는 링크', 'Link that opens only in markcont') : j.what === 'img' ? L('깨진 그림', 'Broken image') : L('깨진 링크', 'Broken link'), text: lkLabel(l) + ' · ' + lkWhy(j), warn: j.status === 'loose' });
     }
     add('links', L('깨진 링크 · 그림', 'Broken links · images'), bad);
+    // 1-1) 열어 둔 폴더 밖(../)을 가리켜 있는지 확인할 수 없는 링크: 깨진 링크와 따로, 문제 수에는 넣지 않음
+    add('outside', L('열어 둔 폴더 밖이라 확인하지 못한 링크 (문제로 세지 않음)', "Links outside the open folder, not checked (not counted as issues)"), away, true);
+    // 1-2) 보이지 않는 글자 (줄마다 하나로 묶어서, 그 글자 자리는 ⟦U+200B⟧ 처럼 보여 줌)
+    const hidden = [];
+    let hiddenChars = 0;
+    lines.forEach((ln, n) => {
+      const found = findInvisible(ln);
+      if (!found.length) return;
+      hiddenChars += found.length;
+      // 종류별 개수 (태그 글자는 코드 번호마다 나누지 않고 한 묶음)
+      const kinds = new Map();
+      for (const f of found) { const key = f.kind === 'tag' ? 'tag' : f.cp; const k = kinds.get(key) || { kind: f.kind, cp: f.cp, n: 0 }; k.n++; kinds.set(key, k); }
+      // 그 자리를 ⟦U+200B⟧ 로. 이어진 태그 글자는 숨긴 영문 글을 풀어서 ⟦숨은 글 "…"⟧ 로
+      let shown = '', at = 0;
+      for (let k = 0; k < found.length; k++) {
+        const f = found[k];
+        shown += ln.slice(at, f.i);
+        if (f.kind === 'tag') {
+          let s = '';
+          for (; k < found.length && found[k].kind === 'tag' && found[k].i === f.i + s.length * 2; k++) s += found[k].cp >= 0xE0020 && found[k].cp <= 0xE007E ? String.fromCharCode(found[k].cp - 0xE0000) : '?';
+          k--;
+          shown += '⟦' + L('숨은 글', 'hidden text') + ' "' + s + '"⟧';
+          at = f.i + s.length * 2;
+        } else { shown += '⟦' + cpLabel(f.cp) + '⟧'; at = f.i + f.len; }
+      }
+      shown += ln.slice(at);
+      const from = Math.max(0, shown.indexOf('⟦') - 20);
+      hidden.push({ line: n, what: [...kinds.values()].map((k) => invisibleName(k.kind) + (k.kind === 'tag' ? '' : ' ' + cpLabel(k.cp)) + (k.n > 1 ? L(` ${k.n}개`, ` ×${k.n}`) : '')).join(' · '), text: (from ? '…' : '') + shown.slice(from).trim() });
+    });
+    add('hidden', L('보이지 않는 글자', 'Invisible characters'), hidden);
     // 2) 제목 단계 건너뜀 (## 다음에 #### 처럼)
     const skips = [];
     scan.heads.forEach((h, i) => {
@@ -4986,9 +5098,50 @@ body.zen .zen-exit:hover { opacity: 1; }
     }
     add('long', L(`너무 긴 문장 (한국어 ${LONG_KO}자 · 영어 ${LONG_EN}낱말 넘음)`, `Long sentences (over ${LONG_KO} Korean chars · ${LONG_EN} words)`), longs);
     // 6) 작성 규칙: 제목(#)은 하나, ## 단락마다 알림 상자 두 개 · 형광펜 한 번까지
+    //  + 규칙을 따르는 문서(문서 정보 「뷰어: markcont」, 또는 ## 단락에 이모지를 하나라도 붙인 문서)만:
+    //    맨 위 제목 · ### 에 이모지 없이, ## 단락마다 이모지 하나, ## 단락 사이 구분선 ---, 굵은 글씨 한 줄을 소제목으로 쓰지 않기
+    //    (규칙을 모르고 쓴 보통 문서까지 단락마다 잡으면 어느 문서를 열어도 점검 단추가 떠서)
     const rules = [];
     const h1 = scan.heads.filter((h) => h.level === 1);
     if (h1.length > 1) rules.push({ line: h1[1].line, what: L('제목(#)이 둘 이상', 'More than one title (#)'), text: L('작성 규칙: 맨 위 제목은 문서에 하나만', 'Writing rules: one top title per document'), warn: true });
+    const rule = (line, what, text) => rules.push({ line, what, text, warn: true });
+    const tops = []; // 맨 바깥 제목 { level, line, text(이모지 코드 :rocket: 는 이모지로), hr(바로 앞 덩어리가 구분선인지) }
+    for (let i = 0; i < tokens.length; i++) {
+      const t = tokens[i];
+      if (t.type !== 'heading_open' || t.level !== 0) continue;
+      const kids = (tokens[i + 1] && tokens[i + 1].children) || [];
+      let k = i - 1; // 바로 앞 덩어리 (주석만 있는 HTML 덩어리는 건너뜀)
+      while (k >= 0 && (tokens[k].level !== 0 || (tokens[k].type === 'html_block' && /^\s*(?:<!--[\s\S]*?-->\s*)+$/.test(tokens[k].content)))) k--;
+      tops.push({ level: +t.tag.slice(1), line: t.map ? t.map[0] : 0, text: kids.map((c) => (c.type === 'text' || c.type === 'emoji_code' ? c.content : '')).join('').trim(), hr: k >= 0 && tokens[k].type === 'hr' });
+    }
+    // 붙였는지 볼 때는 넓게(⚠ 처럼 FE0F 없이 쓴 것도), 붙이지 말아야 할 곳은 이모지로 보이는 것만(© ™ ↔ 같은 기호는 빼고)
+    const EMOJI_ANY = /\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20E3/u;
+    const EMOJI_SHOWN = /\p{Emoji_Presentation}|\p{Extended_Pictographic}\uFE0F|\p{Regional_Indicator}|\u20E3/u;
+    const graphemes = window.Intl && Intl.Segmenter ? new Intl.Segmenter('ko', { granularity: 'grapheme' }) : null;
+    const emojiCount = (s) => (graphemes ? [...graphemes.segment(s)].filter((g) => EMOJI_ANY.test(g.segment)).length : EMOJI_ANY.test(s) ? 1 : 0);
+    const h2s = tops.filter((h) => h.level === 2);
+    if (docOptions(splitFrontMatter(src).fm).markcontOnly || h2s.some((h) => emojiCount(h.text))) {
+      let prev = 0; // 앞 제목의 단계 (#, ## 만 셈): ## 다음 ## 이면 그 사이에 구분선
+      for (const h of tops) {
+        if (h.level === 1 && EMOJI_SHOWN.test(h.text)) rule(h.line, L('맨 위 제목(#)에 이모지', 'Emoji in the top title (#)'), L('작성 규칙: 맨 위 제목은 이모지 없이 (이모지는 ## 단락에만) · ', 'Writing rules: no emoji in the top title (emoji go on ## sections only) · ') + h.text);
+        if (h.level >= 3 && EMOJI_SHOWN.test(h.text)) rule(h.line, L(`${'#'.repeat(h.level)} 작은 단락에 이모지`, `Emoji in a ${'#'.repeat(h.level)} subsection`), L('작성 규칙: 작은 단락(###)은 이모지 없이 · ', 'Writing rules: no emoji in subsections (###) · ') + h.text);
+        if (h.level === 2) {
+          const n = emojiCount(h.text);
+          if (n !== 1) rule(h.line, n ? L('## 단락에 이모지 둘 이상', '2+ emoji in a ## section') : L('## 단락에 이모지 없음', 'No emoji on a ## section'), L('작성 규칙: ## 단락마다 이모지 하나 · ', 'Writing rules: one emoji per ## section · ') + h.text);
+          if (prev === 2 && !h.hr) rule(h.line, L('## 단락 앞에 구분선 없음', 'No divider before a ## section'), L('작성 규칙: ## 단락 사이에는 구분선 --- · ', 'Writing rules: a --- divider between ## sections · ') + h.text);
+        }
+        if (h.level <= 2) prev = h.level;
+      }
+      // 굵은 글씨만 있는 짧은 한 줄 문단 (**정책 상태** 처럼) → ### 소제목으로. 문장(마침표 · 물음표 …로 끝남)을 통째로 굵게 한 강조는 빼고
+      for (let i = 0; i < tokens.length; i++) {
+        if (tokens[i].type !== 'paragraph_open' || tokens[i].level !== 0) continue;
+        const kids = ((tokens[i + 1] && tokens[i + 1].children) || []).filter((c) => !(c.type === 'text' && !c.content.trim()));
+        if (kids.length < 3 || kids[0].type !== 'strong_open' || kids[kids.length - 1].type !== 'strong_close' || kids.some((c, n) => n && c.type === 'strong_open' || c.type === 'softbreak' || c.type === 'hardbreak')) continue;
+        const text = kids.map((c) => (c.type === 'text' || c.type === 'code_inline' || c.type === 'emoji_code' ? c.content : '')).join('').trim();
+        if (!text || text.length > 40 || /[.!?。…]$|[다요죠까]$/.test(text)) continue;
+        rule(tokens[i].map ? tokens[i].map[0] : 0, L('굵은 글씨 한 줄을 소제목처럼 씀', 'A bold line used as a heading'), L('작성 규칙: 작은 단락은 ### 제목으로 · ', 'Writing rules: use a ### heading for subsections · ') + text);
+      }
+    }
     let callouts = 0, marks = 0;
     for (let i = 0; i < tokens.length; i++) {
       const t = tokens[i];
@@ -5000,12 +5153,12 @@ body.zen .zen-exit:hover { opacity: 1; }
         if (c.type === 'mark_open' && ++marks === 2) rules.push({ line: t.map ? t.map[0] : 0, what: L('한 단락에 형광펜 두 번 이상', 'Highlight used twice in one section'), text: L('작성 규칙: 형광펜은 단락(##)마다 한 번만', 'Writing rules: one highlight per section (##)'), warn: true });
       }
     }
-    add('rules', L('작성 규칙', 'Writing rules'), rules);
-    const problems = groups.reduce((s, g) => s + g.items.length, 0);
+    add('rules', L('작성 규칙', 'Writing rules'), rules.sort((a, b) => a.line - b.line));
+    const problems = groups.reduce((s, g) => s + (g.info ? 0 : g.items.length), 0);
     // 7) 다른 뷰어에서 다르게 보이는 곳 (markcont 전용 문법)
     let changes = [];
     if (window.MarkPortable && !docOptions(splitFrontMatter(src).fm).markcontOnly) { try { changes = MarkPortable.convert(src).changes; } catch {} }
-    return { groups, problems, changes, compat: changes.length };
+    return { groups, problems, changes, compat: changes.length, hidden: hiddenChars };
   }
   const chk = { timer: 0, res: null, for: null };
   // 문서 위의 단추: 「⚠ 문서 점검 N곳 · 다른 뷰어 M곳」
@@ -6346,7 +6499,7 @@ body.zen .zen-exit:hover { opacity: 1; }
           html = (q ? `<span class="t-q">${escapeHtml(q)}</span>` : '') + (li ? `<span class="t-li">${escapeHtml(li)}</span>` : '') + hlInline(line.slice(q.length + li.length));
         }
       }
-      out[n] = `<div class="ln">${html}</div>`;
+      out[n] = `<div class="ln">${markInvisible(html)}</div>`; // 보이지 않는 글자는 빨간 표시로
     }
     return out.join('');
   }
@@ -8089,10 +8242,10 @@ body.zen .zen-exit:hover { opacity: 1; }
     const { changes } = r, E = escapeHtml;
     const fixable = changes.filter((c) => !MarkPortable.warnOnly(c.kind)).length;
     const rows = [];
-    const row = (line, what, text, warn) => { rows.push(line); return `<button type="button" class="compat-row${warn ? ' warn' : ''}" data-i="${rows.length - 1}"><span class="ln">${L(`${line}번째 줄`, `Line ${line}`)}</span><span class="what"><b>${E(what)}</b>${text ? `<small>${E(text)}</small>` : ''}</span></button>`; };
+    const row = (line, what, text, warn) => { rows.push(line); return `<button type="button" class="compat-row${warn === 'info' ? ' info' : warn ? ' warn' : ''}" data-i="${rows.length - 1}"><span class="ln">${L(`${line}번째 줄`, `Line ${line}`)}</span><span class="what"><b>${E(what)}</b>${text ? `<small>${E(text)}</small>` : ''}</span></button>`; };
     let h = '<p class="chg-help">' + L('고칠 만한 곳과, 다른 뷰어에서 다르게 보이는 곳을 모았습니다. 줄을 누르면 그 위치로 갑니다.', 'Spots worth fixing, and spots that look different in other viewers. Click a row to jump to it.') + '</p>';
     if (!r.problems) h += '<p class="chg-empty" style="padding:8px 0 4px">' + L('✓ 깨진 링크 · 제목 단계 · 각주 · 표 · 긴 문장 · 작성 규칙 모두 문제없습니다.', '✓ No broken links, heading-level skips, footnote, table, long-sentence or writing-rule issues.') + '</p>';
-    for (const g of r.groups) h += `<div class="lk-title">${E(g.title)}<span class="gs-n">${g.items.length}</span></div><div class="compat-list">` + g.items.map((it) => row(it.line + 1, it.what, it.text, it.warn)).join('') + '</div>';
+    for (const g of r.groups) h += `<div class="lk-title">${E(g.title)}<span class="gs-n">${g.items.length}</span></div><div class="compat-list">` + g.items.map((it) => row(it.line + 1, it.what, it.text, it.info ? 'info' : it.warn)).join('') + '</div>';
     h += `<div class="lk-title">${L('다른 뷰어에서 다르게 보이는 곳', 'Looks different in other viewers')}<span class="gs-n">${changes.length}</span></div>`;
     h += changes.length ? '<p class="chg-help" style="margin:2px 0 8px">' + L('아래 문법은 markcont에서만 보기 좋게 보이고, GitHub · VS Code 같은 다른 뷰어에서는 기호가 그대로 보이거나 다르게 보입니다.', 'The syntax below looks nice only in markcont; viewers like GitHub or VS Code show raw symbols or render it differently.') + '</p><div class="compat-list">' + changes.map((c) => {
       const [what, fix] = MarkPortable.describe(c.kind);
@@ -8100,9 +8253,19 @@ body.zen .zen-exit:hover { opacity: 1; }
     }).join('') + '</div>' : '<p class="lk-empty">' + L('다르게 보이는 곳이 없습니다.', 'Nothing looks different.') + '</p>';
     body.innerHTML = h;
     foot.innerHTML = '<button class="btn" id="compatExport">' + L('다른 뷰어용으로 저장…', 'Save for other viewers…') + '</button><span style="flex:1"></span>' +
+      (r.hidden ? '<button class="btn" id="compatHidden">' + L(`보이지 않는 글자 지우기 (${r.hidden}개)`, `Remove invisible characters (${r.hidden})`) + '</button>' : '') +
       (fixable ? '<button class="btn primary" id="compatFix">' + L(`이 문서를 표준 문법으로 바꾸기 (${fixable}곳)`, `Convert this document (${fixable})`) + '</button>' : '');
     body.querySelectorAll('.compat-row').forEach((b) => (b.onclick = () => { closeCompat(); gotoSourceLine(rows[+b.dataset.i]); }));
     $('#compatExport').onclick = () => { closeCompat(); exportPortable(); };
+    const hd = $('#compatHidden');
+    if (hd) hd.onclick = () => {
+      if (!confirm(L(`보이지 않는 글자 ${r.hidden}개를 지울까요?\n목록에 나온 글자만 지웁니다. 저장하기 전에는 Ctrl+Z 나 되돌리기 기록으로 되돌릴 수 있습니다.`, `Remove ${r.hidden} invisible characters?\nOnly the characters in the list are removed. Until you save you can undo with Ctrl+Z or the undo history.`))) return;
+      const text = dropInvisible(source());
+      closeCompat();
+      if (!state.editing) setEditing(true);
+      replaceAll(text, L('보이지 않는 글자 지움', 'Removed invisible characters'));
+      toast(L('보이지 않는 글자를 지웠습니다. 저장하기 전에 확인해 주세요.', 'Removed invisible characters. Review before saving.'), 4000);
+    };
     const fx = $('#compatFix');
     if (fx) fx.onclick = () => {
       if (!confirm(L('이 문서의 markcont 전용 문법을 표준 문법으로 바꿀까요?\n원래 모양이 바뀌지만, 저장하기 전에는 Ctrl+Z 나 되돌리기 기록으로 되돌릴 수 있습니다.', 'Convert markcont-only syntax in this document to standard syntax?\nThe look will change, but until you save you can undo with Ctrl+Z or the undo history.'))) return;

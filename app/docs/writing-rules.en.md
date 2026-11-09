@@ -663,7 +663,7 @@ $$
 Matrices work too: $\begin{pmatrix} 1 & 2 \\ 3 & 4 \end{pmatrix}$
 ````
 
-**Math rules**
+#### Math rules
 
 1. To raise or lower two or more characters, group them with `{ }`: `x^{10}` (without it, `x^10` → $x^10$)
 2. Wrap words inside math in `\text{ }`.
@@ -707,7 +707,7 @@ $$
 - For easy upkeep, we recommend putting it **right below that paragraph**.
 - Names work instead of numbers too: `[^source]`, `[^note]`
 
-**How to check it worked**
+#### How to check it worked
 
 | Status | What you see |
 |:---|:---|
@@ -989,7 +989,7 @@ tags:
 | name: value | What it does |
 |:---|:---|
 | `badges: done=green, pending=orange, open=red` | Table cells that start with those words show as colored badges (blue · green · orange · red · purple · gray) |
-| `viewer: markcont` | A markcont-only document: hides the "⚠ spots look different in other viewers" notice |
+| `viewer: markcont` | A markcont-only document: hides the "⚠ spots look different in other viewers" notice, and the document check also checks these rules' emoji · dividers · subsections |
 | `cover: yes` | Makes the first page of print · PDF · Word a cover: title (`title`) · summary (`summary`) · the rest of the info. The cover has no page number |
 
 ### Table of contents · heading numbers
