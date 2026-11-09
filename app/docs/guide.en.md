@@ -81,6 +81,7 @@ Open and close the sidebar with the <kbd>☰</kbd> button in the top left. Drag 
 | Rename | Renames the file or folder |
 | Copy path | The PC app copies the full path (`C:\Users\…\a.md`), which you can paste straight into the File Explorer address bar. In the browser it's **Copy path in folder**, which copies only the path inside the opened folder |
 | Hide from sidebar | Leaves the file alone and only takes it out of the sidebar list. Quick open, search and links still work. Top folder ⋯ → **Show hidden items** shows them again (dimmed), and that row's ⋯ → **Show again** brings it back. **Separately opened files** are hidden for this session only; click **Show N hidden files** in the list, or open the file again, to see it |
+| Remove from list | Only for **separately opened files**. Leaves the file alone and takes it out of markcont's list entirely. Unlike hiding, it no longer shows up in quick open or search; open the file again to bring it back. To take out a whole folder, use **Close this folder** on the top folder |
 | Delete | The PC app sends it to the **Trash**; the browser deletes it **permanently** |
 
 > [!WARNING]

@@ -4118,7 +4118,7 @@ body.zen .zen-exit:hover { opacity: 1; }
 
   function updateTitle() {
     el.docTitle.textContent = '';
-    if (!state.current) return;
+    if (!state.current) { document.title = 'markcont'; return; } // 보던 문서를 닫거나 빼서 처음 화면으로
     el.docTitle.textContent = state.current.path;
     { const l = describeLocation(state.current); el.docTitle.title = l.full || [l.short, l.note].filter(Boolean).join('\n'); }
     if (state.dirty) {
@@ -4308,6 +4308,36 @@ body.zen .zen-exit:hover { opacity: 1; }
     renderFileList();
     toast(L(`사이드바에서 숨겼습니다: ${entry.name} (파일은 그대로). 목록의 「숨긴 파일 보기」나 다시 열기로 다시 볼 수 있습니다`, `Hidden from the sidebar: ${entry.name} (the file stays). Use "Show hidden files" in the list, or open it again, to see it`), 6000,
       { label: L('되돌리기', 'Undo'), onClick: () => { entry.sideHidden = false; renderFileList(); } });
+  }
+  // 따로 연 파일을 markcont 목록에서 빼기 (파일은 그대로). 숨기기와 달리 빠른 열기 · 찾기에서도 빠지고, 다시 열면 다시 들어옴
+  async function removeLooseFromList(entry) {
+    const at = state.files.indexOf(entry);
+    if (at < 0) return;
+    const wasCurrent = state.current === entry;
+    if (wasCurrent && state.dirty && !confirm(L('저장하지 않은 변경 사항이 있습니다. 버리고 목록에서 뺄까요?', 'You have unsaved changes. Discard them and remove the file from the list?'))) return;
+    if (wasCurrent) saveReadPos();
+    state.files.splice(at, 1);
+    gs.cache.delete(entry);
+    // 뒤로 · 앞으로 기록에서도 빼고 (같은 파일을 다시 열기 전의 옛 항목까지), 보던 문서였으면 그 앞에 보던 문서로
+    const keep = (e) => e !== entry && (e === state.current || state.files.includes(e));
+    const before = state.hist.slice(0, state.histPos + 1).filter((e) => !keep(e)).length;
+    state.hist = state.hist.filter(keep);
+    state.histPos = Math.min(state.hist.length - 1, state.histPos - before);
+    updateNav();
+    if (wasCurrent) {
+      state.dirty = false;
+      const prev = state.hist[state.histPos];
+      const next = prev || state.files.find((f) => !f.builtin && (f.loose ? !f.sideHidden : !hiddenBy(f.path)));
+      if (next) await openEntry(next, { fromHistory: !!prev }); else { state.current = null; showHome(); updateTitle(); }
+    }
+    renderFileList();
+    toast(L(`목록에서 뺐습니다: ${entry.name} (파일은 그대로). 다시 보려면 그 파일을 다시 여세요`, `Removed from the list: ${entry.name} (the file stays). Open the file again to bring it back`), 6000,
+      { label: L('되돌리기', 'Undo'), onClick: () => {
+        if (state.files.some((f) => f.loose && f.path === entry.path)) return; // 그사이 같은 파일을 다시 열었음
+        state.files.push(entry);
+        state.files.sort((a, b) => a.path.localeCompare(b.path, 'ko', { numeric: true }));
+        if (wasCurrent) openEntry(entry); else renderFileList();
+      } });
   }
   // 숨긴 항목 수: 열어 둔 폴더들 + 따로 연 파일
   const hiddenTotal = () => state.roots.reduce((n, r) => n + hiddenSet(r).size, 0) + state.files.filter((f) => f.loose && f.sideHidden).length;
@@ -5847,7 +5877,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (curInside) {
       state.dirty = false;
       const next = state.files.find((f) => !f.loose) || state.files[0];
-      if (next) await openEntry(next); else { state.current = null; showHome(); }
+      if (next) await openEntry(next); else { state.current = null; showHome(); updateTitle(); }
     }
     renderFileList();
     toast(L(`'${root.name}' 폴더를 닫았습니다 (파일은 그대로 있습니다)`, `Closed folder '${root.name}' (files are untouched)`));
@@ -5910,6 +5940,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     del: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',
     eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
     eyeOff: '<path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-2.4 3.3M6.6 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M3 3l18 18"/>',
+    remove: '<circle cx="12" cy="12" r="9"/><path d="M8 12h8"/>',
   };
   let ctxRow = null;
   function closeCtxMenu() { $('#ctxMenu').hidden = true; ctxRow?.classList.remove('ctx-target'); ctxRow = null; }
@@ -5950,6 +5981,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     const looseHide = isLoose && kind === 'file'; // 따로 연 파일: 이번에만 숨김
     if (canHide || canDel || looseHide) add('sep');
     if (looseHide) add(entry.sideHidden ? 'unhideLoose' : 'hideLoose', entry.sideHidden ? L('다시 보이기', 'Show again') : L('사이드바에서 숨기기', 'Hide from sidebar'), entry.sideHidden ? 'eye' : 'eyeOff');
+    if (looseHide) add('removeLoose', L('목록에서 빼기 (파일은 그대로)', 'Remove from list (file stays)'), 'remove');
     if (canHide && !hid) add('hide', L('사이드바에서 숨기기', 'Hide from sidebar'), 'eyeOff');
     else if (canHide && hid === relOf(path)) add('unhide', L('다시 보이기', 'Show again'), 'eye');
     else if (canHide) add('unhideParent', L(`'${baseName(hid)}' 폴더 다시 보이기`, `Show the '${baseName(hid)}' folder again`), 'eye');
@@ -5959,7 +5991,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       add('sep');
       if (side.showHidden) add('toggleHidden', L('숨긴 항목 다시 감추기', 'Stop showing hidden items'), 'eyeOff');
       else if (n) add('toggleHidden', L(`숨긴 항목 보기 (${n}개)`, `Show hidden items (${n})`), 'eye');
-      add('closeRoot', L('이 폴더 닫기 (파일은 그대로)', 'Close this folder (files stay)'), 'del');
+      add('closeRoot', L('이 폴더 닫기 (파일은 그대로)', 'Close this folder (files stay)'), 'remove');
     }
     m.innerHTML = '';
     for (const it of items) {
@@ -5977,6 +6009,7 @@ body.zen .zen-exit:hover { opacity: 1; }
         else if (it.id === 'copy') copyPath(cp);
         else if (it.id === 'hide') hideInSidebar(path);
         else if (it.id === 'hideLoose') hideLooseInSidebar(entry);
+        else if (it.id === 'removeLoose') removeLooseFromList(entry);
         else if (it.id === 'unhideLoose') { entry.sideHidden = false; renderFileList(); toast(L('다시 보이게 했습니다: ', 'Showing again: ') + entry.name); }
         else if (it.id === 'unhide' || it.id === 'unhideParent') { const p = it.id === 'unhide' ? path : root.key + '/' + hid; setHidden(p, false); renderFileList(); toast(L('다시 보이게 했습니다: ', 'Showing again: ') + baseName(p)); }
         else if (it.id === 'toggleHidden') { side.showHidden = !side.showHidden; renderFileList(); }
@@ -6154,7 +6187,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (wasCurrent) {
       state.dirty = false;
       const next = state.files.find((f) => !f.loose);
-      if (next) await openEntry(next); else { state.current = null; showHome(); }
+      if (next) await openEntry(next); else { state.current = null; showHome(); updateTitle(); }
     }
     await refreshFolder({ quiet: true, only: root.key });
     renderFileList();
