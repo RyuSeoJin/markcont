@@ -131,7 +131,7 @@ Shows the documents connected to the current one. Click a row to go to that docu
 
 | Feature | Where | Description |
 |:---|:---|:---|
-| View settings | **Aa** button at the top | Text size, Sans · Serif, body width, line spacing · paragraph spacing, color theme (Default · Paper · High contrast), callout style, code line numbers, heading numbers (1 · 1.1), review before saving, your own CSS |
+| View settings | **Aa** button at the top | Text size, Sans · Serif, body width, line spacing · paragraph spacing, color theme (Default · Paper · High contrast), callout style, heading numbers (1 · 1.1), review before saving, document styles (CSS) |
 | Where you left off | Automatic | Remembers where you were reading in each document and goes back there when you open it again |
 | Reading time | The info line above the document | "~N min read" — counts Korean · Chinese · Japanese at 500 characters a minute and other languages at 230 words a minute, then adds them up (code blocks left out) |
 | Language | View settings (Aa) → Language, or the first screen of the tour | Switch between 한국어 and English |
@@ -147,7 +147,11 @@ Shows the documents connected to the current one. Click a row to go to that docu
 | Enlarge an image | Click the image | The same zoom view as diagrams. While editing side by side, a click jumps to that line of the source instead |
 | Present | **⋯ → Present** | Shows the sections split by dividers (`---`) one slide at a time, full screen (see below) |
 
-- **Your own CSS**: open **Style documents with your own CSS** at the bottom of View settings and write something like `h2 { color: teal; }` — it applies right away. Only the document changes, so the menus stay usable even if you make a mistake, and emptying the box brings everything back.
+- **Document styles (CSS)**: click **Document style → Manage…** at the bottom of View settings (or type `>style` in <kbd>Ctrl</kbd>+<kbd>O</kbd>) to open the styles window.
+  - Bring in a `.css` file with **Load CSS file…** or make one with **＋ New style**, then edit it — something like `h2 { color: teal; }` applies right away. **Save as file…** exports it as a `.css` file to share with another computer or other people.
+  - Under **Applies to**, choose for each style: **all documents · a folder · this document**. A folder style also covers its subfolders. Each document uses one style, chosen in this order: **this document → nearest folder → all documents**.
+  - Only the document changes, so the menus stay usable even if you make a mistake. Save as HTML and Copy with formatting also carry that document's style.
+  - Parts that load fonts or images from the internet (`url(https://…)`, `@import`) are skipped, so nothing about opening your documents reaches outside servers. Embed images and fonts as `data:` URLs instead.
 - **Hidden notes** `%%note%%` don't show up when viewing, printing or exporting (chapter 9 of the [writing rules](writing-rules.en.md)).
 
 ### Presenting
@@ -226,7 +230,7 @@ Press **Edit** at the top (<kbd>Ctrl</kbd>+<kbd>E</kbd>) to see the source on th
 The editing toolbar has buttons for headings, lists, task lists, callouts, code blocks, tables, and inserting images.
 
 - If the numbers in a numbered list got mixed up, type `>renumber` in <kbd>Ctrl</kbd>+<kbd>O</kbd> and choose **Renumber the numbered list**. It renumbers from the first item's number.
-- With the cursor **inside a table**, <kbd>Tab</kbd> · <kbd>Shift</kbd>+<kbd>Tab</kbd> move to the next · previous cell, and <kbd>Tab</kbd> in the last cell adds an empty row below. Table buttons (**Align · Row+ · Row− · Col+ · Col− · ◀Col · Col▶ · Sort**) appear in the toolbar. Align measures the real width of Korean characters and emoji, so it may be off by about half a space depending on the font. Sort toggles ascending · descending, and a column of numbers sorts by value.
+- With the cursor **inside a table**, <kbd>Tab</kbd> · <kbd>Shift</kbd>+<kbd>Tab</kbd> move to the next · previous cell, and <kbd>Tab</kbd> in the last cell adds an empty row below. <kbd>Shift</kbd>+<kbd>Enter</kbd> inside a cell inserts a line break (`<br>`) without breaking the table. Table buttons (**Align · Row+ · Row− · Col+ · Col− · ◀Col · Col▶ · Sort**) appear in the toolbar. Align measures the real width of Korean characters and emoji, so it may be off by about half a space depending on the font. Sort toggles ascending · descending, and a column of numbers sorts by value.
 - Changing heading levels leaves `#` inside code blocks alone, and if any heading can't go above `#` or below `######`, nothing changes so the headings keep their relative levels.
 - Each of these can be undone with a single <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 
@@ -319,7 +323,7 @@ Open the window with the **History** button in the editing toolbar (<kbd>Ctrl</k
 ### Print · PDF · Word
 
 - Page numbers (`3 / 12`) are printed at the bottom of each page and the document title at the top. This works in Chrome · Edge 131 or later and the Windows PC app; in other browsers, turn on **Headers and footers** in the print window.
-- Tables · images · diagrams · math · callouts are kept off page boundaries where possible and move to the next page instead. Code lines longer than the paper are wrapped (the line numbers of that code block are left out then).
+- Tables · images · diagrams · math · callouts are kept off page boundaries where possible and move to the next page instead. Code lines longer than the paper are wrapped.
 - To start a new page at a spot of your choice, write `<!-- page break -->` on a line there. On screen it shows only as a dashed line.
 - Write `cover: yes` in the document info at the top, and the first page becomes a **cover** (title · summary · the rest of the info, like the author). The cover has no page number.
 - Word files keep heading levels · lists · tables · code · callouts · images, and diagrams become images. Math goes in as TeX text (`E=mc^2`). The paper size follows your region (Letter for the US · Canada, A4 elsewhere).

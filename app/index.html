@@ -189,10 +189,9 @@
   .markdown-body .print-cover th, .markdown-body .print-cover td { border: 0; background: none !important; padding: .25em 1.4em .25em 0; text-align: left; }
   .markdown-body .print-cover th { color: #777; font-weight: 600; }
   .markdown-body .print-cover + .front-matter { display: none; } /* 표지에 이미 나옴 */
-  /* 종이 밖으로 잘리지 않게: 스크롤 상자를 풀고, 긴 코드 줄은 접고(줄 번호는 숨김), 표 줄은 쪽 경계에서 쪼개지 않음 */
+  /* 종이 밖으로 잘리지 않게: 스크롤 상자를 풀고, 긴 코드 줄은 접고, 표 줄은 쪽 경계에서 쪼개지 않음 */
   .markdown-body .code-body, .markdown-body pre, .markdown-body .table-wrap { overflow: visible !important; }
   .markdown-body pre code { white-space: pre-wrap; overflow-wrap: anywhere; }
-  .markdown-body .code-block.wide .code-lines { display: none; }
   .markdown-body .code-head { break-after: avoid; }
   .markdown-body tr { break-inside: avoid; }
   /* 표: 둥근 틀이 종이에서 표 모서리 · 가장자리를 가리거나 자르지 않게 틀은 풀고 테두리는 표에 직접,
@@ -303,7 +302,7 @@
   background: #e62117; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 22px; line-height: 1;
 }
 
-/* 코드 블록 머리줄(언어 · 복사 · 크게 보기)과 줄 번호 */
+/* 코드 블록 머리줄(언어 · 복사 · 크게 보기) */
 .markdown-body .code-block { margin: 0 0 1.1em; border: 1px solid var(--border); border-radius: 6px; background: var(--code-bg); overflow: hidden; }
 .markdown-body .code-head {
   display: flex; align-items: center; gap: 4px; padding: 6px 8px 6px 16px; border-bottom: 1px solid var(--border);
@@ -318,11 +317,6 @@
 .markdown-body .code-head svg { width: 17px; height: 17px; }
 .markdown-body .code-body { display: flex; overflow: auto; }
 .markdown-body .code-body pre { flex: 1; margin: 0; border: 0; border-radius: 0; background: none; overflow: visible; }
-/* 줄 번호: 코드 줄과 같은 간격(pre 글자 크기의 1.6배)으로, 위 여백도 pre 와 같게 (글자는 .748배라 em 을 나눠 맞춤) */
-.markdown-body .code-lines {
-  flex: none; padding: 1.337em .2em 1.337em .9em; text-align: right; user-select: none; color: var(--muted); opacity: .55;
-  font-family: var(--mono); font-size: .748em; line-height: 2.139; white-space: pre;
-}
 /* 코드 블록 제목 ```js title="app.js" · 줄 강조 {2,4-5}: 띠는 pre 의 줄 높이(1.6em) · 위 여백(1em)에 맞춰 글자 뒤에 */
 .markdown-body .code-head .code-lang.has-title { text-transform: none; letter-spacing: 0; font-family: var(--mono); color: var(--text); }
 .markdown-body pre .hl-bands { position: absolute; inset: 0; pointer-events: none; }
@@ -527,7 +521,7 @@
 .markdown-body .ex-src { background: var(--code-bg); border-right: 1px solid var(--border); }
 .markdown-body .ex-label { font-family: var(--font); font-size: 12px; font-weight: 600; color: var(--muted); margin: 0 0 8px; }
 .markdown-body .ex-src .code-block { margin: 0; border: 0; border-radius: 0; background: none; }
-.markdown-body .ex-src .code-head, .markdown-body .ex-src .code-lines { display: none; }
+.markdown-body .ex-src .code-head { display: none; }
 .markdown-body .ex-src .code-body pre, .markdown-body .ex-src > pre { padding: 0; margin: 0; border: 0; background: none; }
 .markdown-body .ex-src code { font-size: .84em; white-space: pre-wrap; word-break: break-word; }
 .markdown-body .ex-body { font-size: .95em; }
@@ -636,10 +630,36 @@ html[lang="en"] .set-name { flex-basis: 84px; }
 .check-row { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; cursor: pointer; }
 .check-row input { margin-top: 3px; accent-color: var(--accent); }
 .check-row small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
-.user-css { padding: 2px 6px 4px; }
-.user-css summary { font-size: 13.5px; cursor: pointer; padding: 4px 0; }
-.user-css textarea { display: block; width: 100%; margin-top: 4px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: 12.5px/1.5 var(--mono); resize: vertical; }
-.user-css small { display: block; color: var(--muted); font-size: 12px; margin-top: 4px; }
+.style-open { flex: 1; min-width: 0; justify-content: space-between; gap: 8px; height: 32px; padding: 0 10px; font-size: 13px; }
+.style-open #styleNow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.style-open .style-manage { flex: none; color: var(--muted); font-size: 12px; }
+/* 문서 스타일 창: 왼쪽 목록, 오른쪽 고치기 · 적용할 곳 */
+#styleModal .modal-card { width: min(900px, 100%); }
+.st-wrap { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 16px; }
+.st-side { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.st-item { display: block; width: 100%; text-align: left; border: 1px solid transparent; border-radius: 8px; background: none; padding: 7px 10px; cursor: pointer; color: var(--text); }
+.st-item:hover { background: var(--surface-2); }
+.st-item.on { border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: var(--accent-soft); }
+.st-item b { display: block; font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-item small { display: block; font-size: 11.5px; color: var(--muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-side .btn { justify-content: flex-start; font-size: 13px; }
+.st-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.st-main input.st-name { font: inherit; font-size: 14px; font-weight: 600; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
+.st-main textarea { display: block; width: 100%; min-height: 220px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: 12.5px/1.55 var(--mono); resize: vertical; tab-size: 2; }
+.st-note { font-size: 12px; color: var(--muted); line-height: 1.5; margin: -4px 0 0; }
+.st-note.warn { color: var(--c-amber); }
+.st-sub { font-size: 13px; font-weight: 600; margin: 4px 0 0; }
+.st-rules { display: flex; flex-direction: column; gap: 4px; }
+.st-rule { display: flex; align-items: center; gap: 8px; padding: 5px 4px 5px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
+.st-rule span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-rule .btn { height: 26px; padding: 0 8px; font-size: 12px; }
+.st-add { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.st-add select { max-width: 100%; min-width: 0; flex: 1 1 180px; height: 32px; font: inherit; font-size: 13px; padding: 0 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
+.st-add .btn, .st-acts .btn { font-size: 13px; }
+.st-acts { display: flex; gap: 6px; flex-wrap: wrap; padding-top: 2px; }
+.st-empty { font-size: 13px; color: var(--muted); line-height: 1.6; }
+#styleFoot { font-size: 12.5px; color: var(--muted); }
+@media (max-width: 680px) { .st-wrap { grid-template-columns: 1fr; } .st-main textarea { min-height: 160px; } }
 
 .layout { display: flex; height: calc(100% - 56px); }
 .sidebar {
@@ -1452,7 +1472,6 @@ body.zen .zen-exit:hover { opacity: 1; }
           </div>
         </div>
         <div class="set-group">
-          <label class="set-check"><input type="checkbox" id="optLines"><span>코드 줄 번호 보기</span></label>
           <label class="set-check"><input type="checkbox" id="optHeadNum"><span>제목에 번호 붙여 보기<small>1 · 1.1 · 1.1.1 처럼 보여 줍니다. 원본 글은 바뀌지 않고, 이미 번호가 있는 제목은 건너뜁니다</small></span></label>
           <label class="set-check"><input type="checkbox" id="optConfirmSave"><span>저장하기 전에 바뀐 내용 확인<small>저장할 때 무엇이 바뀌는지 먼저 보여주고 한 번 더 묻습니다</small></span></label>
           <label class="set-check"><input type="checkbox" id="optSync"><span>편집할 때 스크롤 맞추기<small>원본과 미리보기가 같은 위치를 보여줍니다</small></span></label>
@@ -1464,11 +1483,10 @@ body.zen .zen-exit:hover { opacity: 1; }
             <span class="set-name">언어<small id="langHint">Language</small></span>
             <div class="seg" id="langSeg"><button data-v="ko">한국어</button><button data-v="en">English</button></div>
           </div>
-          <details class="user-css" id="userCssBox">
-            <summary>내 CSS로 문서 꾸미기</summary>
-            <textarea id="userCss" spellcheck="false" rows="5" placeholder="h2 { color: teal; }&#10;p { text-indent: 1em; }"></textarea>
-            <small>문서 안만 바뀝니다. h2 · p 처럼 문서 속 요소 이름으로 씁니다. HTML로 저장 · 서식 복사에도 들어갑니다.</small>
-          </details>
+          <div class="set-line">
+            <span class="set-name">문서 스타일<small>CSS</small></span>
+            <button type="button" class="btn style-open" id="btnStyles" title="CSS 파일을 불러오고, 어떤 폴더 · 문서에 쓸지 고릅니다"><span id="styleNow">없음</span><span class="style-manage">관리…</span></button>
+          </div>
         </div>
       </div>
     </div>
@@ -1834,6 +1852,16 @@ body.zen .zen-exit:hover { opacity: 1; }
     <div class="modal-foot" id="compatFoot"></div>
   </div>
 </div>
+<!-- 문서 스타일 (CSS 불러오기 · 저장 · 적용할 곳) -->
+<div class="modal" id="styleModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-label="문서 스타일">
+    <div class="modal-head"><div class="modal-title">문서 스타일</div>
+      <button class="btn icon ghost" id="styleClose" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body" id="styleBody"></div>
+    <div class="modal-foot" id="styleFoot"></div>
+  </div>
+</div>
 <div class="modal" id="mcpModal" hidden>
   <div class="modal-card" role="dialog" aria-modal="true" aria-label="Claude와 연결">
     <div class="modal-head"><div class="modal-title">Claude와 연결 (MCP)</div>
@@ -1967,17 +1995,101 @@ body.zen .zen-exit:hover { opacity: 1; }
   /* =========================================================
      설정 (글자 크기, 글꼴, 폭, 줄바꿈, 스크롤 맞춤)
      ========================================================= */
-  const settings = Object.assign({ size: 16.5, font: 'sans', width: 'normal', lh: 'normal', para: 'normal', tint: 'plain', sync: true, compatHint: true, callout: 'soft', lines: false, headNum: false, confirmSave: true, mcpSuggest: false, updateCheck: true }, store.json('mdv-settings', {}));
+  const settings = Object.assign({ size: 16.5, font: 'sans', width: 'normal', lh: 'normal', para: 'normal', tint: 'plain', sync: true, compatHint: true, callout: 'soft', headNum: false, confirmSave: true, mcpSuggest: false, updateCheck: true }, store.json('mdv-settings', {}));
   delete settings.breaks; // 없앤 설정 (엔터 한 번도 줄바꿈으로 보기)
+  delete settings.lines; // 없앤 설정 (코드 줄 번호 보기)
   const WIDTHS = { narrow: '680px', normal: '820px', wide: '1060px' };
   const LINE_H = { tight: '1.6', normal: '1.8', loose: '2.05' }, PARA_GAP = { tight: '.7em', normal: '1.1em', loose: '1.6em' };
-  // 내 CSS: 문서 안(.markdown-body)에만 걸리게 감쌈 — 잘못 써도 메뉴 · 사이드바는 그대로라 지울 수 있음
+  /* ---------- 문서 스타일 (CSS): 여러 개를 두고 모든 문서 · 폴더 · 문서마다 고름 ---------- */
+  // mdv-styles = { list: [{ id, name, css }], rules: [{ style, kind: 'all' | 'dir' | 'file', key, label }] }
+  //  - key: PC 프로그램은 전체 경로("abs:" · \ → /), 브라우저로 연 폴더는 "rel:폴더이름/안쪽", 따로 연 파일은 "name:파일 이름"
+  //  - 한 문서에는 하나만: 그 문서 > 가장 가까운 폴더 > 모든 문서 순으로 고름
+  const STYLE_KEY = 'mdv-styles';
+  const styles = (() => {
+    const s = store.json(STYLE_KEY, null);
+    if (s && Array.isArray(s.list) && Array.isArray(s.rules)) return s;
+    // 예전 「내 CSS」 칸에 쓴 것 → 모든 문서에 쓰는 스타일 하나로 옮김
+    const old = (store.get('mdv-user-css') || '').trim(), out = { list: [], rules: [] };
+    if (old) { out.list.push({ id: 's1', name: L('내 CSS', 'My CSS'), css: old }); out.rules.push({ style: 's1', kind: 'all', key: '', label: '' }); }
+    return out;
+  })();
+  function saveStyles() {
+    if (!store.set(STYLE_KEY, JSON.stringify(styles))) { toast(L('스타일을 저장하지 못했습니다 (저장 공간이 모자랍니다)', "Couldn't save styles (storage is full)"), 4000); return; }
+    try { localStorage.removeItem('mdv-user-css'); } catch {}
+  }
+  if (store.get('mdv-user-css') != null) saveStyles();
+  const stylePath = (p) => { const s = p.replace(/\\/g, '/').replace(/\/+$/, ''); return /^[a-z]:\//i.test(s) ? s.toLowerCase() : s; }; // Windows 경로는 대소문자를 가리지 않음
+  // 문서가 놓인 곳: { file, fileLabel, dirs: [가까운 폴더부터 { key, label }] } (새 문서처럼 파일이 아직 없으면 null)
+  function placeOf(entry) {
+    if (!entry || entry.isNew) return null;
+    if (entry.tauriPath) {
+      const abs = entry.tauriPath.replace(/\\/g, '/'), root = !entry.loose && rootOf(entry.path);
+      let d = abs.replace(/\/[^/]*$/, '');
+      const stop = stylePath(root && root.path ? root.path : d), dirs = []; // 열린 폴더 안이면 그 폴더까지, 따로 연 파일은 그 폴더만
+      while (d) { dirs.push({ key: 'abs:' + stylePath(d), label: d }); if (stylePath(d).length <= stop.length || !d.includes('/')) break; d = d.replace(/\/[^/]*$/, ''); }
+      return { file: 'abs:' + stylePath(abs), fileLabel: abs, dirs };
+    }
+    if (entry.loose || entry.builtin || !rootOf(entry.path)) return { file: 'name:' + entry.path, fileLabel: entry.path, dirs: [] };
+    const dirs = [];
+    for (let d = entry.path.includes('/') ? entry.path.replace(/\/[^/]*$/, '') : ''; d; d = d.includes('/') ? d.replace(/\/[^/]*$/, '') : '') dirs.push({ key: 'rel:' + d, label: d });
+    return { file: 'rel:' + entry.path, fileLabel: entry.path, dirs };
+  }
+  function styleFor(entry) {
+    const pl = placeOf(entry);
+    let r = pl && styles.rules.find((x) => x.kind === 'file' && x.key === pl.file);
+    if (!r && pl) for (const x of styles.rules) if (x.kind === 'dir' && pl.file.startsWith(x.key + '/') && (!r || x.key.length > r.key.length)) r = x;
+    if (!r) r = styles.rules.find((x) => x.kind === 'all');
+    const st = r && styles.list.find((s) => s.id === r.style);
+    return st ? { style: st, rule: r } : null;
+  }
+  // 문서 안(.markdown-body)에만 걸리게 감쌈 — 잘못 써도 메뉴 · 사이드바는 그대로라 고칠 수 있음
   //  (「.markdown-body h2」처럼 써도 되게 앞의 .markdown-body 는 & 로 바꿈)
-  const userCssText = () => { const c = (store.get('mdv-user-css') || '').trim(); return c ? `.markdown-body {\n${c.replace(/(^|[{},;]\s*)\.markdown-body\b/g, '$1&')}\n}` : ''; };
+  const wrapCss = (c) => (c.trim() ? `.markdown-body {\n${c.replace(/(^|[{},;]\s*)\.markdown-body\b/g, '$1&')}\n}` : '');
+  // 바깥 주소를 부르는 곳은 뺌: 인터넷의 글꼴 · 그림을 받아 오면 문서를 연 사실과 IP 가 그 서버로 가고,
+  // 속성 선택자와 엮으면 문서 속 링크 주소까지 새어 나갈 수 있음. 브라우저가 읽은 결과(\ 이스케이프를 푼 값)로 가려냄
+  //  - data: 주소와 문서 안 #id 는 그대로, @import 는 읽을 때 브라우저가 버림
+  const OUTSIDE_RE = /\b(?:url|src|image-set)\(/i;
+  const localRef = (v) => v.replace(/url\(\s*(?:"(?:data:|#)[^"]*"|'(?:data:|#)[^']*'|(?:data:|#)[^)'"]*)\s*\)/gi, '');
+  const outsideRef = (v, custom) => OUTSIDE_RE.test(localRef(v)) || (custom && v.includes('\\'));
+  let safeMemo = { in: null, out: null };
+  function safeCss(text) {
+    if (safeMemo.in === text) return safeMemo.out;
+    let out = { css: '', blocked: 0 };
+    if (text) {
+      try {
+        const sheet = new CSSStyleSheet();
+        sheet.replaceSync(text);
+        let blocked = 0;
+        const scrub = (rules, owner) => {
+          for (let i = rules.length - 1; i >= 0; i--) {
+            const r = rules[i];
+            if (r.style) {
+              for (let k = r.style.length - 1; k >= 0; k--) {
+                const p = r.style[k];
+                if (outsideRef(r.style.getPropertyValue(p), p.startsWith('--'))) { r.style.removeProperty(p); blocked++; }
+              }
+              if (outsideRef(r.style.cssText, false)) { r.style.cssText = ''; blocked++; } // 하나씩 못 뺀 것(@font-face 의 src 등)은 통째로
+            }
+            if (r.cssRules) scrub(r.cssRules, r);
+            else if (!r.style && outsideRef(r.cssText, true) && owner.deleteRule) { owner.deleteRule(i); blocked++; }
+          }
+        };
+        scrub(sheet.cssRules, sheet);
+        blocked += (text.replace(/\/\*[\s\S]*?\*\//g, '').match(/@import\b/gi) || []).length; // 브라우저가 이미 버린 @import 도 셈에 넣음
+        out = { css: [...sheet.cssRules].map((r) => r.cssText).join('\n'), blocked };
+      } catch {}
+    }
+    safeMemo = { in: text, out };
+    return out;
+  }
+  const userCssText = () => { const s = styleFor(state.current); return s ? safeCss(wrapCss(s.style.css)).css : ''; };
   function applyUserCss() {
     let st = document.getElementById('userCssStyle');
     if (!st) { st = document.createElement('style'); st.id = 'userCssStyle'; document.head.append(st); }
-    st.textContent = userCssText();
+    const t = userCssText();
+    if (st.textContent !== t) { st.textContent = t; requestAnimationFrame(drawAllDataLinks); }
+    const s = styleFor(state.current), now = document.getElementById('styleNow');
+    if (now) now.textContent = s ? s.style.name : L('없음', 'None');
   }
   let serifLoaded = false;
   function applySettings(rerender) {
@@ -2005,7 +2117,6 @@ body.zen .zen-exit:hover { opacity: 1; }
     document.querySelectorAll('#tintSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === (settings.tint || 'plain')));
     document.querySelectorAll('#calloutSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === settings.callout));
     document.querySelectorAll('#langSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === LANG));
-    $('#optLines').checked = settings.lines;
     $('#optHeadNum').checked = settings.headNum;
     $('#optConfirmSave').checked = settings.confirmSave;
     $('#optCompat').checked = settings.compatHint !== false;
@@ -2023,13 +2134,6 @@ body.zen .zen-exit:hover { opacity: 1; }
   $('#lhSeg').onclick = (e) => { if (e.target.dataset.v) { settings.lh = e.target.dataset.v; applySettings(); lineTops = null; } };
   $('#paraSeg').onclick = (e) => { if (e.target.dataset.v) { settings.para = e.target.dataset.v; applySettings(); lineTops = null; } };
   $('#tintSeg').onclick = (e) => { if (e.target.dataset.v) { settings.tint = e.target.dataset.v; applySettings(); } };
-  $('#userCss').value = store.get('mdv-user-css') || '';
-  let userCssTimer = 0;
-  $('#userCss').addEventListener('input', (e) => {
-    clearTimeout(userCssTimer);
-    userCssTimer = setTimeout(() => { store.set('mdv-user-css', e.target.value); applyUserCss(); requestAnimationFrame(drawAllDataLinks); }, 250);
-  });
-  $('#userCss').addEventListener('keydown', (e) => e.stopPropagation()); // 메뉴 안에서 치는 글자가 단축키로 가지 않게
   applyUserCss();
   // 언어 바꾸기: 저장하고 화면을 다시 불러옴 (저장 안 한 내용이 있으면 먼저 묻기)
   $('#langSeg').onclick = (e) => {
@@ -2041,7 +2145,6 @@ body.zen .zen-exit:hover { opacity: 1; }
     location.reload();
   };
   $('#calloutSeg').onclick = (e) => { const v = e.target.closest('button')?.dataset.v; if (v) { settings.callout = v; applySettings(true); } };
-  $('#optLines').onchange = (e) => { settings.lines = e.target.checked; applySettings(true); };
   $('#optHeadNum').onchange = (e) => { settings.headNum = e.target.checked; applySettings(true); };
   $('#optConfirmSave').onchange = (e) => { settings.confirmSave = e.target.checked; applySettings(); };
   $('#optSync').onchange = (e) => { settings.sync = e.target.checked; applySettings(); };
@@ -2736,6 +2839,7 @@ body.zen .zen-exit:hover { opacity: 1; }
 
   function render(keepScroll = false) {
     if (!libsOk || !state.current) return;
+    applyUserCss(); // 문서마다 다른 스타일 (바뀐 게 없으면 그대로)
     hidePreview();
     const scroll = el.preview.scrollTop;
     const src = source();
@@ -3095,7 +3199,7 @@ body.zen .zen-exit:hover { opacity: 1; }
         pre.replaceWith(d);
         return;
       }
-      // 코드 블록 머리줄: 언어 이름, 복사, 크게 보기 + 줄 번호
+      // 코드 블록 머리줄: 언어 이름, 복사, 크게 보기
       const block = document.createElement('div');
       block.className = 'code-block';
       if (lineAttr) block.dataset.line = lineAttr;
@@ -3133,16 +3237,9 @@ body.zen .zen-exit:hover { opacity: 1; }
         pre.prepend(bands);
         pre.classList.add('has-hl');
       }
-      // 인쇄 · PDF 에서 종이 너비를 넘는 줄이 있으면(한글은 두 칸) 줄을 접고 줄 번호는 숨김 (접으면 번호가 어긋나서)
+      // 인쇄 · PDF 에서 종이 너비를 넘는 줄이 있으면(한글은 두 칸) 줄을 접고 강조 띠는 숨김 (접으면 줄 위치가 어긋나서)
       const cols = (s) => [...s].reduce((w, ch) => w + (ch === '\t' ? 4 : /[ᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦]/.test(ch) ? 2 : 1), 0);
       if (code.textContent.split('\n').some((l) => l.length > 44 && cols(l) > 88)) block.classList.add('wide');
-      if (settings.lines) {
-        const ln = document.createElement('div');
-        ln.className = 'code-lines';
-        ln.setAttribute('aria-hidden', 'true');
-        ln.textContent = Array.from({ length: total }, (_, i) => i + 1).join('\n');
-        body.append(ln);
-      }
       body.append(pre);
       block.append(head, body);
     });
@@ -6929,6 +7026,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       ta.setSelectionRange(ls, ls + out.length);
       return;
     }
+    if (e.key === 'Enter' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && tableBreak()) { e.preventDefault(); return; } // 표 칸 안: <br>
     if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && ta.selectionStart === ta.selectionEnd) {
       // 목록 · 인용 이어 쓰기
       const v = ta.value, pos = ta.selectionStart;
@@ -7285,6 +7383,18 @@ body.zen .zen-exit:hover { opacity: 1; }
       return true;
     }
     selectCell(lines, k, c);
+    return true;
+  }
+  // 칸 안에서 Shift+Enter: 줄을 나누는 대신 <br> (표 한 행은 원본 한 줄이어야 함)
+  //  - 구분 줄, 바깥 | 의 앞 · 뒤, 여러 칸에 걸친 선택에서는 넣지 않고 원래대로 줄을 나눔
+  function tableBreak() {
+    const ta = el.editor, v = ta.value, s = ta.selectionStart, en = ta.selectionEnd;
+    if (v.slice(s, en).includes('\n')) return false;
+    const t = tableAtCursor();
+    if (!t || t.row === 1) return false;
+    const ls = v.lastIndexOf('\n', s - 1) + 1, at = s - ls, to = en - ls;
+    if (!cellRanges(t.lines[t.a + t.row]).some((r) => at >= r.s && to <= r.e)) return false;
+    insertText('<br>');
     return true;
   }
   // 칸 폭 재기 (편집기 글꼴)
@@ -8487,6 +8597,164 @@ body.zen .zen-exit:hover { opacity: 1; }
   function closeCompat() { $('#compatModal').hidden = true; }
   $('#compatClose').onclick = closeCompat;
   $('#compatModal').addEventListener('click', (e) => { if (e.target.id === 'compatModal') closeCompat(); });
+
+  /* ---------- 문서 스타일 창: CSS 파일 불러오기 · 파일로 저장 · 적용할 곳 ---------- */
+  const stUi = { sel: null, timer: 0, flush: null };
+  const shortPath = (p) => (p.length > 56 ? '…' + p.slice(-55) : p);
+  const styleById = (id) => styles.list.find((s) => s.id === id);
+  const newStyleId = () => 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  function uniqueStyleName(base, self) { let n = base, k = 2; while (styles.list.some((s) => s !== self && s.name === n)) n = `${base} ${k++}`; return n; }
+  function ruleText(r) {
+    if (r.kind === 'all') return L('모든 문서', 'All documents');
+    return (r.kind === 'dir' ? L('폴더: ', 'Folder: ') : L('문서: ', 'Document: ')) + shortPath(r.label || r.key.replace(/^\w+:/, ''));
+  }
+  function openStyles() {
+    closeMenus();
+    const cur = styleFor(state.current);
+    stUi.sel = cur ? cur.style.id : styleById(stUi.sel) ? stUi.sel : (styles.list[0] || {}).id || null;
+    paintStyles();
+    $('#styleModal').hidden = false;
+  }
+  function closeStyles() { if (stUi.flush) stUi.flush(); $('#styleModal').hidden = true; }
+  function paintStyleNote(st) {
+    const n = $('#stNote');
+    if (!n) return;
+    const b = safeCss(wrapCss(st.css)).blocked;
+    n.classList.toggle('warn', b > 0);
+    n.textContent = b
+      ? L(`인터넷에서 글꼴 · 그림 등을 받아 오는 곳 ${b}곳은 쓰지 않습니다 (문서를 연 사실이 바깥으로 나가지 않게). 그림 · 글꼴은 data: 주소로 넣으면 됩니다.`, `${b} place${b === 1 ? '' : 's'} that load fonts, images etc. from the internet ${b === 1 ? 'is' : 'are'} skipped (so nothing about your documents leaves your computer). Embed images and fonts as data: URLs instead.`)
+      : L('문서 안만 바뀝니다. h2 · p 처럼 문서 속 요소 이름으로 씁니다. HTML로 저장 · 서식 복사에도 들어갑니다.', 'Only the document changes. Write rules with element names inside it, like h2 · p. Also used by Save as HTML and Copy with formatting.');
+  }
+  function stylesChanged() { saveStyles(); applyUserCss(); paintStyles(); }
+  function paintStyles() {
+    if (stUi.flush) stUi.flush();
+    const E = escapeHtml, st = styleById(stUi.sel), body = $('#styleBody');
+    const items = styles.list.map((s) => {
+      const rs = styles.rules.filter((r) => r.style === s.id);
+      const sum = rs.length ? rs.map(ruleText).join(' · ') : L('쓰는 곳 없음', 'Not used');
+      return `<button type="button" class="st-item${s === st ? ' on' : ''}" data-id="${E(s.id)}"><b>${E(s.name)}</b><small>${E(sum)}</small></button>`;
+    }).join('');
+    let h = `<div class="st-wrap"><div class="st-side">${items || `<p class="st-empty">${L('아직 스타일이 없습니다.', 'No styles yet.')}</p>`}` +
+      `<button type="button" class="btn" id="stNew">${L('＋ 새 스타일', '＋ New style')}</button>` +
+      `<button type="button" class="btn" id="stImport">${L('CSS 파일 불러오기…', 'Load CSS file…')}</button></div><div class="st-main">`;
+    const rs = st ? styles.rules.filter((r) => r.style === st.id) : [];
+    const pl = placeOf(state.current);
+    if (!st) {
+      h += `<p class="st-empty">${L('CSS 파일을 불러오거나 새 스타일을 만드세요. 스타일마다 <b>모든 문서</b>, <b>폴더</b>, <b>문서 하나</b> 중 어디에 쓸지 고를 수 있습니다.', 'Load a CSS file or make a new style. For each style you choose where it applies: <b>all documents</b>, a <b>folder</b>, or a <b>single document</b>.')}</p>`;
+    } else {
+      h += `<input class="st-name" id="stName" aria-label="${L('스타일 이름', 'Style name')}" spellcheck="false" maxlength="80">` +
+        '<textarea id="stCss" spellcheck="false" placeholder="h2 { color: teal; }&#10;p { text-indent: 1em; }"></textarea><p class="st-note" id="stNote"></p>' +
+        `<div class="st-sub">${L('적용할 곳', 'Applies to')}</div><div class="st-rules">` +
+        (rs.map((r, i) => `<div class="st-rule"><span title="${E(r.label || '')}">${E(ruleText(r))}</span><button type="button" class="btn ghost" data-unrule="${i}">${L('빼기', 'Remove')}</button></div>`).join('') ||
+          `<p class="st-empty" style="margin:0">${L('아직 어디에도 쓰지 않습니다. 아래에서 고르세요.', 'Not applied anywhere yet. Pick a place below.')}</p>`) +
+        '</div><div class="st-add">' +
+        `<button type="button" class="btn" id="stAll">${L('모든 문서에', 'All documents')}</button>` +
+        (pl ? `<button type="button" class="btn" id="stFile" title="${E(pl.fileLabel)}">${L('지금 문서에', 'This document')}</button>` : '') +
+        (pl && pl.dirs.length ? `<select id="stDir" aria-label="${L('폴더 고르기', 'Pick a folder')}">${pl.dirs.map((d, i) => `<option value="${i}" title="${E(d.label)}">${E(shortPath(d.label))}</option>`).join('')}</select><button type="button" class="btn" id="stDirAdd">${L('이 폴더에', 'This folder')}</button>` : '') +
+        '</div>' +
+        (!state.current ? `<p class="st-note">${L('문서를 열면 그 문서나 문서가 든 폴더에도 쓸 수 있습니다.', 'Open a document to apply it to that document or its folder.')}</p>`
+          : !pl ? `<p class="st-note">${L('새 문서는 파일로 저장한 뒤에 문서 · 폴더를 고를 수 있습니다.', 'Save the new document as a file first to pick it or its folder.')}</p>`
+          : pl.dirs.length ? `<p class="st-note">${L('폴더에 쓰면 그 안의 하위 폴더 문서에도 쓰입니다. 한 문서에는 하나만 쓰이며, 지금 문서 → 가까운 폴더 → 모든 문서 순으로 고릅니다.', 'A folder style also covers its subfolders. Each document uses one style, chosen in this order: the document → the nearest folder → all documents.')}</p>` : '') +
+        `<div class="st-acts"><button type="button" class="btn" id="stExport">${L('파일로 저장…', 'Save as file…')}</button><span style="flex:1"></span><button type="button" class="btn ghost" id="stDel">${L('이 스타일 지우기', 'Delete this style')}</button></div>`;
+    }
+    body.innerHTML = h + '</div></div>';
+    const now = styleFor(state.current);
+    $('#styleFoot').textContent = !state.current ? '' : now ? L(`지금 문서에 쓰는 스타일: 「${now.style.name}」 (${ruleText(now.rule)})`, `This document uses 「${now.style.name}」 (${ruleText(now.rule)})`) : L('지금 문서에는 스타일을 쓰지 않습니다', "This document doesn't use a style");
+    body.querySelectorAll('.st-item').forEach((b) => (b.onclick = () => { stUi.sel = b.dataset.id; paintStyles(); }));
+    $('#stNew').onclick = () => {
+      const s = { id: newStyleId(), name: uniqueStyleName(L('새 스타일', 'New style')), css: '' };
+      styles.list.push(s);
+      stUi.sel = s.id;
+      stylesChanged();
+      $('#stCss').focus();
+    };
+    $('#stImport').onclick = () => styleInput.click();
+    if (!st) return;
+    body.querySelectorAll('input, textarea, select').forEach((x) => x.addEventListener('keydown', (e) => e.stopPropagation())); // 치는 글자가 단축키로 가지 않게
+    const name = $('#stName'), css = $('#stCss');
+    name.value = st.name;
+    css.value = st.css;
+    paintStyleNote(st);
+    name.onchange = () => { st.name = uniqueStyleName(name.value.trim() || st.name, st); stylesChanged(); };
+    stUi.flush = null;
+    css.oninput = () => {
+      clearTimeout(stUi.timer);
+      stUi.flush = () => { clearTimeout(stUi.timer); stUi.flush = null; st.css = css.value; saveStyles(); applyUserCss(); paintStyleNote(st); };
+      stUi.timer = setTimeout(stUi.flush, 250);
+    };
+    body.querySelectorAll('[data-unrule]').forEach((b) => (b.onclick = () => { const r = rs[+b.dataset.unrule]; styles.rules = styles.rules.filter((x) => x !== r); stylesChanged(); }));
+    $('#stAll').onclick = () => setStyleRule(st, 'all', '', '');
+    if ($('#stFile')) $('#stFile').onclick = () => setStyleRule(st, 'file', pl.file, pl.fileLabel);
+    if ($('#stDirAdd')) $('#stDirAdd').onclick = () => { const d = pl.dirs[+$('#stDir').value]; if (d) setStyleRule(st, 'dir', d.key, d.label); };
+    $('#stExport').onclick = () => exportStyle(st);
+    $('#stDel').onclick = () => {
+      if (!confirm(L(`「${st.name}」 스타일을 지울까요?\n쓰던 곳에서도 빠집니다. 파일로 저장해 둔 것은 그대로 남습니다.`, `Delete the style 「${st.name}」?\nIt's also removed wherever it was used. Files you saved stay as they are.`))) return;
+      styles.list = styles.list.filter((s) => s !== st);
+      styles.rules = styles.rules.filter((r) => r.style !== st.id);
+      stUi.sel = (styles.list[0] || {}).id || null;
+      stylesChanged();
+    };
+  }
+  // 한 곳에는 스타일 하나: 이미 다른 스타일이 있으면 바꿈
+  function setStyleRule(st, kind, key, label) {
+    const prev = styles.rules.find((r) => r.kind === kind && r.key === key);
+    if (prev && prev.style === st.id) return;
+    const was = prev && styleById(prev.style);
+    styles.rules = styles.rules.filter((r) => r !== prev);
+    styles.rules.push({ style: st.id, kind, key, label });
+    stylesChanged();
+    if (was) toast(L(`그곳에 쓰던 「${was.name}」 대신 「${st.name}」을(를) 씁니다`, `「${st.name}」 now replaces 「${was.name}」 there`));
+  }
+  const styleInput = Object.assign(document.createElement('input'), { type: 'file', accept: '.css,text/css', multiple: true, hidden: true });
+  document.body.append(styleInput);
+  styleInput.onchange = async () => {
+    const files = [...styleInput.files];
+    styleInput.value = '';
+    let last = null, n = 0, blocked = 0;
+    for (const f of files) {
+      if (f.size > 300 * 1024) { toast(L(`${f.name}: 300KB가 넘어서 불러오지 않았습니다`, `${f.name}: over 300 KB, not loaded`), 4000); continue; }
+      let css;
+      try { css = await f.text(); } catch { continue; }
+      const name = (f.name.replace(/\.css$/i, '').trim() || L('스타일', 'Style')).slice(0, 80);
+      let st = styles.list.find((s) => s.name === name);
+      if (st && st.css !== css && !confirm(L(`「${name}」 스타일이 이미 있습니다. 불러온 파일 내용으로 바꿀까요?\n(적용할 곳은 그대로 둡니다)`, `A style named 「${name}」 already exists. Replace it with the loaded file?\n(Where it applies stays the same)`))) continue;
+      if (st) st.css = css; else { st = { id: newStyleId(), name, css }; styles.list.push(st); }
+      last = st; n++; blocked += safeCss(wrapCss(css)).blocked;
+    }
+    if (!last) return;
+    stUi.sel = last.id;
+    stylesChanged();
+    toast(L(`스타일 ${n}개를 불러왔습니다. 「적용할 곳」에서 쓸 곳을 고르세요.`, `Loaded ${n} style${n === 1 ? '' : 's'}. Choose where to use it under 「Applies to」.`) + (blocked ? L(` (인터넷 주소 ${blocked}곳은 쓰지 않음)`, ` (${blocked} internet address${blocked === 1 ? '' : 'es'} skipped)`) : ''), 4500);
+  };
+  async function exportStyle(st) {
+    if (stUi.flush) stUi.flush();
+    const name = (st.name.replace(/[\\/:*?"<>|\x00-\x1f]+/g, '_').trim() || 'style') + '.css';
+    const text = st.css.endsWith('\n') ? st.css : st.css + '\n';
+    const done = (where) => toast(L('스타일을 파일로 저장했습니다: ', 'Saved the style as a file: ') + where, 3500);
+    try {
+      if (isTauri()) {
+        const startDir = state.current && state.current.tauriPath ? state.current.tauriPath.replace(/[\\/][^\\/]*$/, '') : null;
+        const path = await tinvoke('pick_save_path', { defaultName: name, startDir, kind: 'css' });
+        if (!path) return;
+        await tinvoke('save_file', { path, text, eol: '\n', bom: false, enc: 'utf-8' });
+        done(path);
+      } else if (window.showSaveFilePicker) {
+        const fh = await window.showSaveFilePicker({ suggestedName: name, types: [{ description: 'CSS', accept: { 'text/css': ['.css'] } }] });
+        const w = await fh.createWritable(); await w.write(text); await w.close();
+        done(fh.name);
+      } else {
+        download(name, text, 'text/css;charset=utf-8');
+        done(name);
+      }
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+      toast(L('저장하지 못했습니다: ', "Couldn't save: ") + ((e && e.message) || e), 4000);
+    }
+  }
+  $('#btnStyles').onclick = openStyles;
+  $('#styleClose').onclick = closeStyles;
+  $('#styleModal').addEventListener('click', (e) => { if (e.target.id === 'styleModal') closeStyles(); });
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#styleModal').hidden) { e.preventDefault(); e.stopImmediatePropagation(); closeStyles(); } }, true);
   // 원본 줄로 가기: 편집 중이면 편집창 커서, 아니면 미리보기에서 그 줄 근처
   function gotoSourceLine(n) {
     if (state.editing) {
@@ -8706,6 +8974,7 @@ ${clone.innerHTML}
       { ko: settings.headNum ? '제목 번호 끄기' : '제목에 번호 붙여 보기', en: settings.headNum ? 'Hide heading numbers' : 'Number the headings', run: () => { settings.headNum = !settings.headNum; applySettings(true); } },
       { ko: '밝게 · 어둡게', en: 'Light · dark', run: () => el.btnTheme.click() },
       { ko: '보기 설정', en: 'View settings', run: () => setTimeout(() => toggleMenu('#settingsMenu'), 0) },
+      { ko: '문서 스타일 (CSS 불러오기 · 저장)', en: 'Document styles (load · save CSS)', run: openStyles },
       { ko: '사이드바 열기 · 닫기', en: 'Show · hide sidebar', run: () => $('#btnSidebar').click() },
       { ko: 'Claude와 연결 (MCP)', en: 'Connect to Claude (MCP)', run: openMcp },
       { ko: '처음 사용 안내 다시 보기', en: 'Show the tour again', run: () => $('#mTour').click() },
@@ -9218,7 +9487,7 @@ ${clone.innerHTML}
       text: L('<b>편집</b>(Ctrl+E)을 누르면 왼쪽에 원본, 오른쪽에 결과가 나란히 나옵니다.<br>입력하는 즉시 결과가 바뀌어요.', 'Press <b>Edit</b> (Ctrl+E) to see the source on the left and the result on the right.<br>The result updates as you type.'),
       mobileText: L('<b>연필</b> 단추를 누르면 원본을 고칠 수 있고, 결과가 바로 바뀝니다.', 'Tap the <b>pencil</b> button to edit the source; the result updates right away.') },
     { target: '#btnSettings', title: L('보기 설정', 'View settings'),
-      text: L('<b>Aa</b>에서 글자 크기, 고딕 · 명조, 본문 폭, 알림 상자 모양, 코드 줄 번호를 바꿉니다.', 'In <b>Aa</b> you can change text size, sans · serif font, width, callout style, code line numbers and language.') },
+      text: L('<b>Aa</b>에서 글자 크기, 고딕 · 명조, 본문 폭, 알림 상자 모양을 바꿉니다.', 'In <b>Aa</b> you can change text size, sans · serif font, width, callout style and language.') },
     { target: '#btnMore', title: L('더 많은 기능', 'More features'),
       text: L('<b>⋯</b> 메뉴에 문서에서 찾기, 집중 모드, 발표하기가 있어요.<br><b>내보내기</b>에서 HTML · Word · PDF로 저장하고, <b>도움말</b>에서 사용 안내서와 작성 규칙을 열어요.', 'The <b>⋯</b> menu has find in document, focus mode and presenting.<br>Save as HTML · Word · PDF under <b>Export</b>, and open the user guide and writing rules under <b>Help</b>.'),
       mobileText: L('<b>⋯</b> 메뉴에 파일 · 폴더 열기, 보기 설정, 찾기, 집중 모드가 있어요.<br><b>내보내기</b>에서 PDF로 저장하고, <b>도움말</b>에서 사용 안내서를 열어요.', 'The <b>⋯</b> menu has open file · folder, view settings, find and focus mode.<br>Save as PDF under <b>Export</b>, and open the user guide under <b>Help</b>.') },

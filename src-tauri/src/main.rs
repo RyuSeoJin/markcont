@@ -137,12 +137,21 @@ fn reveal_in_folder(path: String) -> Result<(), String> {
 }
 
 /// "새 파일로 저장" 창: 고른 경로를 돌려줌 (취소하면 None)
+/// kind 가 "css" 면 문서 스타일(.css)을 저장하는 창
 #[tauri::command]
-fn pick_save_path(default_name: String, start_dir: Option<String>) -> Option<String> {
-    let mut dialog = rfd::FileDialog::new()
-        .set_title(mcp::tr("새 파일로 저장", "Save as new file"))
-        .add_filter(mcp::tr("마크다운", "Markdown"), &["md", "markdown", "txt"])
-        .set_file_name(&default_name);
+fn pick_save_path(default_name: String, start_dir: Option<String>, kind: Option<String>) -> Option<String> {
+    let css = kind.as_deref() == Some("css");
+    let mut dialog = rfd::FileDialog::new();
+    dialog = if css {
+        dialog
+            .set_title(mcp::tr("문서 스타일을 파일로 저장", "Save document style as file"))
+            .add_filter("CSS", &["css"])
+    } else {
+        dialog
+            .set_title(mcp::tr("새 파일로 저장", "Save as new file"))
+            .add_filter(mcp::tr("마크다운", "Markdown"), &["md", "markdown", "txt"])
+    };
+    dialog = dialog.set_file_name(&default_name);
     if let Some(dir) = start_dir {
         dialog = dialog.set_directory(dir);
     }

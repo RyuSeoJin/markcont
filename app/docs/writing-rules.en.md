@@ -148,6 +148,15 @@ Save with <kbd>Ctrl</kbd>+<kbd>S</kbd>.
 | Font size | 13 ~ 24 | As you like |
 ```
 
+- Write each table row on **one line** in the source. To break a line inside a cell, use `<br>`. While editing, put the cursor in a cell and press <kbd>Shift</kbd>+<kbd>Enter</kbd> to insert it. It looks the same on GitHub and Obsidian.
+
+```markdown example
+| Step | To do |
+|:---|:---|
+| Prepare | Open the folder<br>Pick a document |
+| Finish | Save |
+```
+
 ---
 
 ## 6️⃣ Code
@@ -1043,6 +1052,7 @@ Visible text %%a note just for me%% more text :rocket:
 |:---|:---|
 | A new paragraph | One blank line |
 | A line break within the same paragraph | Two spaces at the end of the line, or `\` |
+| A line break inside a table cell | `<br>` (<kbd>Shift</kbd>+<kbd>Enter</kbd> while editing) |
 
 > [!NOTE]
 > A single Enter keeps the text in the same paragraph (same as GitHub and standard markdown). Use the methods above to break lines.
