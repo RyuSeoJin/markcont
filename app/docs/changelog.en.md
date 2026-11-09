@@ -3,6 +3,16 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.11.1 · 2026-11-09
+
+- Flowcharts: with a `@view Name: N1 N2` line, keep the table once and pick the nodes to draw in each block. Lines leaving them become connectors
+- Flowcharts: a `@data file.md` line reads the node table from another file (with a folder open)
+- Flowcharts: connectors show the target text and which view, section or document it's in; click to jump to that shape
+- Flowcharts: lines leaving one shape cross less, and labels sit on the first segment of their own line. Remaining crossings hop over with a small half-circle
+- Document check: points out flowchart `@view` · `@data` problems and targets it can't find
+- Save for other viewers: side-by-side examples now include the result below the code
+- Data definition cards: aligned, striped field rows, → buttons for linked fields, separate description and example
+
 ## 1.11.0 · 2026-11-09
 
 - Document styles: the "Your own CSS" box in View settings (Aa) is replaced by a styles window. Load CSS files, save them as files, and choose for each style where it applies: all documents, a folder, or a single document

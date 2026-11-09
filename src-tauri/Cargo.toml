@@ -1,6 +1,6 @@
 [package]
 name = "markcont"
-version = "1.11.0"
+version = "1.11.1"
 description = "마크다운 파일을 보기 좋게 보고 편집하는 뷰어"
 edition = "2021"
 license = "MIT"
