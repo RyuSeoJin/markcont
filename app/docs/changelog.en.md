@@ -3,6 +3,15 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.11.0 · 2026-11-09
+
+- Document styles: the "Your own CSS" box in View settings (Aa) is replaced by a styles window. Load CSS files, save them as files, and choose for each style where it applies: all documents, a folder, or a single document
+- Document styles: each document uses one style, chosen in this order: the document → the nearest folder (subfolders included) → all documents
+- Document styles: what you wrote in the old "Your own CSS" box moves to a style used for all documents
+- Document styles: parts that load fonts or images from the internet (`url(https://…)` · `@import`) are skipped. Embed images and fonts as `data:` URLs
+- Editing: Shift+Enter inside a table cell inserts a line break (`<br>`) without breaking the table
+- Removed "Show code line numbers" from View settings
+
 ## 1.10.1 · 2026-11-09
 
 - Save as Word: fixed list numbers landing on a separate line from the text in lists with blank lines between items
