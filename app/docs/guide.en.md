@@ -49,7 +49,7 @@ The **file location** appears just above the document title. You can also see it
 | How you opened it | Location shown |
 |:---|:---|
 | PC app | Full path (`C:\Users\…\a.md`) · **Copy path** · **Show in folder** |
-| A file inside a folder opened with Open folder | `folder-name/inner/a.md` · **Copy path** |
+| A file inside a folder opened with Open folder | `folder-name/inner/a.md` · **Copy path in folder** |
 | A single file opened in the browser | File name only (for security, the browser doesn't reveal the full location) |
 | A dropped copy · a recent-documents entry | A note that the original location is unknown (saving creates a new file) |
 
@@ -79,7 +79,8 @@ Open and close the sidebar with the <kbd>☰</kbd> button in the top left. Drag 
 |:---|:---|
 | New document · New folder | Creates a new one inside that folder. A new document opens straight in the editor |
 | Rename | Renames the file or folder |
-| Copy path | Copies the file's location |
+| Copy path | The PC app copies the full path (`C:\Users\…\a.md`), which you can paste straight into the File Explorer address bar. In the browser it's **Copy path in folder**, which copies only the path inside the opened folder |
+| Hide from sidebar | Leaves the file alone and only takes it out of the sidebar list. Quick open, search and links still work. Top folder ⋯ → **Show hidden items** shows them again (dimmed), and that row's ⋯ → **Show again** brings it back |
 | Delete | The PC app sends it to the **Trash**; the browser deletes it **permanently** |
 
 > [!WARNING]

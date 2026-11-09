@@ -731,6 +731,8 @@ body.side-collapsed .sidebar { display: none; }
 .tree-row:hover { background: var(--surface-2); }
 .tree-row.current { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 .tree-row.ctx-target { outline: 1.5px solid var(--accent); outline-offset: -1.5px; }
+.tree-row.is-hidden { opacity: .5; }
+.tree-row.is-hidden .nm { font-style: italic; }
 .tree-row.root { font-weight: 700; margin-top: 6px; }
 .tree-row.root:first-child { margin-top: 0; }
 .tree-row.root .ico { color: var(--accent); }
@@ -4062,10 +4064,11 @@ body.zen .zen-exit:hover { opacity: 1; }
     line.innerHTML = `<span class="loc-icon">${loc.icon || '📄'}</span><span class="loc-text"></span>`;
     line.querySelector('.loc-text').textContent = loc.short || cur.path;
     line.title = loc.full || loc.short || cur.path;
-    if (loc.full) {
+    const cp = loc.full ? copyPathOf(cur.path, cur) : null;
+    if (cp) {
       const b = document.createElement('button');
-      b.className = 'meta-btn'; b.type = 'button'; b.textContent = L('경로 복사', 'Copy path');
-      b.onclick = () => copyText(loc.full).then(() => toast(L('경로를 복사했습니다: ', 'Path copied: ') + loc.full));
+      b.className = 'meta-btn'; b.type = 'button'; b.textContent = copyPathLabel(cp);
+      b.onclick = () => copyPath(cp);
       line.append(b);
     }
     if (loc.reveal && window.__TAURI__) {
@@ -4230,12 +4233,59 @@ body.zen .zen-exit:hover { opacity: 1; }
     tab: store.get('mdv-side-tab') || 'files',
     filter: '', q: [],
     collapsed: new Set(),
+    showHidden: false, // 숨긴 항목도 흐리게 보이기 (이번에만)
   };
   const parentOf = (p) => (p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '');
   const joinRel = (dir, name) => (dir ? dir + '/' + name : name);
   const collapseKey = () => 'mdv-collapsed:workspace';
   function loadCollapsed() { side.collapsed = new Set(store.json(collapseKey(), [])); }
   function saveCollapsed() { store.set(collapseKey(), JSON.stringify([...side.collapsed])); }
+  // 사이드바에서 숨긴 파일 · 폴더: 파일은 그대로 두고 트리에서만 뺌 (빠른 열기 · 찾기 · 링크는 그대로)
+  // 폴더마다 기억 (PC 프로그램은 폴더의 전체 경로, 브라우저는 폴더 이름) → 그 폴더 안의 경로 목록
+  const HIDE_KEY = 'mdv-hidden';
+  let hiddenMap = null;
+  const hideId = (r) => (r.kind === 'tauri' ? 'path:' + r.path.replace(/[\\/]+$/, '') : 'name:' + r.name);
+  function hiddenSet(r) {
+    hiddenMap ??= new Map(Object.entries(store.json(HIDE_KEY, {}) || {}).map(([k, v]) => [k, new Set(Array.isArray(v) ? v : [])]));
+    const id = hideId(r);
+    if (!hiddenMap.has(id)) hiddenMap.set(id, new Set());
+    return hiddenMap.get(id);
+  }
+  function saveHidden() {
+    const o = {};
+    for (const [k, s] of hiddenMap || []) if (s.size) o[k] = [...s];
+    store.set(HIDE_KEY, JSON.stringify(o));
+  }
+  // path 가 숨긴 항목이거나 숨긴 폴더 안에 있으면 그 숨긴 항목의 폴더 안 경로, 아니면 ''
+  function hiddenBy(path) {
+    const r = rootOf(path);
+    if (!r || path === r.key) return '';
+    const s = hiddenSet(r);
+    if (!s.size) return '';
+    for (let p = path.slice(r.key.length + 1); p; p = parentOf(p)) if (s.has(p)) return p;
+    return '';
+  }
+  function setHidden(path, on) {
+    const r = rootOf(path);
+    if (!r || path === r.key) return;
+    const s = hiddenSet(r), rel = path.slice(r.key.length + 1);
+    if (on) s.add(rel); else s.delete(rel);
+    saveHidden();
+  }
+  // 이름을 바꾸거나(to) 지운(to 없음) 항목의 숨김 기록을 따라 옮김
+  function moveHidden(r, from, to) {
+    const s = hiddenSet(r), a = from.slice(r.key.length + 1), b = to ? to.slice(r.key.length + 1) : null;
+    let changed = false;
+    for (const h of [...s]) if (h === a || h.startsWith(a + '/')) { s.delete(h); if (b != null) s.add(b + h.slice(a.length)); changed = true; }
+    if (changed) saveHidden();
+  }
+  function hideInSidebar(path) {
+    setHidden(path, true);
+    renderFileList();
+    const name = baseName(path);
+    toast(L(`사이드바에서 숨겼습니다: ${name} (파일은 그대로). 다시 보려면 맨 위 폴더의 ⋯ → 숨긴 항목 보기`, `Hidden from the sidebar: ${name} (the file stays). To see it again: top folder ⋯ → Show hidden items`), 6000,
+      { label: L('되돌리기', 'Undo'), onClick: () => { setHidden(path, false); renderFileList(); } });
+  }
 
   function setSideTab(tab) {
     side.tab = tab;
@@ -5331,15 +5381,15 @@ body.zen .zen-exit:hover { opacity: 1; }
     };
     for (const r of state.roots) ensureDir(r.key);
     for (const d of state.extraDirs) ensureDir(d);
-    for (const f of state.files) if (!f.loose) ensureDir(parentOf(f.path)).files.push(f);
+    for (const f of state.files) if (!f.loose && (side.showHidden || !hiddenBy(f.path))) ensureDir(parentOf(f.path)).files.push(f); // 숨긴 파일은 개수에서도 뺌
     const countUp = (n) => { n.count = n.files.length; for (const c of n.dirs.values()) n.count += countUp(c); return n.count; };
     countUp(rootNode);
     return rootNode;
   }
 
-  function treeRow({ kind, name, path, depth, entry, count, closed, root, readonly }) {
+  function treeRow({ kind, name, path, depth, entry, count, closed, root, readonly, hidden }) {
     const row = document.createElement('div');
-    row.className = 'tree-row ' + kind + (root ? ' root' : '') + (closed ? ' closed' : '') + (entry && entry === state.current ? ' current' : '');
+    row.className = 'tree-row ' + kind + (root ? ' root' : '') + (closed ? ' closed' : '') + (entry && entry === state.current ? ' current' : '') + (hidden ? ' is-hidden' : '');
     if (root) row.dataset.root = '1';
     row.setAttribute('role', 'treeitem');
     row.tabIndex = 0;
@@ -5354,7 +5404,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     row.innerHTML = (kind === 'dir' ? ICON.chev : '<span style="width:14px;flex:none"></span>') + (kind === 'dir' ? ICON.dir : ICON.md) +
       `<span class="nm">${label}</span>` + (readonly ? `<span class="cnt" title="${L('읽기 전용 (Safari · Firefox 에서 연 폴더)', 'Read-only (folder opened in Safari · Firefox)')}">${L('읽기 전용', 'Read-only')}</span>` : '') + (kind === 'dir' ? `<span class="cnt">${count}</span>` : '') +
       `<button class="more" type="button" aria-label="${L('더 보기', 'More')}">${ICON.more}</button>`;
-    row.title = path || name;
+    row.title = (path || name) + (hidden ? L(' (사이드바에서 숨긴 항목)', ' (hidden from the sidebar)') : '');
     if (entry) row._entry = entry;
     return row;
   }
@@ -5368,7 +5418,8 @@ body.zen .zen-exit:hover { opacity: 1; }
     const builtinFirst = !hasRoot && !mine.length;
     const loose = mine.filter((f) => f.loose || !hasRoot);
     const total = mine.length;
-    $('#fileCount').textContent = total ? total : '';
+    const shownTotal = side.showHidden ? total : mine.filter((f) => f.loose || !hiddenBy(f.path)).length;
+    $('#fileCount').textContent = shownTotal ? shownTotal : '';
     $('#sideEmpty').hidden = total > 0 || hasRoot;
     $('#sideHead').hidden = !hasRoot && !total;
     $('#sideSearch').hidden = total < 6;
@@ -5393,24 +5444,27 @@ body.zen .zen-exit:hover { opacity: 1; }
         const dirs = depth === 0 ? state.roots.map((r) => n.dirs.get(r.key)).filter(Boolean) : sortDirs(n); // 맨 위 폴더는 연 순서대로
         for (const d of dirs) {
           const isRoot = depth === 0;
+          const hid = !isRoot && !!hiddenBy(d.path);
+          if (hid && !side.showHidden) continue;
           if (q ? !hasMatch(d) : (!isRoot && d.count === 0 && !state.extraDirs.has(d.path))) continue;
           const closed = !q && side.collapsed.has(d.path);
           const r = isRoot && rootOf(d.path);
-          frag.append(treeRow({ kind: 'dir', root: isRoot, name: isRoot ? r.name : d.name, path: d.path, depth, count: d.count, closed, readonly: isRoot && !writable(r) }));
+          frag.append(treeRow({ kind: 'dir', root: isRoot, name: isRoot ? r.name : d.name, path: d.path, depth, count: d.count, closed, readonly: isRoot && !writable(r), hidden: hid }));
           if (!closed) {
             walk(d, depth + 1);
             if (isRoot && !d.count && !d.dirs.size) {
               const p = document.createElement('div');
               p.className = 'tree-empty';
               p.style.paddingLeft = '34px';
-              p.textContent = L('마크다운 파일이 없습니다.', 'No markdown files.');
+              const nHidden = side.showHidden ? 0 : hiddenSet(rootOf(d.path)).size;
+              p.textContent = nHidden ? L(`숨긴 항목만 있습니다 (${nHidden}개). ⋯ → 숨긴 항목 보기`, `Only hidden items (${nHidden}). ⋯ → Show hidden items`) : L('마크다운 파일이 없습니다.', 'No markdown files.');
               frag.append(p);
             }
           }
         }
         for (const f of sortFiles(n)) {
           if (!matches(f)) continue;
-          frag.append(treeRow({ kind: 'file', name: f.name, path: f.path, depth, entry: f }));
+          frag.append(treeRow({ kind: 'file', name: f.name, path: f.path, depth, entry: f, hidden: side.showHidden && !!hiddenBy(f.path) }));
           shown++;
         }
       };
@@ -5651,6 +5705,21 @@ body.zen .zen-exit:hover { opacity: 1; }
     const sep = r.includes('\\') ? '\\' : '/';
     return rel ? r + sep + rel.split('/').join(sep) : r;
   }
+  // 「경로 복사」로 복사할 것: PC 프로그램은 탐색기 주소창에 그대로 붙여 넣을 수 있는 전체 경로 (따로 연 파일은 entry.tauriPath).
+  // 브라우저는 컴퓨터 안의 전체 위치를 알려주지 않아서, 연 폴더 안의 경로만 (inFolder). 따로 연 파일 · 새 문서 · 안내 문서는 복사할 경로가 없음 (null)
+  function copyPathOf(path, entry) {
+    if (entry && entry.tauriPath) return { text: entry.tauriPath, inFolder: false };
+    if (entry && entry.loose) return null;
+    const root = rootOf(path);
+    if (!root) return null;
+    return root.kind === 'tauri' ? { text: absPath(path), inFolder: false } : { text: path, inFolder: true };
+  }
+  function copyPathLabel(cp) { return cp.inFolder ? L('폴더 안 경로 복사', 'Copy path in folder') : L('경로 복사', 'Copy path'); }
+  function copyPath(cp) {
+    copyText(cp.text).then(() => cp.inFolder
+      ? toast(L('폴더 안 경로를 복사했습니다: ', 'Copied the path inside the folder: ') + cp.text + L(' (브라우저는 컴퓨터 안의 전체 위치를 알려주지 않습니다. 탐색기에서 쓸 전체 경로는 PC 프로그램에서 복사하세요)', " (the browser doesn't reveal the full location on your computer; copy it from the PC app to use in File Explorer)"), 5000)
+      : toast(L('경로를 복사했습니다: ', 'Path copied: ') + cp.text));
+  }
   async function scanFolder(root) {
     const files = [], assets = new Map(), dirs = new Set([root.key]);
     const pre = (rel) => root.key + '/' + rel;
@@ -5803,6 +5872,8 @@ body.zen .zen-exit:hover { opacity: 1; }
     rename: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
     copy: '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',
     del: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',
+    eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    eyeOff: '<path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-2.4 3.3M6.6 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M3 3l18 18"/>',
   };
   let ctxRow = null;
   function closeCtxMenu() { $('#ctxMenu').hidden = true; ctxRow?.classList.remove('ctx-target'); ctxRow = null; }
@@ -5831,9 +5902,24 @@ body.zen .zen-exit:hover { opacity: 1; }
       if (kind !== 'empty' && !isRootRow) { add('sep'); add('rename', L('이름 바꾸기', 'Rename'), 'rename', { kbd: 'F2' }); }
     }
     if (isRootRow && canWrite) add('refresh', L('다시 읽기', 'Reload'), 'open');
-    if (kind !== 'empty') add('copy', L('경로 복사', 'Copy path'), 'copy');
-    if (canWrite && !isLoose && kind !== 'empty' && !isRootRow) { add('sep'); add('delete', isTauri() ? L('휴지통으로 보내기', 'Move to Trash') : L('삭제', 'Delete'), 'del', { danger: true, kbd: 'Del' }); }
-    if (isRootRow) { add('sep'); add('closeRoot', L('이 폴더 닫기 (파일은 그대로)', 'Close this folder (files stay)'), 'del'); }
+    const cp = kind !== 'empty' ? copyPathOf(path, entry) : null;
+    if (cp) add('copy', copyPathLabel(cp), 'copy');
+    // 사이드바에서 숨기기 (파일은 그대로) · 숨긴 것은 다시 보이기. 읽기 전용 폴더에서도 됨
+    const canHide = !!root && !isRootRow && kind !== 'empty';
+    const canDel = canWrite && !isLoose && kind !== 'empty' && !isRootRow;
+    const hid = canHide ? hiddenBy(path) : '';
+    if (canHide || canDel) add('sep');
+    if (canHide && !hid) add('hide', L('사이드바에서 숨기기', 'Hide from sidebar'), 'eyeOff');
+    else if (canHide && hid === relOf(path)) add('unhide', L('다시 보이기', 'Show again'), 'eye');
+    else if (canHide) add('unhideParent', L(`'${baseName(hid)}' 폴더 다시 보이기`, `Show the '${baseName(hid)}' folder again`), 'eye');
+    if (canDel) add('delete', isTauri() ? L('휴지통으로 보내기', 'Move to Trash') : L('삭제', 'Delete'), 'del', { danger: true, kbd: 'Del' });
+    if (isRootRow) {
+      const n = hiddenSet(root).size;
+      add('sep');
+      if (side.showHidden) add('toggleHidden', L('숨긴 항목 다시 감추기', 'Stop showing hidden items'), 'eyeOff');
+      else if (n) add('toggleHidden', L(`숨긴 항목 보기 (${n}개)`, `Show hidden items (${n})`), 'eye');
+      add('closeRoot', L('이 폴더 닫기 (파일은 그대로)', 'Close this folder (files stay)'), 'del');
+    }
     m.innerHTML = '';
     for (const it of items) {
       if (it.id === 'sep') { m.append(document.createElement('hr')); continue; }
@@ -5847,7 +5933,10 @@ body.zen .zen-exit:hover { opacity: 1; }
         else if (it.id === 'newDir') fsNewFolder(dirForNew);
         else if (it.id === 'rename') fsRename(kind, path);
         else if (it.id === 'delete') fsDelete(kind, path);
-        else if (it.id === 'copy') { const full = root && root.kind === 'tauri' ? absPath(path) : path; copyText(full).then(() => toast(L('경로를 복사했습니다: ', 'Path copied: ') + full)); }
+        else if (it.id === 'copy') copyPath(cp);
+        else if (it.id === 'hide') hideInSidebar(path);
+        else if (it.id === 'unhide' || it.id === 'unhideParent') { const p = it.id === 'unhide' ? path : root.key + '/' + hid; setHidden(p, false); renderFileList(); toast(L('다시 보이게 했습니다: ', 'Showing again: ') + baseName(p)); }
+        else if (it.id === 'toggleHidden') { side.showHidden = !side.showHidden; renderFileList(); }
         else if (it.id === 'addRoot') pickFolder();
         else if (it.id === 'collapseAll') { state.roots.forEach((r) => side.collapsed.add(r.key)); saveCollapsed(); renderFileList(); }
         else if (it.id === 'refresh') refreshFolder({ only: root.key });
@@ -5983,6 +6072,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     // 접힘 상태와 보고 있던 파일 경로를 새 이름으로 옮김
     const moveP = (p) => (under(p, path) ? rel + p.slice(path.length) : p);
     side.collapsed = new Set([...side.collapsed].map(moveP)); saveCollapsed();
+    moveHidden(root, path, rel);
     state.extraDirs = new Set([...state.extraDirs].map(moveP));
     for (const f of state.files) if (!f.loose && under(f.path, path)) {
       f.path = moveP(f.path);
@@ -6016,6 +6106,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     } catch (e) { toast(L('지우지 못했습니다: ', "Couldn't delete: ") + (e.message || e), 4000); return; }
     const wasCurrent = state.current && !state.current.loose && under(state.current.path, path);
     for (const d of [...state.extraDirs]) if (under(d, path)) state.extraDirs.delete(d);
+    moveHidden(root, path, null);
     state.files = state.files.filter((f) => f.loose || !under(f.path, path));
     if (wasCurrent) {
       state.dirty = false;
