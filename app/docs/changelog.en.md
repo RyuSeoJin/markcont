@@ -3,6 +3,11 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.11.3 · 2026-11-09
+
+- User guide: added how to install a new version over the old one with "Do not uninstall", and notes for PCs with Windows Smart App Control turned on
+- Downloads: Linux now ships AppImage and deb only (no more rpm), and update signature files (.sig) are no longer in the download list
+
 ## 1.11.2 · 2026-11-09
 
 - PC app: checks for a new version every time it starts. If you close the notice, that version stays hidden until the next day (20 hours later), and a newer version is shown right away
