@@ -3,6 +3,15 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.10.1 · 2026-11-09
+
+- Save as Word: fixed list numbers landing on a separate line from the text in lists with blank lines between items
+- Save as Word: a gap keeps tables from touching the quote or callout right above them
+- Save as Word: callouts no longer split across pages, and table rows no longer break over two pages
+- Print · PDF: table edges are no longer cut off and tables fit the page width
+- Smaller rounded corners on tables, code blocks and boxes
+- Save for other viewers: adds a blank line after the document info so other viewers show the title correctly
+
 ## 1.10.0 · 2026-11-09
 
 - PC app: when a new version is out, it shows what changed since your version, and "Update now" installs it right away
