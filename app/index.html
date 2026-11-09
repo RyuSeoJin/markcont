@@ -122,7 +122,7 @@
 .markdown-body input.task:checked + .task-text a { color: inherit; }
 .markdown-body blockquote {
   margin-left: 0; padding: .6em 1.1em; color: var(--quote);
-  border-left: 4px solid var(--border); background: var(--surface-2); border-radius: 0 8px 8px 0;
+  border-left: 4px solid var(--border); background: var(--surface-2); border-radius: 0 4px 4px 0;
 }
 .markdown-body blockquote > :last-child { margin-bottom: 0; }
 .markdown-body code {
@@ -131,10 +131,10 @@
 }
 .markdown-body pre {
   position: relative; background: var(--code-bg); border: 1px solid var(--border);
-  border-radius: 10px; padding: 1em 1.2em; overflow: auto; line-height: 1.6;
+  border-radius: 6px; padding: 1em 1.2em; overflow: auto; line-height: 1.6;
 }
 .markdown-body pre code { background: transparent; border: 0; padding: 0; font-size: .86em; white-space: pre; }
-.markdown-body .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+.markdown-body .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
 .markdown-body table { border-collapse: collapse; width: 100%; font-size: .93em; line-height: 1.6; }
 .markdown-body th, .markdown-body td { padding: .65em 1em; border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent); text-align: left; vertical-align: top; }
 .markdown-body th { background: var(--surface-2); color: var(--muted); font-size: .9em; font-weight: 700; letter-spacing: .01em; white-space: nowrap; border-bottom: 1px solid var(--border); }
@@ -156,7 +156,7 @@
 .markdown-body figure.img-fig img { display: block; }
 .markdown-body figure.img-fig figcaption { margin-top: 6px; font-size: .88em; line-height: 1.5; color: var(--muted); }
 /* 문서 안 목차 [[_TOC_]] · 제목 번호 */
-.markdown-body nav.toc-inline { margin: 0 0 16px; padding: 12px 18px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); line-height: 1.65; }
+.markdown-body nav.toc-inline { margin: 0 0 16px; padding: 12px 18px 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); line-height: 1.65; }
 .markdown-body nav.toc-inline .toc-inline-title { margin-bottom: 4px; font-size: .86em; font-weight: 700; color: var(--muted); }
 .markdown-body nav.toc-inline ul { margin: 0; padding-left: 0; list-style: none; }
 .markdown-body nav.toc-inline li > ul { margin: 0; padding-left: 1.25em; border-left: 0; }
@@ -195,9 +195,14 @@
   .markdown-body .code-block.wide .code-lines { display: none; }
   .markdown-body .code-head { break-after: avoid; }
   .markdown-body tr { break-inside: avoid; }
+  /* 표: 둥근 틀이 종이에서 표 모서리 · 가장자리를 가리거나 자르지 않게 틀은 풀고 테두리는 표에 직접,
+     한 줄로 묶어 둔 칸도 종이 너비를 넘지 않게 접음 */
+  .markdown-body .table-wrap { border: 0; border-radius: 0; box-shadow: none; background: none; }
+  .markdown-body .table-wrap > table { border: 1px solid var(--border); max-width: 100%; }
+  .markdown-body .table-wrap th, .markdown-body .table-wrap td, .markdown-body .table-wrap .col-short, .markdown-body .table-wrap td.col-id { white-space: normal; overflow-wrap: break-word; }
 }
 /* 문서 넣기 ![[문서#제목]] */
-.markdown-body .md-embed { border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 8px; margin: 0 0 1.1em; padding: .4em 1em .2em; background: color-mix(in srgb, var(--accent) 3%, transparent); }
+.markdown-body .md-embed { border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 4px; margin: 0 0 1.1em; padding: .4em 1em .2em; background: color-mix(in srgb, var(--accent) 3%, transparent); }
 .markdown-body .md-embed > .emb-head { display: inline-block; font-size: .85em; color: var(--muted); text-decoration: none; border: 0; margin-bottom: .35em; }
 .markdown-body .md-embed > .emb-head:hover { color: var(--accent); }
 .markdown-body .md-embed.missing > .emb-body { color: var(--muted); font-size: .9em; padding-bottom: .4em; }
@@ -206,7 +211,7 @@
 .markdown-body .emb-h3 { font-size: 1.1em; }
 @media print { .markdown-body .md-embed { break-inside: avoid; } }
 /* ::: 블록 — 탭 · 단계 · 파일 트리 */
-.markdown-body .mc-tabs { border: 1px solid var(--border); border-radius: 10px; margin: 0 0 1.1em; overflow: hidden; }
+.markdown-body .mc-tabs { border: 1px solid var(--border); border-radius: 6px; margin: 0 0 1.1em; overflow: hidden; }
 .markdown-body .mc-tab-bar { display: flex; gap: 2px; overflow-x: auto; padding: 6px 6px 0; background: var(--surface-2, #f3f2ef); border-bottom: 1px solid var(--border); }
 .markdown-body .mc-tab { border: 0; border-bottom: 2px solid transparent; background: none; padding: 7px 12px; font: inherit; font-size: .92em; color: var(--muted); cursor: pointer; white-space: nowrap; }
 .markdown-body .mc-tab:hover { color: var(--text); }
@@ -222,7 +227,7 @@
 }
 .markdown-body .mc-steps > ol > li::after { content: ''; position: absolute; left: .82em; top: 1.75em; bottom: .15em; width: 2px; background: var(--border); }
 .markdown-body .mc-steps > ol > li:last-child::after { display: none; }
-.markdown-body .mc-tree { font-family: var(--mono); font-size: .9em; border: 1px solid var(--border); border-radius: 10px; padding: .7em 1em; margin: 0 0 1.1em; background: var(--surface-2, #f6f5f2); }
+.markdown-body .mc-tree { font-family: var(--mono); font-size: .9em; border: 1px solid var(--border); border-radius: 6px; padding: .7em 1em; margin: 0 0 1.1em; background: var(--surface-2, #f6f5f2); }
 .markdown-body .mc-tree ul, .markdown-body .mc-tree ol { list-style: none; margin: 0; padding-left: 1.4em; }
 .markdown-body .mc-tree > ul, .markdown-body .mc-tree > ol { padding-left: 0; }
 .markdown-body .mc-tree ul ul, .markdown-body .mc-tree ol ol { border-left: 1px dashed var(--border); margin-left: .5em; padding-left: 1.1em; }
@@ -249,7 +254,7 @@
 .markdown-body .math-block { overflow-x: auto; overflow-y: hidden; margin: 0 0 1.1em; }
 .markdown-body .katex-display { margin: .4em 0; }
 .markdown-body .mermaid { text-align: center; margin: 0 0 1.1em; }
-.markdown-body details { border: 1px solid var(--border); border-radius: 8px; padding: .5em 1em; margin: 0 0 1.1em; }
+.markdown-body details { border: 1px solid var(--border); border-radius: 6px; padding: .5em 1em; margin: 0 0 1.1em; }
 .markdown-body summary { cursor: pointer; font-weight: 600; }
 .markdown-body dt { font-weight: 700; margin-top: .6em; }
 .markdown-body dd { margin: .15em 0 .4em 1.4em; }
@@ -259,7 +264,7 @@
 .markdown-body .callout {
   --c: var(--c-blue);
   margin: 0 0 1.1em; padding: .75em 1.1em; border: 0; border-left: 4px solid var(--c);
-  border-radius: 0 8px 8px 0; background: color-mix(in srgb, var(--c) 8%, transparent);
+  border-radius: 0 4px 4px 0; background: color-mix(in srgb, var(--c) 8%, transparent);
 }
 .markdown-body .callout.c-green { --c: var(--c-green); }
 .markdown-body .callout.c-purple { --c: var(--c-purple); }
@@ -275,7 +280,7 @@
 .markdown-body details.callout[open] > summary::after { transform: rotate(90deg); }
 
 /* 문서 정보 (YAML front matter) */
-.markdown-body .front-matter { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: .6em 1em; margin: 0 0 1.6em; font-size: .9em; }
+.markdown-body .front-matter { background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: .6em 1em; margin: 0 0 1.6em; font-size: .9em; }
 .markdown-body .front-matter summary { color: var(--muted); font-size: .92em; }
 .markdown-body .front-matter table { margin-top: .5em; font-size: 1em; }
 .markdown-body .front-matter th, .markdown-body .front-matter td { padding: .3em .6em; background: none !important; border: 0; white-space: normal; }
@@ -299,7 +304,7 @@
 }
 
 /* 코드 블록 머리줄(언어 · 복사 · 크게 보기)과 줄 번호 */
-.markdown-body .code-block { margin: 0 0 1.1em; border: 1px solid var(--border); border-radius: 12px; background: var(--code-bg); overflow: hidden; }
+.markdown-body .code-block { margin: 0 0 1.1em; border: 1px solid var(--border); border-radius: 6px; background: var(--code-bg); overflow: hidden; }
 .markdown-body .code-head {
   display: flex; align-items: center; gap: 4px; padding: 6px 8px 6px 16px; border-bottom: 1px solid var(--border);
   font-family: var(--font); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
@@ -343,12 +348,12 @@
 .markdown-body .language-diff .hljs-deletion { display: inline-block; min-width: 100%; background: color-mix(in srgb, var(--c-red) 16%, transparent); color: inherit; }
 
 /* 다이어그램 카드 */
-.markdown-body .mermaid { padding: 20px 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); overflow-x: auto; }
+.markdown-body .mermaid { padding: 20px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); overflow-x: auto; }
 /* markcont 다이어그램 (markcont 흐름도 기준) */
 :root { --dg-line: #1e1e1e; --dg-yes: #2563eb; --dg-no: #dc2626; --dg-sec: #475569; --dg-node: #ffffff; --dg-stroke: #64748b; --dg-ret: #ea580c; --dg-sub: #7c3aed; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --dg-line: #d4d7dc; --dg-yes: #60a5fa; --dg-no: #f87171; --dg-sec: #94a3b8; --dg-node: #1f2328; --dg-stroke: #8b98a9; --dg-ret: #fb923c; --dg-sub: #a78bfa; } }
 :root[data-theme="dark"] { --dg-line: #d4d7dc; --dg-yes: #60a5fa; --dg-no: #f87171; --dg-sec: #94a3b8; --dg-node: #1f2328; --dg-stroke: #8b98a9; --dg-ret: #fb923c; --dg-sub: #a78bfa; }
-.markdown-body .dg { margin: 0 0 1.1em; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.markdown-body .dg { margin: 0 0 1.1em; padding: 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
 .markdown-body .dg-scroll { overflow-x: auto; }
 /* 데이터 정의 카드 */
 .markdown-body .dt { position: relative; }
@@ -356,7 +361,7 @@
 .markdown-body .dt-links path { fill: none; stroke: color-mix(in srgb, var(--accent) 55%, transparent); stroke-width: 1.6; stroke-dasharray: 5 4; }
 .markdown-body .dt-links circle { fill: var(--accent); }
 .markdown-body .dt-grid { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 18px 46px; align-items: flex-start; }
-.markdown-body .dt-card { flex: 1 1 300px; max-width: 520px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, .05); scroll-margin-top: 30px; }
+.markdown-body .dt-card { flex: 1 1 300px; max-width: 520px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, .05); scroll-margin-top: 30px; }
 .markdown-body .dt-card:target, .markdown-body .dt-card.flash { outline: 2px solid var(--accent); outline-offset: 2px; }
 .markdown-body .dt-card header { display: flex; align-items: center; gap: 8px; padding: 9px 13px; background: color-mix(in srgb, var(--accent) 9%, var(--surface-2)); border-bottom: 1px solid var(--border); }
 .markdown-body .dt-card header b { font-size: 1.02em; }
@@ -389,7 +394,7 @@
 .markdown-body .ut li:last-child::after { bottom: auto; height: 19px; }
 .markdown-body .ut > ul > li { padding-left: 0; }
 .markdown-body .ut > ul > li::before, .markdown-body .ut > ul > li::after { display: none; }
-.markdown-body .ut-row { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 7px; padding: 4px 11px; border: 1px solid var(--border); border-left-width: 3px; border-radius: 8px; background: var(--surface); max-width: 100%; }
+.markdown-body .ut-row { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 7px; padding: 4px 11px; border: 1px solid var(--border); border-left-width: 3px; border-radius: 4px; background: var(--surface); max-width: 100%; }
 .markdown-body .ut-row[data-t="path"] { background: transparent; border-style: dashed; border-left-width: 1px; color: var(--muted); }
 .markdown-body .ut-row[data-t="entry"] { border-color: var(--c-green); background: color-mix(in srgb, var(--c-green) 11%, var(--surface)); font-weight: 600; }
 .markdown-body .ut-row[data-t="screen"] { border-left-color: var(--c-purple); }
@@ -404,7 +409,7 @@
 .markdown-body .ut-note { color: var(--muted); font-size: .85em; }
 .markdown-body .ut-btn { display: inline-block; padding: 0 .45em; border: 1px solid var(--border); border-radius: 5px; background: var(--surface-2); font-size: .9em; font-weight: 600; line-height: 1.55; }
 .markdown-body .ut-tag { font-size: 11px; font-weight: 700; color: #fff; background: var(--c-green); border-radius: 999px; padding: 0 8px; line-height: 1.7; }
-.markdown-body .ut-exposed { margin: 6px 0 2px; padding: 8px 12px 6px 8px; border: 1px dashed color-mix(in srgb, var(--c-green) 50%, var(--border)); border-radius: 10px; background: color-mix(in srgb, var(--c-green) 4%, transparent); }
+.markdown-body .ut-exposed { margin: 6px 0 2px; padding: 8px 12px 6px 8px; border: 1px dashed color-mix(in srgb, var(--c-green) 50%, var(--border)); border-radius: 6px; background: color-mix(in srgb, var(--c-green) 4%, transparent); }
 .markdown-body .ut-exposed-label { font-size: 11.5px; font-weight: 700; color: var(--c-green); margin: 0 0 4px 4px; }
 .markdown-body .ut-exposed > ul { padding-left: 4px; }
 .markdown-body .dg svg { display: block; margin: 0 auto; max-width: none; font-family: var(--font); }
@@ -502,7 +507,7 @@
 .markdown-body details:not(.callout):not(.front-matter) > :nth-child(2) { margin-top: .8em; }
 
 /* 이모지 · 영문 알림 상자 (Markdot 풍) */
-.markdown-body .callout.soft { border: 1px solid color-mix(in srgb, var(--c) 28%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--c) 11%, var(--surface)); padding: .9em 1.1em; }
+.markdown-body .callout.soft { border: 1px solid color-mix(in srgb, var(--c) 28%, transparent); border-radius: 6px; background: color-mix(in srgb, var(--c) 11%, var(--surface)); padding: .9em 1.1em; }
 .markdown-body .callout.soft.c-gray { --c: var(--muted); }
 .markdown-body .callout.soft .callout-title { color: var(--text); letter-spacing: .02em; }
 .markdown-body .callout.soft .callout-title .emoji { font-size: 1.05em; }
@@ -516,7 +521,7 @@
 .markdown-body { container-type: inline-size; }
 .markdown-body .md-example {
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); margin: 0 0 1.4em;
-  border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--surface);
 }
 .markdown-body .ex-pane { min-width: 0; padding: 10px 16px 14px; }
 .markdown-body .ex-src { background: var(--code-bg); border-right: 1px solid var(--border); }

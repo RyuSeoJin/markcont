@@ -207,13 +207,13 @@
       if (cls.contains('math-block')) return para(await runs(el, {}), { ...p, jc: 'center' });
       if (tag === 'UL' || tag === 'OL') return list(el, ctx, 0);
       if (tag === 'TABLE') return table(el);
-      if (tag === 'BLOCKQUOTE') return blocks(el, { ...ctx, p: { ...p, quote: true, ind: (p.ind || 0) + 240 } });
+      if (tag === 'BLOCKQUOTE') return quoteEnd(await blocks(el, { ...ctx, p: { ...p, quote: true, keep: true, ind: (p.ind || 0) + 240 } }), p);
       if (cls.contains('callout')) {
         const title = el.querySelector(':scope > .callout-title');
         const color = { blue: '2F6FEB', green: '1F883D', amber: '9A6700', red: 'CF222E', purple: '8250DF', gray: '8C959F' }[[...cls].map((c) => c.replace('c-', '')).find((c) => /^(blue|green|amber|red|purple|gray)$/.test(c))] || '2F6FEB';
-        const q = { ...p, quote: true, quoteColor: color, ind: (p.ind || 0) + 240 };
+        const q = { ...p, quote: true, keep: true, quoteColor: color, ind: (p.ind || 0) + 240 };
         const label = title ? [...title.childNodes].map((n) => n.textContent.trim()).filter(Boolean).join(' ') : ''; // 「💡」+「NOTE」 사이 띄움
-        return (label ? para(run(label, { b: true, color }), q) : '') + await blocks(el.querySelector(':scope > .callout-body') || el, { ...ctx, p: q });
+        return quoteEnd((label ? para(run(label, { b: true, color }), q) : '') + await blocks(el.querySelector(':scope > .callout-body') || el, { ...ctx, p: q }), p);
       }
       if (tag === 'FIGURE') {
         let s = '';
@@ -229,6 +229,13 @@
       if (tag === 'DT') return para(await runs(el, { b: true }), p);
       if (tag === 'DD') return blocks(el, { ...ctx, p: { ...p, ind: (p.ind || 0) + 360 } });
       return blocks(el, ctx);
+    }
+    // 인용 · 알림 상자 끝: 마지막 줄은 다음 것과 묶지 않고(긴 상자가 통째로 밀리지 않게),
+    // 바깥 상자면 테두리 없는 작은 빈 줄을 두어 바로 아래 표 · 문단과 테두리가 맞닿지 않게
+    function quoteEnd(xml, outer) {
+      const i = xml.lastIndexOf('<w:keepNext/>');
+      if (i >= 0 && !outer.keep) xml = xml.slice(0, i) + xml.slice(i + 13);
+      return outer.quote ? xml : xml + '<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="120" w:lineRule="exact"/></w:pPr></w:p>';
     }
     const wrap = (n) => { const s = document.createElement('span'); s.append(n.cloneNode(true)); return s; };
     // 표지 (문서 정보 「표지: 예」): 제목 · 요약 · 나머지 정보를 따로 구역에 넣어 쪽 가운데에, 쪽 번호 없이 (본문 쪽 번호는 1부터)
@@ -250,7 +257,10 @@
       for (const li of el.children) {
         if (li.tagName !== 'LI') continue;
         const inline = [], rest = [];
-        for (const c of li.childNodes) (c.nodeType === 1 && (blockTags.test(c.tagName)) && !(c.tagName === 'P' && !inline.length && !rest.length) ? rest : inline).push(c);
+        for (const c of li.childNodes) {
+          if (c.nodeType === 3 && !c.nodeValue.trim()) continue; // 줄바꿈뿐인 글자 (느슨한 목록의 li 안 p 사이)
+          (c.nodeType === 1 && (blockTags.test(c.tagName)) && !(c.tagName === 'P' && !inline.length && !rest.length) ? rest : inline).push(c);
+        }
         // 첫 문단은 번호와 같은 줄로
         const first = inline.length === 1 && inline[0].nodeType === 1 && inline[0].tagName === 'P' ? inline[0] : null;
         const tmp = document.createElement('span');
@@ -271,7 +281,7 @@
       let s = `<w:tbl><w:tblPr><w:tblStyle w:val="TableGrid"/><w:tblW w:w="5000" w:type="pct"/></w:tblPr><w:tblGrid>${`<w:gridCol w:w="${colW}"/>`.repeat(cols)}</w:tblGrid>`;
       for (const [ri, r] of rows.entries()) {
         const head = ri === 0 && (r.parentElement.tagName === 'THEAD' || [...r.cells].every((c) => c.tagName === 'TH'));
-        s += `<w:tr>${head ? '<w:trPr><w:tblHeader/></w:trPr>' : ''}`;
+        s += `<w:tr><w:trPr><w:cantSplit/>${head ? '<w:tblHeader/>' : ''}</w:trPr>`;
         for (const c of r.cells) {
           const span = c.colSpan || 1;
           const align = (c.style.textAlign || c.getAttribute('align') || '').toLowerCase();
