@@ -80,7 +80,7 @@
     '문서 점검': 'Document check',
     '원본과 미리보기가 같은 위치를 보여줍니다': 'Keeps the source and preview at the same spot',
     '시작할 때 새 버전 확인': 'Check for updates at startup',
-    'PC 프로그램이 하루에 한 번 GitHub에서 새 버전이 있는지 봅니다. 문서 내용은 보내지 않습니다': 'Once a day, the PC app checks GitHub for a new version. Your documents are never sent',
+    'PC 프로그램을 켤 때마다 GitHub에서 새 버전이 있는지 봅니다. 문서 내용은 보내지 않습니다': 'Each time the PC app starts, it checks GitHub for a new version. Your documents are never sent',
     // ⋯ 메뉴
     '더 보기': 'More',
     '밝게 / 어둡게': 'Light / Dark',

@@ -1509,7 +1509,7 @@ body.zen .zen-exit:hover { opacity: 1; }
           <label class="set-check"><input type="checkbox" id="optConfirmSave"><span>저장하기 전에 바뀐 내용 확인<small>저장할 때 무엇이 바뀌는지 먼저 보여주고 한 번 더 묻습니다</small></span></label>
           <label class="set-check"><input type="checkbox" id="optSync"><span>편집할 때 스크롤 맞추기<small>원본과 미리보기가 같은 위치를 보여줍니다</small></span></label>
           <label class="set-check"><input type="checkbox" id="optCompat"><span>문서 점검 안내 보기<small>깨진 링크 · 제목 단계 · 표 · 긴 문장, 다른 뷰어에서 다르게 보이는 곳을 문서 위에 알려 줍니다 (문서 정보 「뷰어: markcont」 면 그 문서는 다른 뷰어 안내만 끔)</small></span></label>
-          <label class="set-check" id="optUpdateRow" hidden><input type="checkbox" id="optUpdate"><span>시작할 때 새 버전 확인<small>PC 프로그램이 하루에 한 번 GitHub에서 새 버전이 있는지 봅니다. 문서 내용은 보내지 않습니다</small></span></label>
+          <label class="set-check" id="optUpdateRow" hidden><input type="checkbox" id="optUpdate"><span>시작할 때 새 버전 확인<small>PC 프로그램을 켤 때마다 GitHub에서 새 버전이 있는지 봅니다. 문서 내용은 보내지 않습니다</small></span></label>
         </div>
         <div class="set-group">
           <div class="set-line">
@@ -9500,10 +9500,13 @@ ${clone.innerHTML}
 
   /* =========================================================
      새 버전 알림 · 업데이트 (PC 프로그램)
-     하루에 한 번 GitHub Releases 의 latest.json 을 확인합니다 (src-tauri/src/update.rs, 서명이 맞는 파일만 설치).
+     켤 때마다 GitHub Releases 의 latest.json 을 확인합니다 (src-tauri/src/update.rs, 서명이 맞는 파일만 설치).
+     알림 창을 닫으면 그 버전은 20시간(다음 날)이 지나야 다시 띄웁니다. 「업데이트 확인」으로 직접 보면 늘 띄웁니다.
      바뀐 점은 웹 앱 주소의 docs/changelog.md 에서 읽어, 지금 버전 다음부터 새 버전까지 보여 줍니다.
      ========================================================= */
-  const UPD_CHECKED = 'mdv-update-checked';
+  const UPD_SNOOZE = 'mdv-update-snooze'; // 알림 창을 닫은 버전 · 시각 { v, t }
+  const UPD_SNOOZE_MS = 20 * 3600e3;
+  try { localStorage.removeItem('mdv-update-checked'); } catch {} // 예전 「하루에 한 번만 확인」 기록
   const CHANGELOG_URL = 'https://ryuseojin.github.io/markcont/docs/' + L('changelog.md', 'changelog.en.md');
   const upd = { busy: false, installing: false, info: null };
   const verNums = (v) => String(v).replace(/^v/, '').split(/[.+-]/).slice(0, 3).map((n) => parseInt(n, 10) || 0);
@@ -9607,7 +9610,12 @@ ${clone.innerHTML}
     const log = await fetchChangelog();
     if (upd.info === info) notes.replaceChildren(updNotesFrom(info, log));
   }
-  function closeUpdate() { if (!upd.installing) $('#updModal').hidden = true; }
+  // 닫기 · ✕ · Esc · 바깥 누르기: 이 버전은 다음 날까지 저절로 띄우지 않음
+  function closeUpdate() {
+    if (upd.installing) return;
+    if (!$('#updModal').hidden && upd.info) store.set(UPD_SNOOZE, JSON.stringify({ v: upd.info.version, t: Date.now() }));
+    $('#updModal').hidden = true;
+  }
   $('#updX').onclick = closeUpdate;
   $('#updModal').addEventListener('click', (e) => { if (e.target.id === 'updModal') closeUpdate(); });
   window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#updModal').hidden) { e.preventDefault(); e.stopImmediatePropagation(); closeUpdate(); } }, true);
@@ -9642,18 +9650,19 @@ ${clone.innerHTML}
     try { info = await tinvoke('update_check'); }
     catch (e) { if (manual) toast(L('새 버전을 확인하지 못했습니다: ', "Couldn't check for updates: ") + e, 5000); return; }
     finally { upd.busy = false; }
-    store.set(UPD_CHECKED, String(Date.now()));
-    if (info) openUpdate(info);
-    else if (manual) toast(L(`지금 최신 버전입니다 (v${APP_VERSION})`, `You're up to date (v${APP_VERSION})`));
+    if (info) {
+      const sn = store.json(UPD_SNOOZE, null);
+      if (!manual && sn && sn.v === info.version && Date.now() - sn.t < UPD_SNOOZE_MS) return; // 닫은 지 하루가 안 된 같은 버전
+      openUpdate(info);
+    } else if (manual) toast(L(`지금 최신 버전입니다 (v${APP_VERSION})`, `You're up to date (v${APP_VERSION})`));
   }
   if (isTauri()) {
     $('#mUpdate').hidden = false;
     $('#optUpdateRow').hidden = false;
     $('#mUpdate').onclick = () => checkUpdate({ manual: true });
-    // 켜고 몇 초 뒤, 마지막 확인에서 20시간이 지났을 때만 (닫기를 누르면 다음 날 다시 알림)
+    // 켤 때마다, 켜고 몇 초 뒤 (닫은 버전은 다음 날까지 건너뜀 — checkUpdate)
     const autoCheck = () => {
       if (settings.updateCheck === false) return;
-      if (Date.now() - (+store.get(UPD_CHECKED) || 0) < 20 * 3600e3) return;
       if (!$('#tour').hidden || document.querySelector('.modal:not([hidden])')) { setTimeout(autoCheck, 60000); return; } // 다른 창이 떠 있으면 조금 뒤에
       checkUpdate();
     };
