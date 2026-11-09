@@ -983,6 +983,7 @@ tags:
 ```
 
 - Wrap lines in `---` starting from the **very first line** of the document, and they're shown neatly in a **document info** box above the text.
+- Leave **one blank line** after the closing `---`. If a comment or the title follows right away, other viewers may show the title as part of the document info.
 - Write one `name: value` per line, and list items as `  - item`.
 - These names also work as markcont view options. They never change the text itself.
 

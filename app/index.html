@@ -5239,6 +5239,12 @@ body.zen .zen-exit:hover { opacity: 1; }
     const h1 = scan.heads.filter((h) => h.level === 1);
     if (h1.length > 1) rules.push({ line: h1[1].line, what: L('제목(#)이 둘 이상', 'More than one title (#)'), text: L('작성 규칙: 맨 위 제목은 문서에 하나만', 'Writing rules: one top title per document'), warn: true });
     const rule = (line, what, text) => rules.push({ line, what, text, warn: true });
+    // 문서 정보의 닫는 --- 바로 뒤에 빈 줄이 없으면: 다른 뷰어에서 제목 · 첫 단락까지 문서 정보로 묶여 보일 수 있음
+    const fmEnd = src.match(/^---\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*\r?\n/);
+    if (fmEnd) {
+      const n = (fmEnd[0].match(/\n/g) || []).length;
+      if (lines[n] !== undefined && lines[n].trim()) rule(n - 1, L('문서 정보 --- 뒤에 빈 줄 없음', 'No blank line after the document info ---'), L('작성 규칙: 닫는 --- 다음에는 빈 줄 한 줄 (없으면 다른 뷰어에서 제목까지 문서 정보로 보일 수 있음)', 'Writing rules: one blank line after the closing --- (otherwise other viewers may show the title as document info)'));
+    }
     const tops = []; // 맨 바깥 제목 { level, line, text(이모지 코드 :rocket: 는 이모지로), hr(바로 앞 덩어리가 구분선인지) }
     for (let i = 0; i < tokens.length; i++) {
       const t = tokens[i];

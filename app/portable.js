@@ -31,6 +31,8 @@
     embedDoc: () => [L('문서 넣기 ![[문서#제목]]', 'Embedded document ![[doc#heading]]'), L('다른 뷰어용으로 저장할 때 내용을 펼쳐 넣음 (못 읽으면 링크로)', 'expanded into the content when saving for other viewers (a link if it can’t be read)')],
     container: () => [L('::: 블록 (탭 · 단계 · 파일 트리)', '::: blocks (tabs · steps · file tree)'), L('탭은 굵은 제목 + 내용, 단계 · 트리는 일반 목록으로', 'tabs to bold titles + content, steps · trees to plain lists')],
     critic: () => [L('교정 표기 {++추가++} 등', 'Suggestion marks {++added++} etc.'), L('다른 뷰어용으로 저장할 때만 <ins> · <del> · <mark> 태그로 (메모는 숨은 주석)', 'to <ins> · <del> · <mark> tags only when saving for other viewers (comments become hidden HTML comments)')],
+    fmGap: () => [L('문서 정보 --- 바로 뒤에 빈 줄 없음', 'No blank line right after the document info ---'), L('빈 줄을 넣음 (없으면 제목까지 문서 정보로 삼키는 뷰어가 있음)', 'blank line added (some viewers swallow the title into the document info without it)')],
+    fmViewer: () => [L('문서 정보 「뷰어: markcont」', 'Document info "viewer: markcont"'), L('뺌 (이 사본은 markcont 전용이 아님)', 'removed (this copy isn’t markcont-only)')],
     hiddenNote: () => [L('숨은 메모 %%…%%', 'Hidden note %%…%%'), L('지움 (다른 뷰어에서는 글자 그대로 보여서)', 'removed (other viewers show it as plain text)')],
   };
   // ::: 블록 (탭 · 단계 · 파일 트리)
@@ -259,11 +261,21 @@
     }
 
     let i = 0;
-    // 맨 위 문서 정보(--- … ---)는 그대로
+    // 맨 위 문서 정보(--- … ---)는 그대로 두되
+    //  - 「뷰어: markcont」 줄은 뺌 (이 사본은 markcont 전용이 아니므로)
+    //  - 닫는 --- 바로 다음 줄이 비어 있지 않으면 빈 줄을 넣음
+    //    (빈 줄이 없으면 문서 정보가 끝나는 곳을 다음 구분선 --- 으로 잘못 읽어, 제목 · 첫 단락까지 문서 정보로 삼키는 뷰어가 있음)
     if (/^---\s*$/.test(lines[0] || '')) {
       let j = 1;
       while (j < lines.length && !/^(---|\.\.\.)\s*$/.test(lines[j])) j++;
-      if (j < lines.length) { out.push(...lines.slice(0, j + 1)); i = j + 1; }
+      if (j < lines.length) {
+        for (let k = 0; k <= j; k++) {
+          if (k > 0 && k < j && /^\s*(뷰어|viewer)\s*:\s*.*markcont/i.test(lines[k])) { note(k + 1, 'fmViewer', lines[k]); continue; }
+          out.push(lines[k]);
+        }
+        i = j + 1;
+        if (i < lines.length && lines[i].trim()) { out.push(''); note(j + 1, 'fmGap', lines[j]); }
+      }
     }
     while (i < lines.length) {
       const line = lines[i], ln = i + 1;
