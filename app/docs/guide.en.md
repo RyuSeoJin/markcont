@@ -80,7 +80,7 @@ Open and close the sidebar with the <kbd>☰</kbd> button in the top left. Drag 
 | New document · New folder | Creates a new one inside that folder. A new document opens straight in the editor |
 | Rename | Renames the file or folder |
 | Copy path | The PC app copies the full path (`C:\Users\…\a.md`), which you can paste straight into the File Explorer address bar. In the browser it's **Copy path in folder**, which copies only the path inside the opened folder |
-| Hide from sidebar | Leaves the file alone and only takes it out of the sidebar list. Quick open, search and links still work. Top folder ⋯ → **Show hidden items** shows them again (dimmed), and that row's ⋯ → **Show again** brings it back |
+| Hide from sidebar | Leaves the file alone and only takes it out of the sidebar list. Quick open, search and links still work. Top folder ⋯ → **Show hidden items** shows them again (dimmed), and that row's ⋯ → **Show again** brings it back. **Separately opened files** are hidden for this session only; click **Show N hidden files** in the list, or open the file again, to see it |
 | Delete | The PC app sends it to the **Trash**; the browser deletes it **permanently** |
 
 > [!WARNING]

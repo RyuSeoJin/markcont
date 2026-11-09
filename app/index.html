@@ -733,6 +733,8 @@ body.side-collapsed .sidebar { display: none; }
 .tree-row.ctx-target { outline: 1.5px solid var(--accent); outline-offset: -1.5px; }
 .tree-row.is-hidden { opacity: .5; }
 .tree-row.is-hidden .nm { font-style: italic; }
+.tree-hint { display: block; width: 100%; border: 0; background: none; padding: 4px 8px 4px 26px; font: inherit; font-size: 12px; color: var(--muted); text-align: left; cursor: pointer; }
+.tree-hint:hover, .tree-hint:focus-visible { color: var(--accent); text-decoration: underline; }
 .tree-row.root { font-weight: 600; margin-top: 8px; }
 .tree-row.root:first-child { margin-top: 0; }
 .tree-row.root .ico { color: var(--muted); }
@@ -4300,6 +4302,15 @@ body.zen .zen-exit:hover { opacity: 1; }
     toast(L(`사이드바에서 숨겼습니다: ${name} (파일은 그대로). 다시 보려면 맨 위 폴더의 ⋯ → 숨긴 항목 보기`, `Hidden from the sidebar: ${name} (the file stays). To see it again: top folder ⋯ → Show hidden items`), 6000,
       { label: L('되돌리기', 'Undo'), onClick: () => { setHidden(path, false); renderFileList(); } });
   }
+  // 따로 연 파일은 이번에만 숨김 (기억하지 않음). 그 파일을 다시 열면 새 항목으로 바뀌어 다시 보임
+  function hideLooseInSidebar(entry) {
+    entry.sideHidden = true;
+    renderFileList();
+    toast(L(`사이드바에서 숨겼습니다: ${entry.name} (파일은 그대로). 목록의 「숨긴 파일 보기」나 다시 열기로 다시 볼 수 있습니다`, `Hidden from the sidebar: ${entry.name} (the file stays). Use "Show hidden files" in the list, or open it again, to see it`), 6000,
+      { label: L('되돌리기', 'Undo'), onClick: () => { entry.sideHidden = false; renderFileList(); } });
+  }
+  // 숨긴 항목 수: 열어 둔 폴더들 + 따로 연 파일
+  const hiddenTotal = () => state.roots.reduce((n, r) => n + hiddenSet(r).size, 0) + state.files.filter((f) => f.loose && f.sideHidden).length;
 
   function setSideTab(tab) {
     side.tab = tab;
@@ -5433,7 +5444,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     const builtinFirst = !hasRoot && !mine.length;
     const loose = mine.filter((f) => f.loose || !hasRoot);
     const total = mine.length;
-    const shownTotal = side.showHidden ? total : mine.filter((f) => f.loose || !hiddenBy(f.path)).length;
+    const shownTotal = side.showHidden ? total : mine.filter((f) => (f.loose ? !f.sideHidden : !hiddenBy(f.path))).length;
     $('#fileCount').textContent = shownTotal ? shownTotal : '';
     $('#sideEmpty').hidden = total > 0 || hasRoot;
     $('#sideHead').hidden = !hasRoot && !total;
@@ -5504,8 +5515,9 @@ body.zen .zen-exit:hover { opacity: 1; }
       }
     };
     if (builtinFirst) appendBuiltin();
-    const looseShown = loose.filter(matches);
-    if (looseShown.length) {
+    const looseShown = loose.filter((f) => matches(f) && (side.showHidden || !f.sideHidden));
+    const looseHidden = q ? 0 : loose.filter((f) => f.sideHidden).length;
+    if (looseShown.length || looseHidden) {
       if (hasRoot) {
         const g = document.createElement('div');
         g.className = 'tree-group';
@@ -5513,7 +5525,7 @@ body.zen .zen-exit:hover { opacity: 1; }
         frag.append(g);
       }
       for (const f of looseShown) {
-        const row = treeRow({ kind: 'file', name: f.name, path: f.path, depth: 0, entry: f });
+        const row = treeRow({ kind: 'file', name: f.name, path: f.path, depth: 0, entry: f, hidden: side.showHidden && !!f.sideHidden });
         const l = describeLocation(f);
         const sub = document.createElement('small');
         sub.className = 'row-sub';
@@ -5522,6 +5534,15 @@ body.zen .zen-exit:hover { opacity: 1; }
         row.title = l.full || [f.name, l.note].filter(Boolean).join('\n');
         frag.append(row);
         shown++;
+      }
+      // 숨긴 따로 연 파일이 있으면 「숨긴 파일 N개 보기」 (맨 위 폴더가 없어도 다시 볼 수 있게)
+      if (looseHidden) {
+        const t = document.createElement('button');
+        t.type = 'button';
+        t.className = 'tree-hint';
+        t.textContent = side.showHidden ? L('숨긴 항목 다시 감추기', 'Stop showing hidden items') : L(`숨긴 파일 ${looseHidden}개 보기`, `Show ${looseHidden} hidden file${looseHidden === 1 ? '' : 's'}`);
+        t.onclick = () => { side.showHidden = !side.showHidden; renderFileList(); };
+        frag.append(t);
       }
     }
     if (!builtinFirst) appendBuiltin();
@@ -5909,6 +5930,9 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (kind === 'empty') {
       add('addRoot', state.roots.length ? L('폴더 더하기', 'Add folder') : L('폴더 열기', 'Open folder'), 'newDir');
       if (state.roots.length > 1) add('collapseAll', L('모든 폴더 접기', 'Collapse all folders'), 'open');
+      const nHid = hiddenTotal();
+      if (side.showHidden) add('toggleHidden', L('숨긴 항목 다시 감추기', 'Stop showing hidden items'), 'eyeOff');
+      else if (nHid) add('toggleHidden', L(`숨긴 항목 보기 (${nHid}개)`, `Show hidden items (${nHid})`), 'eye');
     }
     if (kind === 'file') add('open', L('열기', 'Open'), 'open');
     if (canWrite && !isLoose) {
@@ -5923,7 +5947,9 @@ body.zen .zen-exit:hover { opacity: 1; }
     const canHide = !!root && !isRootRow && kind !== 'empty';
     const canDel = canWrite && !isLoose && kind !== 'empty' && !isRootRow;
     const hid = canHide ? hiddenBy(path) : '';
-    if (canHide || canDel) add('sep');
+    const looseHide = isLoose && kind === 'file'; // 따로 연 파일: 이번에만 숨김
+    if (canHide || canDel || looseHide) add('sep');
+    if (looseHide) add(entry.sideHidden ? 'unhideLoose' : 'hideLoose', entry.sideHidden ? L('다시 보이기', 'Show again') : L('사이드바에서 숨기기', 'Hide from sidebar'), entry.sideHidden ? 'eye' : 'eyeOff');
     if (canHide && !hid) add('hide', L('사이드바에서 숨기기', 'Hide from sidebar'), 'eyeOff');
     else if (canHide && hid === relOf(path)) add('unhide', L('다시 보이기', 'Show again'), 'eye');
     else if (canHide) add('unhideParent', L(`'${baseName(hid)}' 폴더 다시 보이기`, `Show the '${baseName(hid)}' folder again`), 'eye');
@@ -5950,6 +5976,8 @@ body.zen .zen-exit:hover { opacity: 1; }
         else if (it.id === 'delete') fsDelete(kind, path);
         else if (it.id === 'copy') copyPath(cp);
         else if (it.id === 'hide') hideInSidebar(path);
+        else if (it.id === 'hideLoose') hideLooseInSidebar(entry);
+        else if (it.id === 'unhideLoose') { entry.sideHidden = false; renderFileList(); toast(L('다시 보이게 했습니다: ', 'Showing again: ') + entry.name); }
         else if (it.id === 'unhide' || it.id === 'unhideParent') { const p = it.id === 'unhide' ? path : root.key + '/' + hid; setHidden(p, false); renderFileList(); toast(L('다시 보이게 했습니다: ', 'Showing again: ') + baseName(p)); }
         else if (it.id === 'toggleHidden') { side.showHidden = !side.showHidden; renderFileList(); }
         else if (it.id === 'addRoot') pickFolder();
