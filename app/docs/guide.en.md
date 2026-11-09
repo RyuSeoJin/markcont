@@ -351,9 +351,13 @@ Open the window with the **History** button in the editing toolbar (<kbd>Ctrl</k
 - **PC browser**: Open the web app address and click the **Install** button at the right of the address bar
 - **PC app**: From GitHub **Releases**, get Windows `-setup.exe`, macOS `.dmg`, or Linux `.AppImage` / `.deb`
 
+> [!WARNING]
+> On PCs with **Windows Smart App Control** turned on, installing, uninstalling or updating markcont may be blocked because it isn't code-signed. Smart App Control can't allow a single app, so on such PCs use the web app (https://ryuseojin.github.io/markcont/) without installing.
+
 ### Updating to a new version (PC app)
 
 - When a new version is out, a window shows up at startup with **what changed since your version**. **Update now** downloads and installs it, then opens markcont again. **Close** hides that version until the next day (20 hours later).
+- If you install a new `-setup.exe` from Releases over it, choose **Do not uninstall** in the installer. Your settings and history stay. Choosing "Uninstall before installing" may show "Unable to uninstall!".
 - Check anytime with **⋯ → Help → Check for updates**. Turn off automatic checks with **Check for updates at startup** in View settings (Aa).
 - The check runs every time the app starts and only fetches version info from GitHub. Your documents and file paths are never sent. Only installers with a valid signature are installed.
 - If you installed with a Linux `.deb` or `.rpm`, it opens the download page instead of installing directly.

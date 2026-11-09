@@ -43,6 +43,9 @@ Or grab a file from [Releases](https://github.com/RyuSeoJin/markcont/releases/la
 
 > [!NOTE]
 > The builds aren't code-signed, so you may see a warning the first time. On Windows choose **More info → Run anyway**; on macOS **right-click the app → Open**.
+>
+> - **Moving to a new version**: the easiest way is **⋯ → Help → Check for updates** inside the app. If you install a new `-setup.exe` over it, choose **Do not uninstall** in the installer. Your settings and history stay. (Choosing "Uninstall before installing" may show "Unable to uninstall!".)
+> - On PCs with **Windows Smart App Control** turned on, installing, uninstalling or updating may be blocked because the app isn't signed. Smart App Control can't allow a single app, so on such PCs use the [web app](https://ryuseojin.github.io/markcont/) without installing. Turning Smart App Control off lets you install, but it disables a Windows security feature and may be hard to turn back on, so we don't recommend it.
 
 ## What it does
 
