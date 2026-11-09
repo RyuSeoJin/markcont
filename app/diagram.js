@@ -1432,13 +1432,31 @@
         const req = f.required === true ? `<span class="dt-req on" title="${esc(L('필수', 'Required'))}">${esc(L('필수', 'req'))}</span>`
           : f.required === false ? `<span class="dt-req" title="${esc(L('선택', 'Optional'))}">${esc(L('선택', 'opt'))}</span>` : (f.req ? `<span class="dt-req">${esc(f.req)}</span>` : '');
         const st = f.status ? `<span class="dt-st tint-${(STATUS_TINT.find(([re]) => re.test(f.status)) || [0, 'gray'])[1]}">${esc(f.status)}</span>` : '';
-        return `<div class="dt-row"${f.ref ? ` data-to="${uid}-e${ents.indexOf(f.ref)}"` : ''}><div class="dt-main"><span class="dt-name">${esc(f.name)}</span>${type}${req}${st}</div>` +
-          (f.desc || f.ex ? `<div class="dt-sub">${f.desc ? esc(f.desc) : ''}${f.ex ? `<span class="dt-ex">${esc(L('예: ', 'e.g. '))}${esc(f.ex)}</span>` : ''}</div>` : '') + '</div>';
+        // 다른 데이터로 이어지면 맨 오른쪽(연결선이 나가는 곳)에 그 카드로 가는 단추
+        const to = f.ref ? `${uid}-e${ents.indexOf(f.ref)}` : '', goTip = f.ref ? esc(L(`「${f.ref.name}」 카드로 가기`, `Go to ${f.ref.name}`)) : '';
+        const go = f.ref ? `<a class="dt-go" href="#${to}" data-ref="${to}" title="${goTip}" aria-label="${goTip}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>` : '';
+        // 한 줄: [이름](필수 · 선택) | 형식 (상태) | → 단추 — 그 아래 설명(문장), 그 아래 「예시」 값(고정폭)
+        return `<div class="dt-row"${f.ref ? ` data-to="${to}"` : ''}><div class="dt-main"><span class="dt-key"><span class="dt-name">${esc(f.name)}</span>${req}</span><span class="dt-kind">${type}${st}</span>${go}</div>` +
+          (f.desc ? `<div class="dt-sub">${esc(f.desc)}</div>` : '') +
+          (f.ex ? `<div class="dt-exrow"><span class="dt-exl">${esc(L('예시', 'Example'))}</span><span class="dt-ex">${esc(f.ex)}</span></div>` : '') + '</div>';
       }).join('');
       return `<section class="dt-card" id="${uid}-e${i}"><header><span class="dt-ico">🗃</span><b>${esc(e.name)}</b>${e.id ? `<code>${esc(e.id)}</code>` : ''}<span class="dt-count">${esc(L(`필드 ${e.fields.length}개`, `${e.fields.length} field${e.fields.length === 1 ? '' : 's'}`))}</span></header>` +
         (e.desc.length ? `<p class="dt-desc">${esc(e.desc.join(' '))}</p>` : '') + rows + '</section>';
     };
     return `<div class="dt" data-uid="${uid}"><svg class="dt-links" aria-hidden="true"></svg><div class="dt-grid">${ents.map(ent).join('')}</div></div>`;
+  }
+  // 꺾이는 점들을 잇되 모서리는 둥글게
+  function roundedPath(pts, rad = 8) {
+    let d = `M${r1(pts[0][0])},${r1(pts[0][1])}`;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const [x0, y0] = pts[i - 1], [x, y] = pts[i], [xn, yn] = pts[i + 1];
+      const l1 = Math.hypot(x - x0, y - y0), l2 = Math.hypot(xn - x, yn - y);
+      if (!l1 || !l2) continue;
+      const r = Math.min(rad, l1 / 2, l2 / 2);
+      d += ` L${r1(x - ((x - x0) / l1) * r)},${r1(y - ((y - y0) / l1) * r)} Q${r1(x)},${r1(y)} ${r1(x + ((xn - x) / l2) * r)},${r1(y + ((yn - y) / l2) * r)}`;
+    }
+    const last = pts[pts.length - 1];
+    return d + ` L${r1(last[0])},${r1(last[1])}`;
   }
   // 카드 사이 연결선 (그린 뒤 · 크기가 바뀔 때마다 다시)
   function drawDataLinks(box) {
@@ -1454,15 +1472,23 @@
       const card = dt.querySelector('#' + CSS.escape(row.dataset.to));
       const from = row.closest('.dt-card');
       if (!card || card === from) return;
-      const a = row.getBoundingClientRect(), b = card.querySelector('header').getBoundingClientRect(), fc = from.getBoundingClientRect(), tc = card.getBoundingClientRect();
+      // 늘 그 필드의 → 단추 높이 · 카드 오른쪽 끝에서 나감
+      //  - 오른쪽 카드: 그 왼쪽 끝으로 곡선
+      //  - 왼쪽 카드: 이 카드 아래 틈으로 돌아 두 카드 사이 틈을 타고 그 오른쪽 끝으로 (카드 뒤로 숨지 않게)
+      //  - 위 · 아래(같은 열): 오른쪽으로 돌아 그 오른쪽 끝으로 곡선
+      const a = (row.querySelector('.dt-go') || row).getBoundingClientRect(), b = card.querySelector('header').getBoundingClientRect(), fc = from.getBoundingClientRect(), tc = card.getBoundingClientRect();
       const k = (used.get(card) || 0); used.set(card, k + 1);
-      let x1, y1 = a.top + a.height / 2 - base.top, x2, y2 = b.top + b.height / 2 - base.top + k * 4;
-      if (tc.left >= fc.right - 4) { x1 = fc.right - base.left; x2 = tc.left - base.left; }
-      else if (tc.right <= fc.left + 4) { x1 = fc.left - base.left; x2 = tc.right - base.left; }
-      else { x1 = fc.right - base.left; x2 = tc.right - base.left; }
-      const dx = Math.max(40, Math.abs(x2 - x1) / 2);
-      const c1 = x1 + (x1 === fc.right - base.left ? dx : -dx), c2 = x2 + (x2 === tc.left - base.left ? -dx : dx);
-      paths += `<path d="M${r1(x1)},${r1(y1)} C${r1(c1)},${r1(y1)} ${r1(c2)},${r1(y2)} ${r1(x2)},${r1(y2)}"/><circle cx="${r1(x1)}" cy="${r1(y1)}" r="3"/><circle cx="${r1(x2)}" cy="${r1(y2)}" r="3"/>`;
+      const right = tc.left >= fc.right - 4, left = tc.right <= fc.left + 4;
+      const x1 = fc.right - base.left, y1 = a.top + a.height / 2 - base.top, x2 = (right ? tc.left : tc.right) - base.left, y2 = b.top + b.height / 2 - base.top + k * 4;
+      let d;
+      if (left) {
+        const xr = x1 + 12 + k * 4, yb = fc.bottom - base.top + 9 + k * 4, xg = (tc.right + fc.left) / 2 - base.left - k * 4;
+        d = roundedPath([[x1, y1], [xr, y1], [xr, yb], [xg, yb], [xg, y2], [x2, y2]]);
+      } else {
+        const dx = Math.max(40, Math.abs(x2 - x1) / 2);
+        d = `M${r1(x1)},${r1(y1)} C${r1(x1 + dx)},${r1(y1)} ${r1(x2 + (right ? -dx : dx))},${r1(y2)} ${r1(x2)},${r1(y2)}`;
+      }
+      paths += `<path d="${d}"/><circle cx="${r1(x1)}" cy="${r1(y1)}" r="3"/><circle cx="${r1(x2)}" cy="${r1(y2)}" r="3"/>`;
     });
     svg.innerHTML = paths;
   }

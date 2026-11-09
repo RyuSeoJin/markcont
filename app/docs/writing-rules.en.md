@@ -426,7 +426,8 @@ Put an indented list in a ```` ```ui ```` block and it shows as a **📍 locatio
 
 Under `# Data name`, write **one field per line**. Columns are `field | type | required | description | example | status`; a header row sets a different order. Separate columns with `|`, commas (CSV) or tabs, so you can paste straight from a spreadsheet.
 
-- If a type names another data (`Reward` · `Reward list` · `→ Reward`), a **connector line** links the cards; click it to jump to that card.
+- If a type names another data (`Reward` · `Reward list` · `→ Reward`), a **connector line** links the cards. The line leaves from the **→ button** at the far right of that field; click the button or the type to jump to that card.
+- Inside a card, each field reads **name · required/optional · type** on one line, with the types lined up in a column. The description goes on the line below, and the "Example" value on the next. Fields alternate background shading.
 - A `> note` line becomes a description under the card header; parentheses in `# Name (id)` show as the code name.
 - Save for other viewers turns each data into a normal table.
 
