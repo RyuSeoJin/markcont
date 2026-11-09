@@ -304,6 +304,8 @@ Write **the code of an earlier shape** in "goes to". One column back is drawn as
 
 Shapes whose codes share a prefix form **one section** inside a frame. Name a section with a `# code name` line. If codes have no prefix (like `N1` · `N23`), group them yourself: list the codes on a section line such as **`# Receive: N9 N10 N11`**, or add a `section` column to the table. Links to another section are cut with a **"→ code" connector** instead of a long line, and a section opened by a `sub` shape is drawn with a **dashed frame** (sub-flow).
 
+To split a large chart by feature, keep the table once and pick the nodes for each block with a **`@view Name: N1 N2`** line, or read the node table from another file with **`@data nodes.md`**. See chapter 1 of the [Workflow Writing Rules](Workflow-Writing-Rules.md).
+
 ````markdown example
 ```flow
 # H1 Home

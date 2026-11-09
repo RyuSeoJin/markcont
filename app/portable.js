@@ -21,7 +21,7 @@
     deflist: () => [L('정의 목록', 'Definition list'), L('굵은 용어 + 설명으로', 'to bold term + text')],
     media: () => [L('동영상 · 소리', 'Video · audio'), L('링크로', 'to a link')],
     diagram: () => [L('markcont 다이어그램', 'markcont diagram'), L('Mermaid 로', 'to Mermaid')],
-    example: () => [L('쓰는 법 · 결과 나란히 블록', 'Side-by-side example block'), L('일반 코드 블록으로', 'to a plain code block')],
+    example: () => [L('쓰는 법 · 결과 나란히 블록', 'Side-by-side example block'), L('코드 블록 + 그 아래 보이는 모습', 'a code block with its result below')],
     chem: () => [L('화학식 \\ce{}', 'Chemistry \\ce{}'), L('바꾸지 않음 (GitHub 수식은 \\ce 를 모름)', 'not converted (GitHub math has no \\ce)')],
     diagramErr: () => [L('다이어그램 (틀린 곳 있음)', 'Diagram (has errors)'), L('바꾸지 않음', 'not converted')],
     uiTree: () => [L('노출 위치 블록', 'Exposure block'), L('일반 들여 쓴 목록으로', 'to a normal indented list')],
@@ -202,7 +202,8 @@
     const out = [], changes = [], notes = [];
     const note = (ln, kind, text) => changes.push({ line: ln, kind, text: (text || '').trim().slice(0, 80) });
     if (!opts.keepCritic && raw.includes('%%')) raw.split('\n').forEach((l, k) => { if (l !== lines[k]) note(k + 1, 'hiddenNote', l); });
-    let fn = 0, toc = null;
+    let fn = 0, toc = null, exN = 0;
+    const fp = opts.fnPrefix || 'm'; // 예시 결과를 넣을 때 바로 쓰는 각주 번호가 겹치지 않게
 
     // 인라인: 코드 · 수식 조각은 그대로 두고 나머지만 바꿈
     function inline(line, ln) {
@@ -241,7 +242,7 @@
           note(ln, 'wikilink', m);
           return `[${text}](${dest(href)})`;
         });
-        s = s.replace(/\^\[([^\]]+)\]/g, (m, t) => { fn++; notes.push(`[^m${fn}]: ${t}`); note(ln, 'footnote', m); return `[^m${fn}]`; });
+        s = s.replace(/\^\[([^\]]+)\]/g, (m, t) => { fn++; notes.push(`[^${fp}${fn}]: ${t}`); note(ln, 'footnote', m); return `[^${fp}${fn}]`; });
         s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (m, alt, url) => {
           if (!MEDIA.test(url)) return m;
           note(ln, 'media', m);
@@ -320,7 +321,7 @@
         }
         if (kind) {
           try {
-            const mm = MarkDiagram.toMermaid(kind, body.join('\n'));
+            const mm = MarkDiagram.toMermaid(kind, body.join('\n'), { ctx: opts.flowCtx }); // 흐름도 @자료 표는 저장 전에 펼쳐 둠
             out.push(ind + mark + 'mermaid', ...mm.split('\n'), ind + mark);
             note(ln, 'diagram', lang);
             i = j + 1;
@@ -329,6 +330,11 @@
         } else if (/^(markdown|md)$/i.test(lang) && /^(example|preview|예시)\b/i.test(rest)) {
           out.push(ind + mark + lang, ...body);
           if (close != null) out.push(close);
+          // 다른 뷰어에는 「보이는 모습」 칸이 없으므로, 코드 바로 아래에 그 결과를 (같은 규칙으로 바꿔서) 넣음
+          if (!ind && body.some((b) => b.trim())) {
+            const inner = convert(body.join('\n'), { ...opts, fnPrefix: `x${++exN}m` }).text;
+            out.push('', `<sub>${L('▼ 보이는 모습', '▼ Result')}</sub>`, '', ...inner.split('\n'), '');
+          }
           note(ln, 'example', line);
           i = j + 1;
           continue;

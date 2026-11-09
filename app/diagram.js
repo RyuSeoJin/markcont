@@ -107,15 +107,60 @@
     }).filter(Boolean);
   }
 
-  function parseFlow(src, errs) {
-    const nodes = new Map(), edges = [], secNames = new Map(), colors = [], secLines = [], explicit = new Set();
-    let longLines = 'auto';
+  // 블록 안의 지시 줄: 「@보기 이름: N1 N2」 · 「@자료 ../nodes/흐름.md#흐름」
+  const VIEW_RE = /^@(?:보기|view)\s+(.+)$/i, DATA_RE = /^@(?:자료|data)\s+(.+)$/i;
+  function viewLine(rest) {
+    const m = rest.match(/^(.*?)\s*[:：]\s*(.*)$/);
+    const name = m ? m[1].trim() : '', codes = (m ? m[2] : rest).split(/[\s,，]+/).map((s) => s.replace(/^`|`$/g, '')).filter(Boolean);
+    return { name, codes };
+  }
+  // 노드 자료 파일(마크다운)에서 노드 표를 꺼냄: 흐름 이름이 있으면 「**워크플로우 노드 · 흐름 이름**」 줄 아래의 표, 없으면 머리 첫 칸이 「코드」인 첫 표
+  function flowTable(text, flow) {
+    const lines = String(text || '').replace(/\r\n?/g, '\n').split('\n');
+    let from = 0;
+    if (flow) {
+      const want = normKey(flow);
+      from = lines.findIndex((l) => { const m = l.trim().match(/^\*\*(.+)\*\*$/); return m && /흐름|flow/i.test(m[1]) && normKey(m[1].replace(/^.*(흐름|flow)\s*/i, '')) === want; }); // 마지막 「흐름 · flow」 뒤 (Workflow 의 flow 가 아니라)
+      if (from < 0) return null;
+    }
+    let fence = null;
+    for (let i = from; i < lines.length; i++) {
+      const l = lines[i], fm = l.match(/^ {0,3}(`{3,}|~{3,})/);
+      if (fence) { if (fm && fm[1][0] === fence[0] && fm[1].length >= fence.length) fence = null; continue; }
+      if (fm) { fence = fm[1]; continue; }
+      if (!/^\s*\|/.test(l) || !/^\s*\|?\s*:?-{3,}/.test(lines[i + 1] || '')) continue;
+      const first = l.replace(/^\s*\|/, '').split('|')[0];
+      if (HEAD[normKey(first.replace(/[`*]/g, ''))] !== 'code') { if (flow) return null; continue; }
+      let j = i + 2;
+      while (j < lines.length && /^\s*\|/.test(lines[j])) j++;
+      return [l, ...lines.slice(i + 2, j)].join('\n');
+    }
+    return null;
+  }
+
+  // opt.data: @자료 파일에서 꺼낸 노드 표 (null 이면 찾지 못함, undefined 면 아직 모름)
+  function parseFlow(src, errs, opt = {}) {
+    const nodes = new Map(), edges = [], secNames = new Map(), colors = [], secLines = [], explicit = new Set(), views = [];
+    let longLines = 'auto', source = null, sourceLn = 0;
     let cols = ['code', 'zone', 'shape', 'text', 'out', 'judge'];
     let hideCodes = false;
-    src.split('\n').forEach((raw, i) => {
-      const line = raw.trim(), ln = i + 1;
+    const srcLines = src.split('\n');
+    const isRow = (l) => { const t = l.trim(); return t.includes('|') && !/^(@|%%|\/\/|#)/.test(t) && !/^\|?\s*:?-{3,}/.test(t) && !/^(색|color)\s/i.test(t); };
+    for (const l of srcLines) { const m = l.trim().match(DATA_RE); if (m) { source = m[1].trim(); break; } }
+    sourceLn = srcLines.findIndex((l) => DATA_RE.test(l.trim())) + 1;
+    // 블록 안에 노드 줄이 있으면 블록 안 표를 씀 (지금 문서와 호환), 없으면 @자료 표
+    let all = srcLines.map((raw, i) => [raw, i + 1]);
+    if (source && !srcLines.some((l) => isRow(l) && !/^\|?\s*(코드|code)\s*\|/i.test(l.trim()))) {
+      if (opt.data) all = all.concat(String(opt.data).split('\n').map((raw) => [raw, sourceLn]));
+      else if (opt.data === null) errs.push({ ln: sourceLn, msg: L(`노드 자료를 찾지 못했습니다 — ${source}`, `Couldn't find the node data — ${source}`) });
+      else errs.push({ ln: sourceLn, msg: L(`노드 자료를 읽는 중입니다 — ${source}`, `Reading the node data — ${source}`), loading: true });
+    }
+    all.forEach(([raw, ln]) => {
+      const line = raw.trim();
       let m;
       if (!line || /^(%%|\/\/)/.test(line) || /^\*\*.*\*\*$/.test(line)) return;
+      if ((m = line.match(VIEW_RE))) { views.push({ ...viewLine(m[1]), ln }); return; }
+      if (DATA_RE.test(line)) return;
       if ((m = line.match(/^#{1,6}\s+(.+?)\s*[:：]\s+(.+)$/)) || (m = line.match(/^#{1,6}\s+(\S+)\s+(.+)$/)) || (m = line.match(/^(?:섹션|section)\s+(.+?)\s*[:：]?\s+(.+)$/i))) { secLines.push([m[1].trim(), m[2].trim()]); return; }
       if (/^(긴\s*선\s*끊기|cut\s*long\s*lines?)$/i.test(line)) { longLines = 'cut'; return; }
       if (/^(긴\s*선\s*잇기|keep\s*long\s*lines?)$/i.test(line)) { longLines = 'keep'; return; }
@@ -154,7 +199,33 @@
       else secNames.set(key.replace(/[:：]$/, ''), rest);
     }
     applyColors(colors, (n) => nodes.get(n));
-    return { nodes, edges, secNames, hideCodes, explicit, longLines };
+    return { nodes, edges, secNames, hideCodes, explicit, longLines, views, source, sourceLn };
+  }
+
+  // @보기: 고른 노드만 남김. 고른 노드에서 밖으로 나가는 선은 남겨 두어 연결자로 그림 (표 전체는 f.all 에)
+  function applyView(f, errs) {
+    f.all = new Map(f.nodes);
+    if (!f.views.length) return;
+    const sel = new Set();
+    for (const v of f.views) for (const c of v.codes) if (f.all.has(c)) sel.add(c);
+    if (!sel.size) { if (f.all.size) errs.push({ ln: f.views[0].ln, msg: L('@보기에 적은 코드가 표에 하나도 없습니다', 'None of the codes in @view are in the table') }); return; }
+    for (const id of [...f.nodes.keys()]) if (!sel.has(id)) f.nodes.delete(id);
+    f.edges = f.edges.filter((e) => sel.has(e.from));
+    f.viewName = f.views.map((v) => v.name).filter(Boolean).join(' · ');
+  }
+  // 연결자 도착: 어디로 가는지 (같은 표 → 같은 문서의 다른 블록 · 다른 노드 자료 파일)
+  function whereOf(f, code, ctx) {
+    const own = new Set(f.views.map((v) => v.name));
+    const n = f.all && f.all.get(code);
+    if (n) {
+      const v = ctx && ctx.viewOf && ctx.viewOf(code, own);
+      const sec = flowSec(n);
+      const named = sec && (f.secNames.has(sec) || f.explicit.has(sec));
+      return { found: true, text: n.text, where: v || (named ? secLabel(f, sec) : '') };
+    }
+    const hit = ctx && ctx.lookup && ctx.lookup(code, own);
+    if (hit) return { found: true, text: hit.text || '', where: hit.where || '' };
+    return { found: false, text: f.secNames.get(code) || '', where: '' };
   }
 
   // 노드의 섹션: 따로 정했으면 그것, 아니면 코드 앞부분(S1-02 → S1)
@@ -162,7 +233,8 @@
   const secLabel = (f, sec) => (f.explicit.has(sec) ? sec : sec + (f.secNames.get(sec) ? ' · ' + f.secNames.get(sec) : ''));
   function renderFlow(src, uid, opt = {}) {
     const errs = [];
-    const f = parseFlow(src, errs);
+    const f = parseFlow(src, errs, opt);
+    applyView(f, errs);
     if (!f.nodes.size) { if (!errs.length) errs.push({ msg: L('도형이 하나도 없습니다', 'No nodes') }); fail(errs); }
     if (errs.length) fail(errs);
     const { nodes, edges } = f;
@@ -219,15 +291,17 @@
       const a = nodes.get(e.from), b = nodes.get(e.to);
       if (!b || b.sec !== a.sec) {
         if (a.type === 'sub' && b) { e.subLink = true; continue; } // 서브루틴은 하위 섹션을 엶 (뒤에 연결자를 두지 않음)
+        // 다른 곳으로 가는 연결자: 도착 문구와 어느 보기 · 섹션 · 문서인지 (출발 도형과 같은 구역에)
+        const w = b ? { found: true, text: b.text, where: b.sec ? secLabel(f, b.sec) : '' } : whereOf(f, e.to, opt.ctx);
         const c = { id: `__c${cid++}`, type: 'goto', zone: a.zone, sec: a.sec, col: a.col + 1, virtual: true,
-          code: '→ ' + e.to, text: b ? b.text : (f.secNames.get(e.to) || '') };
+          code: '→ ' + e.to, target: e.to, text: w.text, where: w.where, missing: !w.found, label: e.label };
         nodes.set(c.id, c); e.to = c.id;
       } else if (e.back && a.col - b.col >= 2) {
-        const c = { id: `__c${cid++}`, type: 'ret', zone: a.zone, sec: a.sec, col: a.col + 1, virtual: true, code: '↩ ' + b.id, text: b.text };
+        const c = { id: `__c${cid++}`, type: 'ret', zone: a.zone, sec: a.sec, col: a.col + 1, virtual: true, code: '↩ ' + b.id, target: b.id, text: b.text };
         nodes.set(c.id, c); e.to = c.id; e.back = false;
       } else if (!e.back && b.col - a.col >= 2 && (opt.cut?.has(e.idx) || f.longLines === 'cut')) {
         // 앞으로 멀리 건너가는 선: 긴 선 대신 「→ 코드」 연결자
-        const c = { id: `__c${cid++}`, type: 'goto', zone: a.zone, sec: a.sec, col: a.col + 1, virtual: true, code: '→ ' + b.id, text: b.text };
+        const c = { id: `__c${cid++}`, type: 'goto', zone: a.zone, sec: a.sec, col: a.col + 1, virtual: true, code: '→ ' + b.id, target: b.id, text: b.text };
         nodes.set(c.id, c); e.to = c.id;
       }
     }
@@ -268,8 +342,10 @@
       n.codeText = n.virtual ? n.code : (f.hideCodes || n.type === 'ref' ? '' : n.id);
       if (n.type === 'sub') n.codeText = (n.codeText ? n.codeText + ' ' : '') + '▸';
       if (n.type === 'ref' && !n.lines.length) n.lines = [n.id];
-      const tw = Math.max(n.codeText ? textW(n.codeText, 11.5, 700) : 0, ...n.lines.map((l) => textW(l, size)), 0);
-      const th = (n.codeText ? 15 : 0) + n.lines.length * 17;
+      // 연결자: 도착이 어느 보기 · 섹션 · 문서인지 문구 위에 작게 한 줄
+      n.whereLine = n.where ? wrap(n.where, 130, 10.5, 600)[0] + (wrap(n.where, 130, 10.5, 600).length > 1 ? '…' : '') : '';
+      const tw = Math.max(n.codeText ? textW(n.codeText, 11.5, 700) : 0, n.whereLine ? textW(n.whereLine, 10.5, 600) : 0, ...n.lines.map((l) => textW(l, size)), 0);
+      const th = (n.codeText ? 15 : 0) + (n.whereLine ? 13 : 0) + n.lines.length * 17;
       n.th = th;
       switch (n.type) {
         case 'decision': n.w = Math.max(100, tw * 1.5 + 30); n.h = Math.max(66, th * 1.6 + 24); break;
@@ -281,11 +357,15 @@
         default: n.w = Math.max(90, tw + 24); n.h = Math.max(40, th + 18);
       }
     }
-    // 갈래가 많은 도형은 높이를 늘려 나가는 선 사이를 넉넉하게 (선 글자가 들어갈 자리)
+    // 한 도형에 드나드는 선은 모두 다른 점을 씀: 점 사이 16px (선 글자가 있으면 28px), 모자라면 도형 높이를 늘림
+    const inCount = new Map();
+    for (const e of edges) if (!e.back && !e.hidden && nodes.has(e.to)) inCount.set(e.to, (inCount.get(e.to) || 0) + 1);
     for (const n of nodes.values()) {
-      if (n.type === 'decision' || n.virtual) continue;
-      const fw = (outs.get(n.id) || []).filter((e) => !e.back && !e.hidden).length;
-      if (fw >= 3) n.h = Math.max(n.h, fw * 26 + 10);
+      if (n.type === 'decision' || n.type === 'ref') continue;
+      const fw = n.virtual ? [] : (outs.get(n.id) || []).filter((e) => !e.back && !e.hidden);
+      if (fw.length >= 2) n.h = Math.max(n.h, fw.length * (fw.some((e) => e.label) ? 28 : 16) + 12);
+      const inn = inCount.get(n.id) || 0;
+      if (inn >= 2) n.h = Math.max(n.h, (inn + 1) * 16);
     }
 
     // 5) 자리 — 섹션이 여럿이고 옆으로 너무 길면 섹션을 위아래로 쌓음 (섹션마다 유저 · 시스템 구역)
@@ -298,7 +378,18 @@
       const k = e.back ? `${b.sec}|${b.col - 1}` : `${a.sec}|${a.col}`;
       gapCount.set(k, (gapCount.get(k) || 0) + 1);
     }
-    const gapW = (sec, c) => GX + Math.min(110, Math.max(0, (gapCount.get(`${sec}|${c}`) || 0) - 2) * 14);
+    // 선 글자는 첫 선분 위에 얹으므로, 틈은 가장 긴 선 글자 + 세로 통로(선마다 12px)를 넣을 만큼
+    const labW = (e) => (e.label ? Math.max(...wrap(e.label, 130, 11, 600).slice(0, 2).map((l) => textW(l, 11, 600))) + 10 : 0);
+    const gapLab = new Map();
+    for (const e of edges) {
+      if (e.hidden || e.back || !nodes.has(e.to)) continue;
+      const a = nodes.get(e.from), k = `${a.sec}|${a.col}`;
+      gapLab.set(k, Math.max(gapLab.get(k) || 0, labW(e)));
+    }
+    const gapW = (sec, c) => {
+      const k = `${sec}|${c}`, cnt = gapCount.get(k) || 0;
+      return Math.max(GX + Math.min(110, Math.max(0, cnt - 2) * 14), (gapLab.get(k) || 0) + 52 + Math.min(cnt, 12) * 12);
+    };
     const secInfo = secOrder.map((sec) => {
       const list = [...nodes.values()].filter((n) => n.sec === sec);
       const ncol = Math.max(...list.map((n) => n.col)) + 1;
@@ -381,7 +472,8 @@
     const gapUse = new Map();
     const lane_ = (k) => { const c = gapUse.get(k) || 0; gapUse.set(k, c + 1); return (c % 2 ? 1 : -1) * Math.ceil(c / 2) * 11; };
     const gapAfter = (n) => n.cb.x + n.cb.w + n.cb.gap / 2 + lane_(`${n.sec}|${n.col}|a`);
-    const gapBefore = (n) => { const pb = colBox.get(`${n.sec}|${n.col - 1}`); return n.cb.x - (pb ? pb.gap : GX) / 2 + lane_(`${n.sec}|${n.col - 1}|a`); }; // 앞 열의 오른쪽 틈과 같은 칸을 나눠 씀
+    // 도착 쪽 세로 통로: 도착 도형 가까이(마지막 구간 24px 이상)부터 왼쪽으로 12px씩 (출발 쪽 통로와 섞이지 않게)
+    const gapBefore = (n) => { const k = `${n.sec}|${n.col - 1}|b`, c = gapUse.get(k) || 0; gapUse.set(k, c + 1); return n.cb.x - 26 - c * 12; };
     const inPort = (n, dy) => {
       if (n.type === 'decision' || n.type === 'ref') return { x: n.cx - n.w / 2, y: n.cy };
       const sk = n.type === 'input' || n.type === 'output' ? SKEW / 2 : 0;
@@ -401,14 +493,14 @@
     for (const [id, list] of ins) {
       const n = nodes.get(id);
       list.sort((p, q) => nodes.get(p.from).cy - nodes.get(q.from).cy);
-      const step = Math.min(12, n.h / (list.length + 1));
+      // 들어오는 점 사이 16px (모자라면 도형 높이 안에서 고르게)
+      const step = Math.min(16, (n.h - 8) / Math.max(1, list.length - 1));
       list.forEach((e, i) => (e.inDy = (i - (list.length - 1) / 2) * step));
-      // 출발 도형이 같은 높이에 있으면 곧게 들어오게 (겹치지 않을 때만)
+      // 출발 도형이 같은 높이에 있으면 곧게 들어오게 (다른 점과 16px 이상 떨어질 때만)
       if (!['decision', 'ref'].includes(n.type)) {
-        const used = new Set();
         for (const e of list) {
           const sy = nodes.get(e.from).cy - n.cy;
-          if (Math.abs(sy) <= n.h / 2 - 6 && !used.has(Math.round(sy))) { e.inDy = sy; used.add(Math.round(sy)); }
+          if (Math.abs(sy) <= n.h / 2 - 6 && list.every((o) => o === e || Math.abs(o.inDy - sy) >= 16)) e.inDy = sy;
         }
       }
     }
@@ -427,9 +519,23 @@
           g.forEach((e, i) => (e.exDx = (i - (g.length - 1) / 2) * 18));
         }
       } else {
-        const step = Math.min(26, (a.h - 8) / Math.max(1, fw.length));
+        // 나가는 점은 선이 실제로 향하는 높이 순으로 (위로 가는 선이 위 점에서 나가야 서로 가로지르지 않음)
+        const ty = (e) => nodes.get(e.to).cy + (e.inDy || 0);
+        fw.sort((p, q) => ty(p) - ty(q) || p.idx - q.idx);
+        const step = Math.min(30, (a.h - 8) / Math.max(1, fw.length));
         fw.forEach((e, i) => { e.side = 'right'; e.outDy = (i - (fw.length - 1) / 2) * step; });
       }
+      // 출발 쪽 세로 통로: 선 글자가 첫 선분에 들어가도록 열 오른쪽 + 가장 긴 선 글자 뒤부터.
+      // 위로 가는 선은 위 점일수록 안쪽, 아래로 가는 선은 아래 점일수록 안쪽 통로 → 한 도형에서 나간 선끼리 가로지르지 않음
+      const right = fw.filter((e) => e.side === 'right');
+      const sy = (e) => (a.type === 'decision' ? a.cy : a.cy + (e.outDy || 0)), ty2 = (e) => nodes.get(e.to).cy + (e.inDy || 0);
+      const ups = right.filter((e) => ty2(e) < sy(e) - 0.5).sort((p, q) => sy(p) - sy(q));
+      const downs = right.filter((e) => ty2(e) > sy(e) + 0.5).sort((p, q) => sy(q) - sy(p));
+      const key = `${a.sec}|${a.col}|a`, start = gapUse.get(key) || 0, nCh = Math.max(ups.length, downs.length);
+      gapUse.set(key, start + nCh);
+      const base = a.cb.x + a.cb.w + (gapLab.get(`${a.sec}|${a.col}`) || 0) + 22; // 선 글자는 도형에서 12px 띄어 첫 선분 위에
+      ups.forEach((e, i) => (e.chX = base + (start + i) * 12));
+      downs.forEach((e, i) => (e.chX = base + (start + i) * 12));
     }
     let backK = 0;
     const toCut = new Set();
@@ -443,13 +549,13 @@
         const between = [...nodes.values()].filter((n) => n.sec === a.sec && n.zone === a.zone && n.col >= b.col && n.col <= a.col);
         const k = backK++ % 3;
         const yE = dir < 0 ? Math.min(...between.map((n) => n.cy - n.h / 2)) - 14 - k * 7 : Math.max(...between.map((n) => n.cy + n.h / 2)) + 14 + k * 7;
-        const xb = Math.min(gapBefore(b), E.x - 16);
+        const xb = Math.min(gapBefore(b), E.x - 24);
         e.pts = [S, { x: S.x, y: yE }, { x: xb, y: yE }, { x: xb, y: E.y }, E];
         continue;
       }
       const S = outPort(a, e.side, e.outDy || 0, e.exDx || 0), E = inPort(b, e.inDy || 0);
       const cands = [];
-      const xb = Math.min(gapBefore(b), E.x - 18);
+      const xb = Math.min(gapBefore(b), E.x - 24); // 마지막 구간은 24px 이상 (화살표 머리가 꺾임을 덮지 않게)
       const rowTop = b.rowTop, rowBot = b.rowTop + b.rowH;
       if (e.side === 'top' || e.side === 'bottom') {
         cands.push([S, { x: S.x, y: E.y }, E]);
@@ -457,7 +563,7 @@
         cands.push([S, { x: S.x, y: yc }, { x: xb, y: yc }, { x: xb, y: E.y }, E]);
       } else {
         if (Math.abs(S.y - E.y) < 0.5) cands.push([S, E]);
-        const xa = Math.max(gapAfter(a), S.x + 22);
+        const xa = e.chX != null ? Math.max(e.chX, S.x + 22) : Math.max(gapAfter(a), S.x + 22);
         cands.push([S, { x: xa, y: S.y }, { x: xa, y: E.y }, E]);
         cands.push([S, { x: xb, y: S.y }, { x: xb, y: E.y }, E]);
         for (const yc of [rowTop - GY / 2, rowBot + GY / 2]) cands.push([S, { x: xa, y: S.y }, { x: xa, y: yc }, { x: xb, y: yc }, { x: xb, y: E.y }, E]);
@@ -466,7 +572,7 @@
       if (e.pts.length > 4 && b.col - a.col >= 2 && !b.virtual && f.longLines === 'auto' && !opt.cut) toCut.add(e.idx);
     }
     // 그림을 가로지르는 긴 선이 있으면 그 선만 연결자로 끊어서 다시 그림 (markcont 흐름도 기준)
-    if (toCut.size) return renderFlow(src, uid, { cut: toCut });
+    if (toCut.size) return renderFlow(src, uid, { ...opt, cut: toCut });
 
     // 7) 그리기
     let svg = markers(uid, ['normal', 'yes', 'no']);
@@ -485,9 +591,33 @@
       svg += `<rect class="dg-sec${b.sub ? ' sub' : ''}" x="${r1(b.x0)}" y="${r1(y0)}" width="${r1(b.x1 - b.x0)}" height="${r1(y1 - y0)}" rx="10"/>`;
       svg += `<text class="dg-sec-label" x="${r1(b.x0 + 12)}" y="${r1(y0 + 17)}">${esc(secLabel(f, sec))}</text>`;
     }
+    // 그래도 남는 교차는 가로 선이 반지름 5px 반원으로 넘어감 (합쳐지는 것이 아님을 보임)
+    const verts = [];
+    for (const e of vis) for (let i = 0; i < e.pts.length - 1; i++) {
+      const p = e.pts[i], q = e.pts[i + 1];
+      if (Math.abs(p.x - q.x) < 0.5 && Math.abs(p.y - q.y) > 0.5) verts.push({ e, x: p.x, y0: Math.min(p.y, q.y), y1: Math.max(p.y, q.y) });
+    }
+    const bridgePath = (e) => {
+      let d = `M${r1(e.pts[0].x)},${r1(e.pts[0].y)}`;
+      for (let i = 0; i < e.pts.length - 1; i++) {
+        const p = e.pts[i], q = e.pts[i + 1];
+        if (Math.abs(p.y - q.y) < 0.5 && Math.abs(p.x - q.x) > 20) {
+          const dir = q.x > p.x ? 1 : -1, lo = Math.min(p.x, q.x) + 8, hi = Math.max(p.x, q.x) - 8;
+          const xs = verts.filter((v) => v.e !== e && v.x > lo && v.x < hi && v.y0 < p.y - 1 && v.y1 > p.y + 1).map((v) => v.x).sort((m, n) => (m - n) * dir);
+          let last = null;
+          for (const x of xs) {
+            if (last != null && Math.abs(x - last) < 12) continue;
+            d += ` L${r1(x - 5 * dir)},${r1(p.y)} A5,5 0 0 ${dir > 0 ? 1 : 0} ${r1(x + 5 * dir)},${r1(p.y)}`;
+            last = x;
+          }
+        }
+        d += ` L${r1(q.x)},${r1(q.y)}`;
+      }
+      return d;
+    };
     for (const e of vis) {
       const kind = e.kind || 'normal';
-      svg += `<path class="dg-edge ${kind}" d="${pathD(e.pts)}" marker-end="url(#${uid}-${kind})"/>`;
+      svg += `<path class="dg-edge ${kind}" d="${bridgePath(e)}" marker-end="url(#${uid}-${kind})"/>`;
     }
     for (const n of nodes.values()) svg += flowNode(n, SKEW);
     const placed = [];
@@ -502,7 +632,7 @@
       const cands = [];
       if (Math.abs(p0.y - p1.y) < 0.5) {
         const dir = p1.x >= p0.x ? 1 : -1;
-        for (const dy of [0, -19, 19, -38, 38, -57, 57]) for (const dx of [5, w + 10]) cands.push({ x: dir > 0 ? p0.x + dx : p0.x - dx - w, y: p0.y + dy - h / 2 });
+        for (const dy of [0, -19, 19, -38, 38, -57, 57]) for (const dx of [12, w + 16]) cands.push({ x: dir > 0 ? p0.x + dx : p0.x - dx - w, y: p0.y + dy - h / 2 });
       } else {
         const dir = p1.y > p0.y ? 1 : -1;
         for (const dy of [14, 34, 54, 74, 94, 114]) for (const dx of [-w / 2, 4, -w - 4]) cands.push({ x: p0.x + dx, y: p0.y + dir * dy - h / 2 });
@@ -542,11 +672,14 @@
     let text = '';
     const top = n.cy - n.th / 2;
     if (n.codeText) { text += `<text class="dg-code" x="${r1(cx)}" y="${r1(top + 7.5)}">${esc(n.codeText)}</text>`; }
-    const t0 = top + (n.codeText ? 15 : 0);
+    if (n.whereLine) text += `<text class="dg-where" x="${r1(cx)}" y="${r1(top + (n.codeText ? 15 : 0) + 6.5)}">${esc(n.whereLine)}</text>`;
+    const t0 = top + (n.codeText ? 15 : 0) + (n.whereLine ? 13 : 0);
     n.lines.forEach((l, i) => lines.push(`<text class="dg-text${small ? ' small' : ''}" x="${r1(cx)}" y="${r1(t0 + (i + 0.5) * 17)}">${esc(l)}</text>`));
     text += lines.join('');
-    const title = `<title>${esc([n.virtual ? n.code : n.id, n.text].filter(Boolean).join(' — '))}</title>`;
-    return `<g class="dg-node ${n.type}${n.tint ? ' tinted tint-' + n.tint : ''}">${title}${shape}${text}</g>`;
+    // 마우스를 올리면: 연결자는 도착 코드 · 문구 · 보기(섹션) · 선 글자를 줄마다
+    const tip = n.virtual ? [n.code, n.text, n.where, n.label && L('선: ', 'Line: ') + n.label].filter(Boolean).join('\n') : [n.id, n.text].filter(Boolean).join(' — ');
+    const data = n.virtual ? (n.target ? ` data-goto="${esc(n.target)}" role="link" tabindex="0"` : '') : ` data-code="${esc(n.id)}"`;
+    return `<g class="dg-node ${n.type}${n.tint ? ' tinted tint-' + n.tint : ''}${n.missing ? ' missing' : ''}"${data}><title>${esc(tip)}</title>${shape}${text}</g>`;
   }
 
   /* =====================================================================
@@ -1031,9 +1164,10 @@
     return out;
   }
 
-  function flowMermaid(src) {
+  function flowMermaid(src, opt = {}) {
     const errs = [];
-    const f = parseFlow(src, errs);
+    const f = parseFlow(src, errs, opt);
+    applyView(f, errs);
     if (!f.nodes.size) errs.push({ msg: L('도형이 하나도 없습니다', 'No nodes') });
     if (errs.length) fail(errs);
     const { nodes, edges } = f;
@@ -1082,7 +1216,11 @@
       let b = mids.get(e.to);
       if (!b) {
         b = ext.get(e.to);
-        if (!b) { b = 'x' + (ext.size + 1); ext.set(e.to, b); out.push(`  ${b}>${mq('→ ' + e.to + (f.secNames.get(e.to) ? ' ' + f.secNames.get(e.to) : ''))}]`); }
+        if (!b) {
+          const w = whereOf(f, e.to, opt.ctx);
+          b = 'x' + (ext.size + 1); ext.set(e.to, b);
+          out.push(`  ${b}>${mq('→ ' + e.to + (w.where ? ' · ' + w.where : '') + (w.text ? ' ' + w.text : ''))}]`);
+        }
       }
       const from = nodes.get(e.from), to = nodes.get(e.to);
       const dashed = from.type === 'sub' && to && to.sec !== from.sec;
@@ -1358,9 +1496,10 @@
   let uidN = 0;
   window.MarkDiagram = {
     kindOf: (lang) => KIND[String(lang || '').toLowerCase()] || null,
-    render(kind, src) {
+    // opt (흐름도만): { data: @자료 파일의 노드 표 (null = 찾지 못함), ctx: { viewOf(code, own), lookup(code, own) } }
+    render(kind, src, opt) {
       const uid = 'dg' + ++uidN;
-      if (kind === 'flow') return renderFlow(src, uid);
+      if (kind === 'flow') return renderFlow(src, uid, opt || {});
       if (kind === 'sequence') return renderSequence(src, uid);
       if (kind === 'state') return renderState(src, uid);
       if (kind === 'timeline') return renderTimeline(src, uid);
@@ -1370,9 +1509,62 @@
     },
     drawDataLinks,
     dataToTables,
+    flowTable,
+    // 파일 안의 노드 표 모두 (머리 첫 칸이 「코드」인 표)
+    flowTables(text) {
+      const out = [], lines = String(text || '').replace(/\r\n?/g, '\n').split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        if (!/^\s*\|/.test(lines[i]) || !/^\s*\|?\s*:?-{3,}/.test(lines[i + 1] || '')) continue;
+        const t = flowTable(lines.slice(i).join('\n'));
+        if (t && t.split('\n')[0] === lines[i]) out.push(t);
+        let j = i + 2;
+        while (j < lines.length && /^\s*\|/.test(lines[j])) j++;
+        i = j;
+      }
+      return out;
+    },
+    // 흐름도 블록의 @자료 경로 ({ path, flow }) — 없으면 null
+    flowSource(src) {
+      for (const l of String(src).split('\n')) {
+        const m = l.trim().match(DATA_RE);
+        if (m) { const [path, flow] = m[1].trim().split('#'); return { path: path.trim(), flow: (flow || '').trim(), raw: m[1].trim() }; }
+      }
+      return null;
+    },
+    // 흐름도 블록의 노드 · 보기 (같은 문서의 다른 블록에서 연결자 도착을 찾을 때)
+    flowInfo(src, opt = {}) {
+      const errs = [], f = parseFlow(src, errs, opt);
+      const nodes = [...f.nodes.values()].map((n) => { const sec = flowSec(n); return { id: n.id, text: n.text, sec: sec && (f.secNames.has(sec) || f.explicit.has(sec)) ? secLabel(f, sec) : '' }; });
+      return { nodes, views: f.views.map((v) => ({ name: v.name, codes: v.codes })), source: f.source };
+    },
+    // 문서 점검: { ln, msg, info } — info 는 알려만 줌
+    flowCheck(src, opt = {}) {
+      const out = [], errs = [], f = parseFlow(src, errs, opt);
+      for (const e of errs) if (!e.loading && /노드 자료|node data/.test(e.msg)) out.push({ ln: e.ln, msg: e.msg });
+      if (errs.length && !f.nodes.size) return out;
+      const seen = new Set();
+      for (const v of f.views) for (const c of v.codes) {
+        if (!f.nodes.has(c)) out.push({ ln: v.ln, msg: L(`@보기에 적은 코드가 표에 없습니다: ${c}`, `Code in @view isn't in the table: ${c}`) });
+        else if (seen.has(c)) out.push({ ln: v.ln, msg: L(`@보기에 같은 코드가 두 번 있습니다: ${c}`, `Same code twice in @view: ${c}`) });
+        seen.add(c);
+      }
+      applyView(f, []);
+      for (const e of f.edges) {
+        if (f.all.has(e.to)) continue;
+        if (!whereOf(f, e.to, opt.ctx).found) out.push({ ln: e.ln, msg: L(`연결 도착을 어디서도 찾지 못했습니다: ${e.from} → ${e.to}`, `Couldn't find where this goes: ${e.from} → ${e.to}`) });
+      }
+      // 갈래 · 글자 수: 알려만 줌. 다른 보기 · 섹션 · 문서로 가는 갈래(연결자로 그려지는 것)는 세지 않음
+      for (const n of f.nodes.values()) {
+        const fw = f.edges.filter((e) => e.from === n.id && f.nodes.has(e.to) && flowSec(f.nodes.get(e.to)) === flowSec(n));
+        if (fw.length > 4) out.push({ ln: n.ln, info: true, msg: L(`${n.id} 갈래 ${fw.length}개 — @보기로 나누거나 연결자로 보이기 (데이터는 그대로)`, `${n.id} has ${fw.length} branches — split with @view or show them as connectors (keep the data)`) });
+        if ([...(n.text || '').replace(/<br\s*\/?>/gi, '')].length > 20) out.push({ ln: n.ln, info: true, msg: L(`${n.id} 도형 문구 20자 넘음 (줄을 바꿔 다 보임)`, `${n.id} text over 20 chars (wrapped, not cut)`) });
+      }
+      for (const e of f.edges) if (e.label && [...e.label].length > 12) out.push({ ln: e.ln, info: true, msg: L(`선 글자 12자 넘음: ${e.label}`, `Line label over 12 chars: ${e.label}`) });
+      return out;
+    },
     // 다른 뷰어용: 같은 내용을 Mermaid 문법으로
-    toMermaid(kind, src) {
-      if (kind === 'flow') return flowMermaid(src);
+    toMermaid(kind, src, opt) {
+      if (kind === 'flow') return flowMermaid(src, opt || {});
       if (kind === 'sequence') return renderSequence(src, 'm', true);
       if (kind === 'state') return renderState(src, 'm', true);
       if (kind === 'timeline') return renderTimeline(src, 'm', true);

@@ -1,6 +1,6 @@
 ---
 title: Workflow Writing Rules
-version: 1.0
+version: 1.1
 ---
 
 # Workflow Writing Rules
@@ -29,6 +29,28 @@ The flowchart syntax follows section 7-2 of the [Markdown writing rules](Markdow
 # Receive rewards: N9 N8 N10 N11 N12 N13
 ```
 
+### Splitting by feature: `@view` · `@data`
+
+When there are many nodes, keep the table **once** and pick the nodes to draw in each block. With tabs (`::: tabs`), each feature gets its own tab.
+
+| Line | What it does |
+|:---|:---|
+| `@view Name: N1 N2` | Draws only the picked nodes. Lines between them are drawn, and lines leaving them become "→ code" connectors |
+| `@data ../nodes/mailbox.md` | Reads the node table from that file (relative to the document). If the block has its own node rows, those are used |
+| `@data ../nodes/mailbox.md#mailbox` | Reads the table under the `**Workflow nodes · flow mailbox**` line in that file. Without `#`, the first table whose first header cell is "code" |
+
+````markdown
+```flow
+@data ../nodes/project-flow-mailbox.md
+@view Open mailbox: N1 N2
+```
+````
+
+- Connectors show the target text and, in small type, **where it goes**: the view name for another view in the same document, the section name for another section of the same table, or "Other document" when it's found in another node file in the same folder as the `@data` file.
+- Hover a connector to see the target code, text, view name and line label. **Click** it to jump to the target shape in the same document; it flashes briefly (a hidden tab opens).
+- `@data` is read when a folder is open. If the file can't be found, the chart shows "Couldn't find the node data".
+- Saving for other viewers expands `@data` into the node table, and `@view` becomes Mermaid with only the picked nodes.
+
 ---
 
 ## 2️⃣ One thing per shape
@@ -46,12 +68,13 @@ The more lines leave one shape, the more crowded lines and labels get.
 
 | Guideline | Recommended |
 |:---|:---|
-| Branches leaving one shape | **4 or fewer**. With 5 or more, split the decision into two steps |
+| Branches leaving one shape | **4 or fewer**. Beyond that, don't merge nodes: split with `@view`, or show branches to other features as connectors (branches drawn as connectors don't count) |
 | Line labels | **12 characters or fewer** — `save failed` · `none` |
 | yes · no | Only on decisions |
 
-- Long labels wrap to two lines; anything longer is cut with an ellipsis (hover to see it all). Move long explanations into **the target shape's text or the policy table**.
-- Shapes with many branches grow taller so lines spread apart, but reducing the branches reads far better.
+- Labels sit **on the first segment** of their line. Long labels wrap to two lines; anything longer is cut with an ellipsis (hover to see it all). Move long explanations into **the target shape's text or the policy table**.
+- For shapes that naturally have many branches (like a screen with many user actions), don't merge node codes (simulators and QA use them) — split by feature with `@view` instead.
+- Document check **only points out** where branches, labels or shape text go over these guidelines (not counted as issues).
 
 ````markdown example
 ```flow
@@ -75,6 +98,8 @@ A4 | system | output | [Toast] No rewards | —
 
 - Add a `cut long lines` line to cut every link that skips two or more columns, or `keep long lines` to never cut.
 - Many lines returning to the same screen create many connectors. If they return to the same place, gather them into one process shape first.
+- Connectors stay in the **same zone** as the shape they leave, stacked top to bottom in the order of their exit points.
+- Every line into or out of a shape uses its own point, ordered by the height the line actually heads to. Any crossing that's left shows a small half-circle hop so it doesn't look joined.
 
 ---
 
@@ -133,7 +158,7 @@ Don't cram the data needed for implementation into one cell of the "implementati
 ## ✅ Checklist
 
 - [ ] About 10 nodes per section?
-- [ ] 4 or fewer branches leaving each shape?
+- [ ] 4 or fewer branches leaving each shape? (If more, split with `@view`?)
 - [ ] Line labels 12 characters or fewer?
 - [ ] Shape text around 20 characters, with details pointed to by policy ID?
 - [ ] User actions in the user zone, judgments and screens in the system zone?

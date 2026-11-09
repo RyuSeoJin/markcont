@@ -430,6 +430,12 @@
 .dg-svg .dg-node.ret .dg-shape { fill: color-mix(in srgb, var(--dg-ret) 10%, var(--dg-node)); stroke: var(--dg-ret); stroke-dasharray: 4 3; }
 .dg-svg .dg-node.tinted .dg-shape { fill: color-mix(in srgb, var(--t) 15%, var(--dg-node)); stroke: var(--t); }
 .dg-svg .dg-code { font-size: 11.5px; font-weight: 700; }
+.dg-svg .dg-where { font-size: 10.5px; font-weight: 600; fill: var(--muted); }
+.dg-svg .dg-node[data-goto] { cursor: pointer; }
+.dg-svg .dg-node[data-goto]:hover .dg-shape, .dg-svg .dg-node[data-goto]:focus-visible .dg-shape { stroke: var(--accent); stroke-width: 2; }
+.dg-svg .dg-node.missing .dg-shape { stroke-dasharray: 4 3; }
+.dg-svg .dg-node.flash .dg-shape { stroke: var(--accent); stroke-width: 3; animation: dg-flash .5s ease-in-out 3; }
+@keyframes dg-flash { 50% { stroke-width: 1.4; } }
 .dg-svg .dg-text.small { font-size: 12px; }
 .dg-svg .dg-text.strong { font-weight: 600; }
 .dg-svg .dg-text.muted { fill: var(--muted); }
@@ -3156,7 +3162,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     });
 
     // 코드 블록
-    const mermaidBlocks = [];
+    const mermaidBlocks = [], flowJobs = [];
     doc.querySelectorAll('pre > code').forEach((code) => {
       const pre = code.parentElement;
       if (code.classList.contains('language-mermaid')) {
@@ -3184,6 +3190,7 @@ body.zen .zen-exit:hover { opacity: 1; }
             d.classList.add('dg-html');
             d.innerHTML = MarkDiagram.render(dgKind, code.textContent); // 카드 사이 연결선은 다 그린 뒤 drawAllDataLinks
           }
+          else if (dgKind === 'flow') { d.classList.add('dg-flowblock'); flowJobs.push({ d, src: code.textContent }); } // 문서의 흐름도를 다 모은 뒤 그림 (연결자 도착을 다른 블록에서도 찾게)
           else { d.innerHTML = '<div class="dg-scroll">' + MarkDiagram.render(dgKind, code.textContent) + '</div>'; addDgExpand(d); }
         }
         catch (err) { d.classList.add('dg-error'); d.textContent = L('다이어그램을 그리지 못했습니다\n', "Couldn't draw the diagram\n") + err.message; }
@@ -3243,6 +3250,7 @@ body.zen .zen-exit:hover { opacity: 1; }
       body.append(pre);
       block.append(head, body);
     });
+    if (flowJobs.length) drawFlows(flowJobs, base);
     if (mermaidBlocks.length) {
       loadMermaid().then((m) => {
         m.initialize(mermaidConfig(document.documentElement.dataset.theme === 'dark'));
@@ -3401,6 +3409,127 @@ body.zen .zen-exit:hover { opacity: 1; }
   }
 
   /* ---------- 다이어그램 크게 보기: 확대 · 축소 · 끌어 옮기기 · 화면에 맞추기 ---------- */
+  /* ---------- 흐름도: @자료 노드 표 읽기 · 연결자 도착 찾기 ---------- */
+  // 마지막으로 그린 문서의 노드 자료 · 찾기 정보 (문서 점검이 같이 씀)
+  const flowState = { data: new Map(), ctx: null, seq: 0 };
+  const flowDataKey = (base, s) => resolvePath(base, s.path) + '#' + s.flow;
+  async function readFlowFile(entry) {
+    const c = await gsRead(entry);
+    return c ? c.text : await peekText(entry);
+  }
+  // @자료 파일의 노드 표 (못 찾으면 null)
+  async function loadFlowData(base, s) {
+    const entry = findEntry(base, s.path);
+    if (!entry) return { table: null };
+    try { return { table: MarkDiagram.flowTable(await readFlowFile(entry), s.flow), entry }; } catch { return { table: null }; }
+  }
+  // 연결자 도착 찾기: 같은 문서의 다른 블록 → @자료 파일과 같은 폴더의 노드 자료 파일
+  function flowCtx(infos, ext) {
+    const views = [], nodes = new Map();
+    for (const inf of infos) {
+      for (const v of inf.views) if (v.name) views.push(v);
+      for (const n of inf.nodes) if (!nodes.has(n.id)) nodes.set(n.id, n);
+    }
+    const viewOf = (code, own) => (views.find((v) => !own.has(v.name) && v.codes.includes(code)) || {}).name || '';
+    return {
+      viewOf,
+      lookup(code, own) {
+        const n = nodes.get(code);
+        if (n) return { text: n.text, where: viewOf(code, own) || n.sec };
+        const x = ext && ext.get(code);
+        return x ? { text: x.text, where: L('다른 문서', 'Other document') + (x.file ? ' · ' + x.file : '') } : null;
+      },
+    };
+  }
+  async function drawFlows(jobs, base) {
+    const seq = ++flowState.seq;
+    const draw = (data, ext) => {
+      const dataOf = (src) => { const s = MarkDiagram.flowSource(src); return s ? (data.has(flowDataKey(base, s)) ? data.get(flowDataKey(base, s)) : undefined) : undefined; };
+      const ctx = flowCtx(jobs.map((j) => MarkDiagram.flowInfo(j.src, { data: dataOf(j.src) })), ext);
+      flowState.ctx = ctx;
+      for (const j of jobs) {
+        if (!j.d.isConnected) continue;
+        try {
+          j.d.classList.remove('dg-error');
+          j.d.innerHTML = '<div class="dg-scroll">' + MarkDiagram.render('flow', j.src, { data: dataOf(j.src), ctx }) + '</div>';
+          addDgExpand(j.d);
+        } catch (err) {
+          j.d.classList.add('dg-error');
+          j.d.textContent = L('다이어그램을 그리지 못했습니다\n', "Couldn't draw the diagram\n") + err.message;
+        }
+      }
+      lineTops = null;
+    };
+    const sources = jobs.map((j) => MarkDiagram.flowSource(j.src)).filter(Boolean);
+    // 이미 읽어 둔 노드 자료로 먼저 그리고 (없으면 「읽는 중」), 다 읽으면 다시 그림
+    draw(flowState.data, flowState.ext);
+    if (!sources.length) return;
+    const data = new Map(), folders = new Set();
+    for (const s of sources) {
+      const k = flowDataKey(base, s);
+      if (data.has(k)) continue;
+      const r = await loadFlowData(base, s);
+      data.set(k, r.table);
+      if (r.entry) folders.add(r.entry.path.replace(/[^/]*$/, ''));
+    }
+    // 같은 폴더의 다른 노드 자료 파일 (다른 문서로 가는 연결자의 도착 문구)
+    const ext = new Map();
+    const files = state.files.filter((f) => MD_EXT.test(f.name) && folders.has(f.path.replace(/[^/]*$/, ''))).slice(0, 80);
+    for (const f of files) {
+      let text;
+      try { text = await readFlowFile(f); } catch { continue; }
+      for (const t of MarkDiagram.flowTables(text)) {
+        for (const n of MarkDiagram.flowInfo(t).nodes) if (!ext.has(n.id)) ext.set(n.id, { text: n.text, file: f.name.replace(MD_EXT, '') });
+      }
+    }
+    if (seq !== flowState.seq) return; // 그 사이에 다시 그렸으면 버림
+    flowState.data = data; flowState.ext = ext;
+    draw(data, ext);
+  }
+  // 다른 뷰어용으로 저장: 노드 줄이 없는 흐름도 블록의 「@자료 …」 줄을 그 파일의 노드 표로 바꿈 (@보기 는 그대로)
+  async function expandFlowData(text, base) {
+    const out = [];
+    let fence = null, flow = false, buf = [];
+    for (const l of text.split('\n')) {
+      const f = l.match(/^ {0,3}(`{3,}|~{3,})\s*([^`\s]*)/);
+      if (fence) {
+        if (f && f[1][0] === fence[0] && f[1].length >= fence.length && !f[2]) {
+          if (flow) {
+            const src = buf.join('\n'), s = MarkDiagram.flowSource(src);
+            const own = buf.some((b) => b.includes('|') && !/^\s*@/.test(b));
+            const r = s && !own ? await loadFlowData(base, s) : null;
+            out.push(...(r && r.table ? buf.flatMap((b) => (/^\s*@(자료|data)\s/i.test(b) ? r.table.split('\n') : [b])) : buf));
+          }
+          out.push(l); fence = null; continue;
+        }
+        if (flow) buf.push(l); else out.push(l);
+        continue;
+      }
+      if (f) { fence = f[1]; flow = MarkDiagram.kindOf(f[2]) === 'flow'; buf = []; }
+      out.push(l);
+    }
+    if (fence && flow) out.push(...buf); // 닫지 않은 블록
+    return out.join('\n');
+  }
+  // 연결자를 누르면: 같은 문서 안의 도착 도형으로 옮기고(숨은 탭이면 엶) 잠깐 깜빡임
+  function gotoFlowNode(code) {
+    const hits = [...el.doc.querySelectorAll('.dg-node[data-code]')].filter((g) => g.dataset.code === code);
+    const t = hits.find((g) => !g.closest('.mc-tab-panel[hidden]')) || hits[0];
+    if (!t) { toast(L(`이 문서에는 ${code} 도형이 없습니다`, `${code} isn't drawn in this document`), 2500); return; }
+    const panel = t.closest('.mc-tab-panel[hidden]');
+    if (panel) showTab(panel.closest('.mc-tabs'), panel.dataset.tab);
+    t.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+    t.classList.remove('flash'); void t.getBBox(); t.classList.add('flash');
+    setTimeout(() => t.classList.remove('flash'), 1700);
+  }
+  el.doc.addEventListener('click', (e) => {
+    const g = e.target.closest && e.target.closest('.dg-node[data-goto]');
+    if (g && el.doc.contains(g) && !g.closest('.dg-modal')) { e.preventDefault(); gotoFlowNode(g.dataset.goto); }
+  });
+  el.doc.addEventListener('keydown', (e) => {
+    const g = e.target.closest && e.target.closest('.dg-node[data-goto]');
+    if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); gotoFlowNode(g.dataset.goto); }
+  });
   function addDgExpand(box) {
     if (box.querySelector(':scope > .dg-expand')) return;
     const b = document.createElement('button');
@@ -5396,6 +5525,40 @@ body.zen .zen-exit:hover { opacity: 1; }
       }
     }
     add('rules', L('작성 규칙', 'Writing rules'), rules.sort((a, b) => a.line - b.line));
+    // 7) 흐름도: @보기 · @자료 · 연결자 도착 (갈래 수 · 글자 수는 알려만 줌)
+    if (window.MarkDiagram) {
+      const flowBad = [], flowInfo = [], cover = new Map(); // @자료 → { first, codes: 보기에 든 코드, all: 표의 코드 }
+      const base = cur && cur.path ? cur.path : (state.current && state.current.path) || '';
+      let fence = null, start = 0, buf = null;
+      lines.forEach((ln, i) => {
+        const fm = ln.match(/^ {0,3}(`{3,}|~{3,})\s*([^`\s]*)/);
+        if (fence) {
+          if (fm && fm[1][0] === fence[0] && fm[1].length >= fence.length && !fm[2]) {
+            if (buf) {
+              const src = buf.join('\n'), s = MarkDiagram.flowSource(src);
+              const data = s ? flowState.data.get(flowDataKey(base, s)) : undefined;
+              for (const it of MarkDiagram.flowCheck(src, { data, ctx: flowState.ctx })) (it.info ? flowInfo : flowBad).push({ line: start + (it.ln || 1), what: it.msg, text: buf[(it.ln || 1) - 1] || '', info: it.info });
+              if (s && data) {
+                const k = flowDataKey(base, s), c = cover.get(k) || { first: start, codes: new Set(), all: MarkDiagram.flowInfo(data).nodes.map((n) => n.id), views: 0 };
+                const inf = MarkDiagram.flowInfo(src, { data });
+                for (const v of inf.views) { c.views++; v.codes.forEach((x) => c.codes.add(x)); }
+                cover.set(k, c);
+              }
+            }
+            fence = null; buf = null;
+          } else if (buf) buf.push(ln);
+          return;
+        }
+        if (fm) { fence = fm[1]; start = i; buf = MarkDiagram.kindOf(fm[2]) === 'flow' ? [] : null; }
+      });
+      // 같은 @자료를 @보기로 나눴는데 어느 보기에도 들지 않은 노드
+      for (const c of cover.values()) {
+        const miss = c.views ? c.all.filter((x) => !c.codes.has(x)) : [];
+        if (miss.length) flowInfo.push({ line: c.first, what: L(`어느 @보기에도 들지 않은 노드 ${miss.length}개`, `${miss.length} node${miss.length === 1 ? '' : 's'} in no @view`), text: miss.slice(0, 12).join(' ') + (miss.length > 12 ? ' …' : '') });
+      }
+      add('flow', L('흐름도', 'Flowcharts'), flowBad.sort((a, b) => a.line - b.line));
+      add('flowInfo', L('흐름도 작성 기준 (문제로 세지 않음)', 'Flowchart guidelines (not counted as issues)'), flowInfo.sort((a, b) => a.line - b.line), true);
+    }
     const problems = groups.reduce((s, g) => s + (g.info ? 0 : g.items.length), 0);
     // 7) 다른 뷰어에서 다르게 보이는 곳 (markcont 전용 문법)
     let changes = [];
@@ -8518,7 +8681,8 @@ body.zen .zen-exit:hover { opacity: 1; }
     if (!cur || !window.MarkPortable) return;
     let src = source();
     try { src = await expandEmbeds(src, cur.path, [cur.path]); } catch {} // 문서 넣기 ![[문서]] 는 내용으로 펼침
-    const { text, changes } = MarkPortable.convert(src);
+    try { src = await expandFlowData(src, cur.path); } catch {} // 흐름도 @자료 는 노드 표로 펼침 (다른 뷰어는 파일을 읽지 못함)
+    const { text, changes } = MarkPortable.convert(src, { flowCtx: flowState.ctx });
     const name = suggestName(cur).replace(MD_EXT, '') + L('-표준.md', '-standard.md');
     const critics = changes.filter((c) => c.kind === 'critic').length;
     const done = (where) => toast(L(`다른 뷰어용으로 저장했습니다 (${changes.length}곳 바꿈): `, `Saved for other viewers (${changes.length} change${changes.length === 1 ? '' : 's'}): `) + where +
