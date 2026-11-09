@@ -1,6 +1,6 @@
 ---
 title: markcont User guide
-version: 1.9.6
+version: 1.9.7
 ---
 
 # markcont User guide
