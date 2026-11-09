@@ -53,7 +53,7 @@
     '글꼴': 'Font',
     '고딕': 'Sans',
     '명조 글꼴은 Google Fonts에서 받습니다 (인터넷 필요)': 'The serif font is downloaded from Google Fonts (needs internet)',
-    '명조 🌐': 'Serif 🌐',
+    '명조': 'Serif',
     '본문 폭': 'Width',
     '좁게': 'Narrow',
     '보통': 'Normal',

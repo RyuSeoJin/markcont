@@ -520,7 +520,7 @@
 }
 .markdown-body .ex-pane { min-width: 0; padding: 10px 16px 14px; }
 .markdown-body .ex-src { background: var(--code-bg); border-right: 1px solid var(--border); }
-.markdown-body .ex-label { font-family: var(--font); font-size: 12px; font-weight: 700; color: var(--muted); margin: 0 0 8px; letter-spacing: .01em; }
+.markdown-body .ex-label { font-family: var(--font); font-size: 12px; font-weight: 600; color: var(--muted); margin: 0 0 8px; }
 .markdown-body .ex-src .code-block { margin: 0; border: 0; border-radius: 0; background: none; }
 .markdown-body .ex-src .code-head, .markdown-body .ex-src .code-lines { display: none; }
 .markdown-body .ex-src .code-body pre, .markdown-body .ex-src > pre { padding: 0; margin: 0; border: 0; background: none; }
@@ -556,14 +556,14 @@ button, input, select { font: inherit; color: inherit; }
   height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 16px; position: relative; z-index: 40;
   background: var(--surface); border-bottom: 1px solid var(--border);
 }
-.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; white-space: nowrap; letter-spacing: -.01em; border: 0; background: none; cursor: pointer; padding: 0; }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 600; white-space: nowrap; letter-spacing: -.01em; border: 0; background: none; cursor: pointer; padding: 0; }
 .brand svg { color: var(--accent); }
 .nav-btns { display: flex; gap: 2px; }
 .doc-title {
   flex: 1; min-width: 0; font-size: 14px; color: var(--muted);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.doc-title .dirty { color: var(--accent); font-weight: 700; }
+.doc-title .dirty { color: var(--accent); font-weight: 600; }
 .actions { display: flex; align-items: center; gap: 6px; }
 .btn {
   display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px;
@@ -598,24 +598,24 @@ button, input, select { font: inherit; color: inherit; }
 .menu-item:disabled { opacity: .45; cursor: default; }
 .menu-item svg { width: 16px; height: 16px; color: var(--muted); flex: none; }
 .menu-item kbd { margin-left: auto; font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
-.menu-sep { border: 0; border-top: 1px solid var(--border); margin: 5px 4px; }
+.menu-sep { border: 0; border-top: 1px solid var(--border); margin: 4px; }
 /* 묶음 항목 (내보내기 · 도움말): 누르면 아래로 펼침 */
 .menu-sub .chev { margin-left: auto; width: 14px; height: 14px; transition: transform .15s; }
 .menu-sub[aria-expanded="true"] .chev { transform: rotate(90deg); }
 .menu-sub[aria-expanded="true"] { color: var(--accent); }
 .menu-sub[aria-expanded="true"] svg { color: var(--accent); }
 .menu-subitems { margin: 0 0 4px 17px; padding-left: 6px; border-left: 2px solid var(--border); }
-.menu-subitems .menu-item { padding: 7px 10px; font-size: 13.5px; }
+.menu-subitems .menu-item { padding: 8px 10px; font-size: 13.5px; }
 .seg { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .seg button { flex: 1; border: 0; background: none; padding: 6px 0; font-size: 13px; cursor: pointer; }
 .seg button + button { border-left: 1px solid var(--border); }
-.seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
 /* 보기 설정: 이름 | 선택지를 한 줄에, 비슷한 것끼리 묶음 */
 #settingsMenu { --menu-w: 320px; padding: 2px 6px; }
 html[lang="en"] #settingsMenu { --menu-w: 340px; }
-.set-group { padding: 5px 0; }
+.set-group { padding: 4px 0; }
 .set-group + .set-group { border-top: 1px solid var(--border); }
-.set-line { display: flex; align-items: center; gap: 10px; padding: 3px 6px; min-height: 36px; }
+.set-line { display: flex; align-items: center; gap: 8px; padding: 4px 6px; min-height: 36px; }
 .set-name { flex: 0 0 66px; font-size: 13px; line-height: 1.3; color: var(--muted); }
 html[lang="en"] .set-name { flex-basis: 84px; }
 .set-name small { display: block; font-size: 11px; opacity: .8; }
@@ -624,7 +624,7 @@ html[lang="en"] .set-name { flex-basis: 84px; }
 .size-row { display: flex; align-items: center; gap: 6px; }
 .size-row input { flex: 1; min-width: 0; accent-color: var(--accent); }
 .size-row .btn.icon { width: 28px; height: 28px; }
-.set-check { display: flex; align-items: flex-start; gap: 9px; padding: 6px 6px; border-radius: 7px; font-size: 13.5px; line-height: 1.4; cursor: pointer; }
+.set-check { display: flex; align-items: flex-start; gap: 8px; padding: 8px 6px; border-radius: 6px; font-size: 13.5px; line-height: 1.4; cursor: pointer; }
 .set-check:hover { background: var(--surface-2); }
 .set-check input { margin: 2px 0 0; flex: none; accent-color: var(--accent); }
 .set-check small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; line-height: 1.45; }
@@ -632,8 +632,8 @@ html[lang="en"] .set-name { flex-basis: 84px; }
 .check-row input { margin-top: 3px; accent-color: var(--accent); }
 .check-row small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
 .user-css { padding: 2px 6px 4px; }
-.user-css summary { font-size: 13.5px; cursor: pointer; padding: 5px 0; }
-.user-css textarea { display: block; width: 100%; margin-top: 4px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text); font: 12.5px/1.5 var(--mono); resize: vertical; }
+.user-css summary { font-size: 13.5px; cursor: pointer; padding: 4px 0; }
+.user-css textarea { display: block; width: 100%; margin-top: 4px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: 12.5px/1.5 var(--mono); resize: vertical; }
 .user-css small { display: block; color: var(--muted); font-size: 12px; margin-top: 4px; }
 
 .layout { display: flex; height: calc(100% - 56px); }
@@ -647,12 +647,12 @@ body.side-collapsed .sidebar { display: none; }
   flex: 1; height: 32px; border: 1px solid var(--border); border-radius: 8px; background: none; cursor: pointer;
   font-size: 13px; color: var(--muted);
 }
-.side-tabs button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.side-tabs button.on { background: var(--accent-soft); border-color: transparent; color: var(--accent); font-weight: 500; }
 .tab-count { font-size: 11.5px; opacity: .8; }
 .side-panel { flex: 1; min-height: 0; overflow-y: auto; padding: 0 10px 40px; }
 .side-head { display: flex; align-items: center; gap: 2px; padding: 4px 2px 8px 4px; }
-.side-head-icon { width: 17px; height: 17px; color: var(--accent); flex: none; margin-right: 4px; }
-#rootName { flex: 1; min-width: 0; font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-head-icon { width: 16px; height: 16px; color: var(--muted); flex: none; margin-right: 4px; }
+#rootName { flex: 1; min-width: 0; font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .side-btn {
   width: 28px; height: 28px; flex: none; border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center; padding: 0;
@@ -670,7 +670,7 @@ body.side-collapsed .sidebar { display: none; }
 /* 폴더 전체에서 찾기 */
 .gs-box { padding-right: 4px; gap: 4px; }
 .gs-opt {
-  height: 24px; min-width: 25px; padding: 0 4px; flex: none; border: 1px solid transparent; border-radius: 5px; background: none;
+  height: 24px; min-width: 24px; padding: 0 4px; flex: none; border: 1px solid transparent; border-radius: 4px; background: none;
   color: var(--muted); font: 600 11.5px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; cursor: pointer;
 }
 .gs-opt:hover { background: var(--surface-2); color: var(--text); }
@@ -678,7 +678,7 @@ body.side-collapsed .sidebar { display: none; }
 .gs-status { font-size: 12px; color: var(--muted); padding: 0 6px 8px; line-height: 1.5; }
 .gs-status.err { color: var(--c-red); }
 .gs-head {
-  display: flex; align-items: center; gap: 5px; width: 100%; min-height: 30px; padding: 4px 6px; border: 0; border-radius: 7px;
+  display: flex; align-items: center; gap: 6px; width: 100%; min-height: 32px; padding: 4px 6px; border: 0; border-radius: 6px;
   background: none; cursor: pointer; text-align: left; font-size: 13px; color: var(--text);
 }
 .gs-head:hover { background: var(--surface-2); }
@@ -688,7 +688,7 @@ body.side-collapsed .sidebar { display: none; }
 .gs-head .ico { width: 15px; height: 15px; flex: none; color: var(--muted); }
 .gs-name { flex: none; max-width: 62%; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gs-dir { flex: 1; min-width: 0; font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.gs-n { flex: none; font-size: 11px; color: var(--muted); background: var(--surface-2); border-radius: 9px; padding: 1px 7px; }
+.gs-n { flex: none; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .gs-line {
   display: flex; gap: 8px; width: 100%; padding: 3px 6px 3px 24px; border: 0; border-radius: 6px; background: none; cursor: pointer;
   text-align: left; font-size: 12.5px; line-height: 1.45; color: var(--text);
@@ -701,12 +701,12 @@ body.side-collapsed .sidebar { display: none; }
 .gs-more { font-size: 11.5px; color: var(--muted); padding: 2px 6px 6px 56px; }
 /* 연결 탭 */
 .side-tabs button { min-width: 0; padding: 0 2px; }
-.lk-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); padding: 10px 6px 4px; }
+.lk-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--muted); padding: 12px 6px 4px; }
 .lk-title:first-child { padding-top: 2px; }
 .lk-title .gs-n { margin-left: auto; font-weight: 400; }
 .lk-empty { font-size: 12.5px; color: var(--muted); padding: 2px 8px 4px; line-height: 1.5; }
 .lk-row {
-  display: flex; align-items: center; gap: 7px; width: 100%; min-height: 30px; padding: 4px 6px; border: 0; border-radius: 7px;
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; padding: 4px 6px; border: 0; border-radius: 6px;
   background: none; cursor: pointer; text-align: left; font-size: 13px; color: var(--text);
 }
 .lk-row:hover { background: var(--surface-2); }
@@ -723,29 +723,29 @@ body.side-collapsed .sidebar { display: none; }
 .lf-file > summary { cursor: pointer; padding: 9px 12px; font-size: 13px; font-weight: 600; background: var(--surface-2); }
 .lf-file > summary small { font-weight: 400; color: var(--muted); margin-left: 6px; }
 .lf-file .hunk { margin: 8px; }
-.tree-group { font-size: 11.5px; color: var(--muted); font-weight: 700; padding: 10px 8px 4px; }
+.tree-group { font-size: 11.5px; color: var(--muted); font-weight: 600; padding: 12px 8px 4px; }
 .tree-row {
-  display: flex; align-items: center; gap: 6px; width: 100%; min-height: 31px; padding: 4px 6px 4px var(--indent, 6px);
-  border: 0; border-radius: 7px; background: none; cursor: pointer; text-align: left; line-height: 1.35; position: relative;
+  display: flex; align-items: center; gap: 6px; width: 100%; min-height: 32px; padding: 4px 6px 4px var(--indent, 6px);
+  border: 0; border-radius: 6px; background: none; cursor: pointer; text-align: left; line-height: 1.35; position: relative;
 }
 .tree-row:hover { background: var(--surface-2); }
-.tree-row.current { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.tree-row.current { background: var(--accent-soft); color: var(--accent); font-weight: 500; box-shadow: inset 2px 0 0 var(--accent); border-radius: 0 6px 6px 0; }
 .tree-row.ctx-target { outline: 1.5px solid var(--accent); outline-offset: -1.5px; }
 .tree-row.is-hidden { opacity: .5; }
 .tree-row.is-hidden .nm { font-style: italic; }
-.tree-row.root { font-weight: 700; margin-top: 6px; }
+.tree-row.root { font-weight: 600; margin-top: 8px; }
 .tree-row.root:first-child { margin-top: 0; }
-.tree-row.root .ico { color: var(--accent); }
+.tree-row.root .ico { color: var(--muted); }
 .tree-row .chev { width: 14px; height: 14px; flex: none; color: var(--muted); transition: transform .15s; }
 .tree-row.closed .chev { transform: rotate(-90deg); }
 .tree-row .ico { width: 16px; height: 16px; flex: none; color: var(--muted); }
-.tree-row.dir .ico { color: color-mix(in srgb, var(--accent) 70%, var(--muted)); }
+.tree-row.dir .ico { color: var(--muted); }
 .tree-row.current .ico { color: var(--accent); }
 .tree-row .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tree-row .nm mark { background: var(--hl-mark, #fff1a8); color: inherit; border-radius: 2px; }
 .tree-row .cnt { font-size: 11px; color: var(--muted); flex: none; }
 .tree-row .more {
-  width: 24px; height: 24px; flex: none; border: 0; border-radius: 5px; background: none; color: var(--muted);
+  width: 24px; height: 24px; flex: none; border: 0; border-radius: 4px; background: none; color: var(--muted);
   display: none; align-items: center; justify-content: center; padding: 0; cursor: pointer;
 }
 .tree-row:hover .more, .tree-row:focus-within .more { display: inline-flex; }
@@ -755,17 +755,18 @@ body.side-collapsed .sidebar { display: none; }
 .tree-empty { padding: 14px 8px; font-size: 13px; color: var(--muted); }
 .side-empty { padding: 4px 2px; }
 .side-drop {
-  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 22px 12px;
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 24px 12px;
   border: 1.5px dashed var(--border); border-radius: 12px; transition: border-color .15s, background .15s;
 }
 .side-drop.over { border-color: var(--accent); background: var(--accent-soft); }
-.side-drop svg { width: 30px; height: 30px; color: var(--accent); margin-bottom: 4px; }
+.side-drop svg { width: 28px; height: 28px; color: var(--muted); margin-bottom: 4px; }
+.side-drop.over svg { color: var(--accent); }
 .side-drop strong { font-size: 14px; }
 .side-drop span { font-size: 12px; color: var(--muted); }
 .side-drop-btns { display: flex; gap: 6px; margin-top: 12px; }
 .side-drop-btns .btn { height: 32px; font-size: 13px; }
-.side-recent { margin-top: 18px; }
-.side-recent h3 { font-size: 11.5px; font-weight: 700; color: var(--muted); margin: 0 6px 4px; }
+.side-recent { margin-top: 20px; }
+.side-recent h3 { font-size: 11.5px; font-weight: 600; color: var(--muted); margin: 0 6px 4px; }
 .side-recent .tree-row .cnt { font-size: 11px; }
 .side-note { font-size: 13px; color: var(--muted); padding: 8px; line-height: 1.6; }
 .side-resizer { position: absolute; top: 0; right: -4px; bottom: 0; width: 8px; cursor: col-resize; z-index: 5; }
@@ -778,19 +779,19 @@ body.resizing { cursor: col-resize; user-select: none; }
 .ctx-menu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
 .ctx-menu .ctx-note { font-size: 11.5px; color: var(--muted); padding: 6px 10px 4px; line-height: 1.5; }
 .sidebar h2 {
-  font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  font-size: 12px; font-weight: 600;
   color: var(--muted); margin: 0 8px 8px; display: flex; gap: 6px;
 }
 .sidebar h2 span { text-transform: none; letter-spacing: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sidebar section + section { margin-top: 26px; }
+.sidebar section + section { margin-top: 24px; }
 .file-list { list-style: none; margin: 0; padding: 0; }
 .file-list .dir { font-size: 12px; color: var(--muted); padding: 10px 8px 4px; word-break: break-all; }
 .file-list button {
   display: block; width: 100%; text-align: left; border: 0; background: none; cursor: pointer;
-  padding: 7px 10px; border-radius: 7px; font-size: 14px; line-height: 1.4; word-break: break-all;
+  padding: 8px 10px; border-radius: 6px; font-size: 14px; line-height: 1.4; word-break: break-all;
 }
 .file-list button:hover { background: var(--surface-2); }
-.file-list button.current { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.file-list button.current { background: var(--accent-soft); color: var(--accent); font-weight: 500; box-shadow: inset 2px 0 0 var(--accent); border-radius: 0 6px 6px 0; }
 .toc a {
   display: block; padding: 5px 10px; border-radius: 6px; font-size: 13.5px; line-height: 1.45;
   color: var(--muted); text-decoration: none; border-left: 2px solid transparent;
@@ -850,13 +851,13 @@ body.resizing { cursor: col-resize; user-select: none; }
 .repl-bar { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--surface); flex: none; }
 .rf-row { display: flex; align-items: center; gap: 3px; min-width: 0; }
 .rf-row input {
-  flex: 1; min-width: 60px; height: 30px; padding: 0 9px; border: 1px solid var(--border); border-radius: 7px; outline: 0;
+  flex: 1; min-width: 60px; height: 32px; padding: 0 8px; border: 1px solid var(--border); border-radius: 8px; outline: 0;
   background: var(--bg); color: var(--text); font: 13px var(--mono);
 }
 .rf-row input:focus { border-color: var(--accent); }
 .rf-row input.err { border-color: var(--c-red); }
 .rf-count { flex: none; min-width: 48px; text-align: center; font-size: 12px; color: var(--muted); white-space: nowrap; }
-.rf-row .btn { flex: none; height: 30px; padding: 0 10px; font-size: 12.5px; }
+.rf-row .btn { flex: none; height: 32px; padding: 0 10px; font-size: 12.5px; }
 .rf-row .btn.icon { width: 28px; padding: 0; }
 .rf-row .gs-opt { height: 26px; }
 @media (max-width: 420px) { #chgTabs button { font-size: 12px; padding-left: 2px; padding-right: 2px; } }
@@ -995,13 +996,16 @@ body.resizing { cursor: col-resize; user-select: none; }
 .preview-pane { overflow-y: auto; min-height: 0; padding: 44px 40px 120px; position: relative; }
 .doc-meta { max-width: var(--doc-width, 820px); margin: 0 auto 28px; font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
 .meta-loc { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
-.meta-loc .loc-text { color: var(--text); font-weight: 600; overflow-wrap: anywhere; }
+.meta-loc .loc-text { color: var(--text); font-weight: 500; overflow-wrap: anywhere; }
+.loc-icon { display: inline-flex; color: var(--muted); }
+.loc-icon svg { width: 14px; height: 14px; }
 .meta-btn {
   border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 6px; font-size: 12px;
   padding: 1px 8px; cursor: pointer;
 }
 .meta-btn:hover { color: var(--accent); border-color: var(--accent); }
-.meta-compat { display: inline-block; width: auto; align-self: flex-start; border: 1px solid color-mix(in srgb, var(--c-amber) 45%, var(--border)); background: color-mix(in srgb, var(--c-amber) 9%, var(--surface)); color: var(--c-amber); border-radius: 999px; font-size: 12px; padding: 2px 10px; cursor: pointer; margin-top: 6px; }
+.meta-compat { display: inline-block; width: auto; align-self: flex-start; border: 1px solid color-mix(in srgb, var(--c-amber) 45%, var(--border)); background: color-mix(in srgb, var(--c-amber) 9%, var(--surface)); color: var(--c-amber); border-radius: 6px; font-size: 12px; padding: 2px 8px; cursor: pointer; margin-top: 4px; display: inline-flex; align-items: center; gap: 6px; }
+.meta-compat svg { width: 14px; height: 14px; flex: none; }
 .meta-compat:hover { border-color: var(--c-amber); }
 .compat-list { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 4px; }
 .compat-row { display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: baseline; border: 0; border-bottom: 1px solid var(--border); background: none; text-align: left; padding: 8px 12px; cursor: pointer; font-size: 13.5px; color: var(--text); }
@@ -1043,24 +1047,25 @@ body.resizing { cursor: col-resize; user-select: none; }
 .welcome { height: 100%; overflow-y: auto; display: flex; align-items: center; justify-content: center; padding: 32px 16px; }
 .welcome-card {
   width: 100%; max-width: 660px; text-align: center; padding: 44px 36px;
-  border: 2px dashed var(--border); border-radius: 18px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 16px; background: var(--surface);
 }
-.welcome-card h1 { font-size: 26px; letter-spacing: -.02em; margin: 14px 0 8px; }
-.welcome-card p { color: var(--muted); margin: 0 0 26px; line-height: 1.7; }
+.welcome-card h1 { font-size: 26px; font-weight: 600; letter-spacing: -.02em; margin: 16px 0 8px; }
+.welcome-card p { color: var(--muted); margin: 0 0 24px; line-height: 1.7; }
 .welcome-card .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-.welcome-card .btn { height: 40px; padding: 0 18px; font-size: 14.5px; }
+.welcome-card .btn { height: 40px; padding: 0 16px; font-size: 14.5px; }
 .welcome-icon { width: 56px; height: 56px; color: var(--accent); }
-.features-wrap { margin-top: 30px; padding-top: 22px; border-top: 1px solid var(--border); text-align: left; }
-.features-head { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .04em; margin: 0 0 10px 4px; }
+.features-wrap { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border); text-align: left; }
+.features-head { font-size: 12px; font-weight: 600; color: var(--muted); margin: 0 0 8px 4px; }
 .features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .feat {
   display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 12px;
-  background: var(--surface-2); text-align: left; cursor: pointer; transition: border-color .15s, transform .15s;
+  background: var(--surface-2); text-align: left; cursor: pointer; transition: border-color .15s;
 }
-.feat:hover { border-color: var(--accent); transform: translateY(-1px); }
-.feat-ico { font-size: 20px; line-height: 1; flex: none; width: 24px; text-align: center; margin-top: 1px; }
-.feat-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.feat-text b { font-size: 13.5px; }
+.feat:hover { border-color: color-mix(in srgb, var(--text) 24%, var(--border)); }
+.feat-ico { flex: none; display: inline-flex; color: var(--muted); margin-top: 1px; }
+.feat-ico svg { width: 18px; height: 18px; }
+.feat-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.feat-text b { font-size: 13.5px; font-weight: 600; }
 .feat-text span { font-size: 12px; color: var(--muted); line-height: 1.5; }
 .features-links { display: flex; gap: 14px; justify-content: center; margin-top: 14px; }
 .features-links button { border: 0; background: none; color: var(--accent); font-size: 13px; cursor: pointer; padding: 2px 4px; }
@@ -1217,14 +1222,16 @@ body.zen .zen-exit:hover { opacity: 1; }
   transition: left .25s, top .25s;
 }
 .tour-card.center { transition: none; left: 50% !important; top: 50% !important; transform: translate(-50%, -50%); width: min(420px, calc(100vw - 32px)); text-align: center; }
-.tour-step { font-size: 12px; color: var(--accent); font-weight: 700; letter-spacing: .02em; margin-bottom: 6px; }
-.tour-card h3 { margin: 0 0 8px; font-size: 18px; letter-spacing: -.01em; }
+.tour-step { font-size: 12px; color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; margin-bottom: 8px; }
+.tour-card h3 { margin: 0 0 8px; font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
 .tour-card p { margin: 0 0 14px; font-size: 14.5px; line-height: 1.7; color: var(--muted); }
 .tour-card p b { color: var(--text); }
 .tour-card .tour-emoji { font-size: 40px; display: block; margin-bottom: 6px; }
 .tour-dots { display: flex; gap: 5px; margin-bottom: 14px; }
 .tour-lang { margin: -2px 0 16px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
-.tour-lang-label { display: block; font-size: 12.5px; font-weight: 700; color: var(--muted); margin-bottom: 7px; }
+.tour-lang-label { display: block; font-size: 12.5px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
+.net-ico { display: inline-flex; vertical-align: -2px; margin-left: 2px; color: var(--muted); }
+.net-ico svg { width: 13px; height: 13px; }
 .tour-lang .seg { background: var(--surface); }
 .tour-lang .seg button { padding: 8px 0; font-size: 14px; color: var(--text); }
 .tour-lang .seg button.on { color: var(--accent); }
@@ -1398,7 +1405,7 @@ body.zen .zen-exit:hover { opacity: 1; }
           </div>
           <div class="set-line">
             <span class="set-name">글꼴</span>
-            <div class="seg" id="fontSeg"><button data-v="sans">고딕</button><button data-v="serif" title="명조 글꼴은 Google Fonts에서 받습니다 (인터넷 필요)">명조 🌐</button></div>
+            <div class="seg" id="fontSeg"><button data-v="sans">고딕</button><button data-v="serif" title="명조 글꼴은 Google Fonts에서 받습니다 (인터넷 필요)">명조 <span class="net-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span></button></div>
           </div>
         </div>
         <div class="set-group">
@@ -1630,15 +1637,15 @@ body.zen .zen-exit:hover { opacity: 1; }
           <div class="features-head">markcont로 할 수 있는 것</div>
           <div class="features">
           <button class="feat" type="button" data-feat="features">
-            <span class="feat-ico">✏️</span>
+            <span class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></span>
             <span class="feat-text"><b>실시간 편집</b><span>원본과 결과를 나란히, 고친 곳 표시와 되돌리기 기록</span></span>
           </button>
           <button class="feat" type="button" data-feat="rules">
-            <span class="feat-ico">🤖</span>
+            <span class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 2 2 4-4M3 17l2 2 4-4M13 6h8M13 12h8M13 18h8"/></svg></span>
             <span class="feat-text"><b>AI로 보기 좋게 다듬기</b><span>작성 규칙을 AI에게 주거나 Claude와 연결해서 문서 정리</span></span>
           </button>
           <button class="feat" type="button" data-feat="guide#save">
-            <span class="feat-ico">💾</span>
+            <span class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg></span>
             <span class="feat-text"><b>저장 · 내보내기</b><span>저장 전 확인, 새 파일로 저장, PDF · HTML</span></span>
           </button>
           </div>
@@ -2389,8 +2396,8 @@ body.zen .zen-exit:hover { opacity: 1; }
         const out = md.render(stripNotes(src), { nested: true, depth: depth + 1, docId: 'ex' + depth + '-' + idx }); // docId: 예시 안 각주 번호가 본문과 겹치지 않게
         const line = t.map && !depth ? ` data-line="${t.map[0]}" data-end="${t.map[1]}"` : ''; // data-end: 스크롤 맞춤이 원본 줄을 '이렇게 쓰면' 칸에 맞추는 데 씀
         return `<div class="md-example"${line}>` +
-          `<div class="ex-pane ex-src"><div class="ex-label">${L('✏️ 이렇게 쓰면', '✏️ Write this')}</div><pre><code class="language-markdown">${hl}</code></pre></div>` +
-          `<div class="ex-pane ex-out"><div class="ex-label">${L('👀 이렇게 보입니다', '👀 Looks like this')}</div><div class="ex-body">${out}</div></div></div>\n`;
+          `<div class="ex-pane ex-src"><div class="ex-label">${L('이렇게 쓰면', 'Write this')}</div><pre><code class="language-markdown">${hl}</code></pre></div>` +
+          `<div class="ex-pane ex-out"><div class="ex-label">${L('이렇게 보입니다', 'Looks like this')}</div><div class="ex-body">${out}</div></div></div>\n`;
       }
       // 제목 · 줄 강조: 언어 이름만 남겨 색을 넣고, 제목 · 강조할 줄은 <pre> 에 적어 둠 (그린 뒤 postProcess 가 머리줄 · 띠로)
       const cm = codeMeta(t.info);
@@ -4019,21 +4026,28 @@ body.zen .zen-exit:hover { opacity: 1; }
     $('#tocEmpty').hidden = !el.tocSection.hidden;
   }
 
+  const LOC_ICO = {
+    book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5zM4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>',
+    fileNew: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M12 18v-6M9 15h6"/></svg>',
+    folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+    file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>',
+    clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  };
   // 이 문서가 어디에 있는 파일인지 (열린 방식에 따라 알 수 있는 만큼)
   function describeLocation(e) {
     if (!e) return {};
     const dirOf = (p) => p.replace(/[\\/][^\\/]*$/, '');
-    if (e.builtin) return { icon: '📘', short: L('markcont 안내 문서', 'markcont built-in document'), note: L('앱에 들어 있는 문서입니다. 고친 내용은 새 파일로 저장됩니다.', 'This document comes with the app. Your edits are saved as a new file.') };
-    if (e.isNew) return { icon: '📝', short: L('아직 저장하지 않은 새 문서', 'New document, not saved yet'), note: L('저장하면 위치를 정할 수 있습니다.', 'You can choose where to put it when you save.') };
-    if (e.tauriPath) return { icon: '📁', short: dirOf(e.tauriPath), full: e.tauriPath, reveal: true };
+    if (e.builtin) return { icon: 'book', short: L('markcont 안내 문서', 'markcont built-in document'), note: L('앱에 들어 있는 문서입니다. 고친 내용은 새 파일로 저장됩니다.', 'This document comes with the app. Your edits are saved as a new file.') };
+    if (e.isNew) return { icon: 'fileNew', short: L('아직 저장하지 않은 새 문서', 'New document, not saved yet'), note: L('저장하면 위치를 정할 수 있습니다.', 'You can choose where to put it when you save.') };
+    if (e.tauriPath) return { icon: 'folder', short: dirOf(e.tauriPath), full: e.tauriPath, reveal: true };
     if (!e.loose) {
       const r = rootOf(e.path);
-      return { icon: '📁', short: e.path, full: e.path, note: r && r.kind === 'handle' ? L(`'${r.name}' 폴더 안의 파일입니다. 그 폴더가 컴퓨터의 어디에 있는지는 브라우저가 알려주지 않습니다.`, `A file in the '${r.name}' folder. The browser doesn't tell where that folder is on your computer.`) : '' };
+      return { icon: 'folder', short: e.path, full: e.path, note: r && r.kind === 'handle' ? L(`'${r.name}' 폴더 안의 파일입니다. 그 폴더가 컴퓨터의 어디에 있는지는 브라우저가 알려주지 않습니다.`, `A file in the '${r.name}' folder. The browser doesn't tell where that folder is on your computer.`) : '' };
     }
-    if (e.handle) return { icon: '📄', short: e.name, note: L('Chrome · Edge는 보안 때문에 파일의 전체 위치를 알려주지 않습니다. 그 파일이 든 폴더를 "폴더 열기"로 열면 트리에서 위치를 볼 수 있고, PC 프로그램에서는 전체 경로가 보입니다.', 'For security, Chrome and Edge don\'t reveal a file\'s full location. Open its folder with "Open folder" to see where it sits in the tree; the PC app shows the full path.') };
-    if (e.fromRecent) return { icon: '🕘', short: L('최근 문서 기록', 'Recent document copy'), note: L('마지막으로 열었을 때 기록해 둔 내용입니다. 원래 파일과 연결되어 있지 않아서, 저장하면 새 파일로 저장됩니다.', 'The content saved when you last opened it. It isn\'t linked to the original file, so saving creates a new file.') };
-    if (e.file) return { icon: '📄', short: e.name + L(' (복사본)', ' (copy)'), note: L('원래 파일 위치를 알 수 없는 방식으로 열렸습니다. 저장하면 새 파일로 저장됩니다. "파일 열기" 단추로 다시 열면 원래 파일에 저장할 수 있습니다.', 'Opened in a way that hides the original location, so saving creates a new file. Reopen it with "Open file" to save to the original.') };
-    return { icon: '📄', short: e.path };
+    if (e.handle) return { icon: 'file', short: e.name, note: L('Chrome · Edge는 보안 때문에 파일의 전체 위치를 알려주지 않습니다. 그 파일이 든 폴더를 "폴더 열기"로 열면 트리에서 위치를 볼 수 있고, PC 프로그램에서는 전체 경로가 보입니다.', 'For security, Chrome and Edge don\'t reveal a file\'s full location. Open its folder with "Open folder" to see where it sits in the tree; the PC app shows the full path.') };
+    if (e.fromRecent) return { icon: 'clock', short: L('최근 문서 기록', 'Recent document copy'), note: L('마지막으로 열었을 때 기록해 둔 내용입니다. 원래 파일과 연결되어 있지 않아서, 저장하면 새 파일로 저장됩니다.', 'The content saved when you last opened it. It isn\'t linked to the original file, so saving creates a new file.') };
+    if (e.file) return { icon: 'file', short: e.name + L(' (복사본)', ' (copy)'), note: L('원래 파일 위치를 알 수 없는 방식으로 열렸습니다. 저장하면 새 파일로 저장됩니다. "파일 열기" 단추로 다시 열면 원래 파일에 저장할 수 있습니다.', 'Opened in a way that hides the original location, so saving creates a new file. Reopen it with "Open file" to save to the original.') };
+    return { icon: 'file', short: e.path };
   }
   function fmtModified(t) {
     if (!t) return '';
@@ -4061,7 +4075,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     el.docMeta.innerHTML = '';
     const line = document.createElement('div');
     line.className = 'meta-loc';
-    line.innerHTML = `<span class="loc-icon">${loc.icon || '📄'}</span><span class="loc-text"></span>`;
+    line.innerHTML = `<span class="loc-icon">${LOC_ICO[loc.icon] || LOC_ICO.file}</span><span class="loc-text"></span>`;
     line.querySelector('.loc-text').textContent = loc.short || cur.path;
     line.title = loc.full || loc.short || cur.path;
     const cp = loc.full ? copyPathOf(cur.path, cur) : null;
@@ -5218,9 +5232,10 @@ body.zen .zen-exit:hover { opacity: 1; }
     const b = old || document.createElement('button');
     b.type = 'button';
     b.className = 'meta-compat';
-    b.textContent = r.problems
-      ? L(`⚠ 문서 점검 ${r.problems}곳`, `⚠ ${r.problems} issue${r.problems === 1 ? '' : 's'} found`) + (r.compat ? L(` · 다른 뷰어 ${r.compat}곳`, ` · ${r.compat} differ in other viewers`) : '')
-      : L(`⚠ 다른 뷰어에서 다르게 보이는 곳 ${r.compat}곳`, `⚠ ${r.compat} spot${r.compat === 1 ? '' : 's'} look different in other viewers`);
+    b.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS.warn}</svg>`;
+    b.append(r.problems
+      ? L(`문서 점검 ${r.problems}곳`, `${r.problems} issue${r.problems === 1 ? '' : 's'} found`) + (r.compat ? L(` · 다른 뷰어 ${r.compat}곳`, ` · ${r.compat} differ in other viewers`) : '')
+      : L(`다른 뷰어에서 다르게 보이는 곳 ${r.compat}곳`, `${r.compat} spot${r.compat === 1 ? '' : 's'} look different in other viewers`));
     b.title = L('깨진 링크 · 제목 단계 · 각주 · 표 · 긴 문장 · 작성 규칙과, GitHub · VS Code 같은 다른 뷰어에서 다르게 보이는 곳을 모아 봅니다. 눌러서 목록을 보세요.', 'Broken links, heading levels, footnotes, tables, long sentences, writing rules, and spots that look different in viewers like GitHub or VS Code. Click to see the list.');
     b.onclick = openCompat;
     if (!old) el.docMeta.insertBefore(b, el.docMeta.querySelector('.meta-note'));
@@ -8925,7 +8940,7 @@ ${clone.innerHTML}
      처음 사용 안내 (튜토리얼): 처음 한 번 자동으로, ⋯ 메뉴에서 다시 보기
      ========================================================= */
   const TOUR = [
-    { center: true, emoji: '👋', lang: true, title: L('markcont에 오신 것을 환영합니다', 'Welcome to markcont'),
+    { center: true, lang: true, title: L('markcont 둘러보기', 'A quick tour of markcont'),
       text: L('마크다운 파일을 <b>보기 좋게 보고, 바로 고치는</b> 뷰어입니다.<br>주요 기능을 1분 만에 둘러볼게요.', 'A viewer that lets you <b>read markdown beautifully and edit it on the spot</b>.<br>Let\'s tour the main features in a minute.'), next: L('둘러보기 시작', 'Start the tour') },
     { target: '#btnOpen', mobile: '#btnMore', title: L('파일 열기', 'Open file'),
       text: L('<b>파일 열기</b>로 .md 파일을 엽니다.<br>파일을 창 위에 <b>끌어다 놓아도</b> 열려요. <b>Ctrl+O</b> 를 누르면 이름이나 초성으로 찾아 바로 열 수 있어요.', 'Open a .md file with <b>Open file</b>.<br>You can also <b>drag and drop</b> a file onto the window. Press <b>Ctrl+O</b> to find a file by name and open it right away.'),
@@ -8944,7 +8959,7 @@ ${clone.innerHTML}
       text: L('<b>⋯</b> 메뉴에 문서에서 찾기, 집중 모드, 발표하기가 있어요.<br><b>내보내기</b>에서 HTML · Word · PDF로 저장하고, <b>도움말</b>에서 사용 안내서와 작성 규칙을 열어요.', 'The <b>⋯</b> menu has find in document, focus mode and presenting.<br>Save as HTML · Word · PDF under <b>Export</b>, and open the user guide and writing rules under <b>Help</b>.'),
       mobileText: L('<b>⋯</b> 메뉴에 파일 · 폴더 열기, 보기 설정, 찾기, 집중 모드가 있어요.<br><b>내보내기</b>에서 PDF로 저장하고, <b>도움말</b>에서 사용 안내서를 열어요.', 'The <b>⋯</b> menu has open file · folder, view settings, find and focus mode.<br>Save as PDF under <b>Export</b>, and open the user guide under <b>Help</b>.') },
     { target: '#btnTheme', title: L('밝게 · 어둡게', 'Light · Dark'), text: L('눈이 편한 쪽으로 테마를 바꿉니다.', 'Switch to whichever theme is easier on your eyes.') },
-    { center: true, emoji: '🎉', title: L('준비 끝!', 'All set!'),
+    { center: true, title: L('준비 끝', 'All set'),
       text: L('지금 열린 문서는 <b>사용 안내서</b>예요. 천천히 읽어 보세요.<br>이 안내는 <b>⋯ → 도움말 → 처음 사용 안내 다시 보기</b>로 언제든 다시 볼 수 있습니다.', 'The open document is the <b>User guide</b>. Take your time reading it.<br>You can replay this tour anytime from <b>⋯ → Help → Replay the tour</b>.'),
       next: L('시작하기', 'Get started'), alt: L('내 파일 열기', 'Open my file') },
   ];
@@ -8991,7 +9006,7 @@ ${clone.innerHTML}
     if (s.emoji) { $('#tourText').prepend($('#tourText').querySelector('.tour-emoji')); }
     const tl = $('#tourLang');
     tl.hidden = !s.lang;
-    if (s.lang) tl.innerHTML = '<span class="tour-lang-label">🌐 언어 · Language</span><div class="seg">' +
+    if (s.lang) tl.innerHTML = '<span class="tour-lang-label">언어 · Language</span><div class="seg">' +
       [['ko', '한국어'], ['en', 'English']].map(([v, t]) => `<button type="button" data-v="${v}" class="${v === LANG ? 'on' : ''}">${t}</button>`).join('') + '</div>';
     $('#tourDots').innerHTML = tour.steps.map((_, i) => `<span class="${i === tour.i ? 'on' : ''}"></span>`).join('');
     const last = tour.i === tour.steps.length - 1;
