@@ -41,7 +41,7 @@ irm https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.ps1 | iex
 curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh | sh
 ```
 
-직접 받으려면 [Releases](https://github.com/RyuSeoJin/markcont/releases/latest)에서 Windows는 `-setup.exe`, macOS는 `.dmg`, Linux는 `.AppImage` · `.deb` · `.rpm`을 받으면 됩니다.
+직접 받으려면 [Releases](https://github.com/RyuSeoJin/markcont/releases/latest)에서 Windows는 `-setup.exe`, macOS는 `.dmg`, Linux는 `.AppImage` · `.deb`를 받으면 됩니다.
 
 > [!NOTE]
 > 코드 서명 인증서가 없어서 처음 실행할 때 경고가 뜰 수 있습니다. Windows는 **추가 정보 → 실행**, macOS는 앱을 **오른쪽 클릭 → 열기**로 열어 주세요.

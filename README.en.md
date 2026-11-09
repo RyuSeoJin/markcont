@@ -39,7 +39,7 @@ irm https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.ps1 | iex
 curl -fsSL https://raw.githubusercontent.com/RyuSeoJin/markcont/main/install.sh | sh
 ```
 
-Or grab a file from [Releases](https://github.com/RyuSeoJin/markcont/releases/latest): `-setup.exe` for Windows, `.dmg` for macOS, `.AppImage` / `.deb` / `.rpm` for Linux.
+Or grab a file from [Releases](https://github.com/RyuSeoJin/markcont/releases/latest): `-setup.exe` for Windows, `.dmg` for macOS, `.AppImage` / `.deb` for Linux.
 
 > [!NOTE]
 > The builds aren't code-signed, so you may see a warning the first time. On Windows choose **More info → Run anyway**; on macOS **right-click the app → Open**.

@@ -23,7 +23,8 @@ jobs:
           - platform: macos-latest
             args: '--target universal-apple-darwin'
           - platform: ubuntu-22.04
-            args: ''
+            # .rpm 은 만들지 않음 (내려받기 안내도 .AppImage · .deb 만)
+            args: '--bundles appimage,deb'
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
@@ -110,3 +111,22 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+  # 서명(.sig) 파일은 내용이 이미 latest.json 안에 들어 있어서(PC 프로그램은 거기서 읽음),
+  # 세 운영체제 빌드가 모두 끝나면 내려받기 목록에서 지웁니다. 하나라도 실패하면 건너뜁니다.
+  tidy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 서명 파일(.sig) 지우기
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          TAG="v$(node -p "require('./package.json').version")"
+          gh release view "$TAG" --json assets --jq '.assets[].name | select(endswith(".sig"))' | while read -r NAME; do
+            gh release delete-asset "$TAG" "$NAME" --yes
+            echo "지움: $NAME"
+          done
