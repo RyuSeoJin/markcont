@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "markcont",
   "mainBinaryName": "markcont",
-  "version": "1.9.7",
+  "version": "1.10.0",
   "identifier": "com.markcont.app",
   "build": {
     "frontendDist": "../app"
@@ -27,6 +27,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "shortDescription": "markcont 마크다운 뷰어",
     "longDescription": "마크다운 파일을 보기 좋게 보고 편집하는 뷰어",
@@ -51,6 +52,13 @@
         "languages": ["Korean", "English"],
         "displayLanguageSelector": false
       }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDRDMjQ4OTI0MDgzNDg2MUEKUldRYWhqUUlKSWtrVExleHBKY0xyYVg1UWY0VzYvaWtmOUZ2YnRjM0lETW53a1B1aGg5Zy9XUkIK",
+      "endpoints": ["https://github.com/RyuSeoJin/markcont/releases/latest/download/latest.json"],
+      "windows": { "installMode": "passive" }
     }
   }
 }

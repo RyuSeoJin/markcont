@@ -1142,6 +1142,18 @@ body.zen .zen-exit:hover { opacity: 1; }
 .modal-foot { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--border); }
 .modal-foot:empty { display: none; }
 .chg-help { font-size: 13px; color: var(--muted); margin: 0 0 12px; line-height: 1.6; }
+/* 새 버전 알림 (PC 프로그램) */
+#updModal .modal-card { width: min(560px, 100%); }
+.upd-now { margin: 0 0 4px; font-size: 13px; color: var(--muted); }
+.upd-notes h4 { margin: 14px 0 4px; font-size: 14px; }
+.upd-notes h4 small { margin-left: 6px; font-weight: 400; color: var(--muted); }
+.upd-notes ul { margin: 0; padding-left: 20px; }
+.upd-notes li { margin: 3px 0; line-height: 1.6; font-size: 13.5px; }
+.upd-notes .upd-plain { white-space: pre-wrap; font-size: 13.5px; line-height: 1.6; }
+.upd-notes .upd-wait { color: var(--muted); font-size: 13px; padding: 12px 0; }
+.upd-hint { margin-right: auto; font-size: 12.5px; color: var(--muted); }
+.upd-bar { flex: 1; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.upd-bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
 .chg-empty { color: var(--muted); padding: 20px 0; text-align: center; }
 .chg-del { color: var(--c-red); font-weight: 600; }
 .chg-add { color: var(--c-green); font-weight: 600; }
@@ -1440,6 +1452,7 @@ body.zen .zen-exit:hover { opacity: 1; }
           <label class="set-check"><input type="checkbox" id="optConfirmSave"><span>저장하기 전에 바뀐 내용 확인<small>저장할 때 무엇이 바뀌는지 먼저 보여주고 한 번 더 묻습니다</small></span></label>
           <label class="set-check"><input type="checkbox" id="optSync"><span>편집할 때 스크롤 맞추기<small>원본과 미리보기가 같은 위치를 보여줍니다</small></span></label>
           <label class="set-check"><input type="checkbox" id="optCompat"><span>문서 점검 안내 보기<small>깨진 링크 · 제목 단계 · 표 · 긴 문장, 다른 뷰어에서 다르게 보이는 곳을 문서 위에 알려 줍니다 (문서 정보 「뷰어: markcont」 면 그 문서는 다른 뷰어 안내만 끔)</small></span></label>
+          <label class="set-check" id="optUpdateRow" hidden><input type="checkbox" id="optUpdate"><span>시작할 때 새 버전 확인<small>PC 프로그램이 하루에 한 번 GitHub에서 새 버전이 있는지 봅니다. 문서 내용은 보내지 않습니다</small></span></label>
         </div>
         <div class="set-group">
           <div class="set-line">
@@ -1554,6 +1567,10 @@ body.zen .zen-exit:hover { opacity: 1; }
           <button class="menu-item" id="mLicenses">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
             오픈소스 라이선스
+          </button>
+          <button class="menu-item" id="mUpdate" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>
+            업데이트 확인
           </button>
         </div>
         <div class="menu-version" id="appVersion"></div>
@@ -1820,6 +1837,16 @@ body.zen .zen-exit:hover { opacity: 1; }
     <div class="modal-body" id="mcpBody"></div>
   </div>
 </div>
+<!-- 새 버전 알림 (PC 프로그램) -->
+<div class="modal" id="updModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="updTitle">
+    <div class="modal-head"><div class="modal-title" id="updTitle">새 버전</div>
+      <button class="btn icon ghost" id="updX" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body" id="updBody"></div>
+    <div class="modal-foot" id="updFoot"></div>
+  </div>
+</div>
 
 <!-- 바뀐 내용 · 되돌리기 기록 -->
 <div class="modal" id="changesModal" hidden>
@@ -1935,7 +1962,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   /* =========================================================
      설정 (글자 크기, 글꼴, 폭, 줄바꿈, 스크롤 맞춤)
      ========================================================= */
-  const settings = Object.assign({ size: 16.5, font: 'sans', width: 'normal', lh: 'normal', para: 'normal', tint: 'plain', sync: true, compatHint: true, callout: 'soft', lines: false, headNum: false, confirmSave: true, mcpSuggest: false }, store.json('mdv-settings', {}));
+  const settings = Object.assign({ size: 16.5, font: 'sans', width: 'normal', lh: 'normal', para: 'normal', tint: 'plain', sync: true, compatHint: true, callout: 'soft', lines: false, headNum: false, confirmSave: true, mcpSuggest: false, updateCheck: true }, store.json('mdv-settings', {}));
   delete settings.breaks; // 없앤 설정 (엔터 한 번도 줄바꿈으로 보기)
   const WIDTHS = { narrow: '680px', normal: '820px', wide: '1060px' };
   const LINE_H = { tight: '1.6', normal: '1.8', loose: '2.05' }, PARA_GAP = { tight: '.7em', normal: '1.1em', loose: '1.6em' };
@@ -1978,6 +2005,7 @@ body.zen .zen-exit:hover { opacity: 1; }
     $('#optConfirmSave').checked = settings.confirmSave;
     $('#optCompat').checked = settings.compatHint !== false;
     $('#optSync').checked = settings.sync;
+    $('#optUpdate').checked = settings.updateCheck !== false;
     store.set('mdv-settings', JSON.stringify(settings));
     if (rerender) { buildMd(); render(true); }
   }
@@ -2012,6 +2040,7 @@ body.zen .zen-exit:hover { opacity: 1; }
   $('#optHeadNum').onchange = (e) => { settings.headNum = e.target.checked; applySettings(true); };
   $('#optConfirmSave').onchange = (e) => { settings.confirmSave = e.target.checked; applySettings(); };
   $('#optSync').onchange = (e) => { settings.sync = e.target.checked; applySettings(); };
+  $('#optUpdate').onchange = (e) => { settings.updateCheck = e.target.checked; applySettings(); };
   $('#optCompat').onchange = (e) => { settings.compatHint = e.target.checked; applySettings(); if (state.current) updateMeta(source()); };
 
   /* =========================================================
@@ -8669,6 +8698,7 @@ ${clone.innerHTML}
       { ko: '사이드바 열기 · 닫기', en: 'Show · hide sidebar', run: () => $('#btnSidebar').click() },
       { ko: 'Claude와 연결 (MCP)', en: 'Connect to Claude (MCP)', run: openMcp },
       { ko: '처음 사용 안내 다시 보기', en: 'Show the tour again', run: () => $('#mTour').click() },
+      { ko: '업데이트 확인', en: 'Check for updates', when: isTauri(), run: () => checkUpdate({ manual: true }) },
       { ko: '언어: English', en: 'Language: 한국어', run: () => document.querySelector(`#langSeg button[data-v="${lang}"]`).click() },
     ].filter((c) => c.when !== false).map((c) => ({ kind: 'cmd', label: L(c.ko, c.en), alt: L(c.en, c.ko), altShow: true, kbd: c.kbd, run: c.run }));
   }
@@ -8953,7 +8983,7 @@ ${clone.innerHTML}
 
   applySettings();
   // 버전 표시 (새 버전을 낼 때 package.json · tauri.conf.json 과 함께 올리세요)
-  const APP_VERSION = '1.9.7';
+  const APP_VERSION = '1.10.0';
   $('#appVersion').textContent = `markcont v${APP_VERSION} · ${window.__TAURI__ ? L('PC 프로그램', 'PC app') : L('웹 앱', 'web app')}`;
   setSideTab(side.tab);
   renderFileList();
@@ -8996,6 +9026,168 @@ ${clone.innerHTML}
   }));
   $('#mRules').onclick = () => openBuiltinDoc('rules');
   $('#mLicenses').onclick = () => openBuiltinDoc('licenses');
+
+  /* =========================================================
+     새 버전 알림 · 업데이트 (PC 프로그램)
+     하루에 한 번 GitHub Releases 의 latest.json 을 확인합니다 (src-tauri/src/update.rs, 서명이 맞는 파일만 설치).
+     바뀐 점은 웹 앱 주소의 docs/changelog.md 에서 읽어, 지금 버전 다음부터 새 버전까지 보여 줍니다.
+     ========================================================= */
+  const UPD_CHECKED = 'mdv-update-checked';
+  const CHANGELOG_URL = 'https://ryuseojin.github.io/markcont/docs/' + L('changelog.md', 'changelog.en.md');
+  const upd = { busy: false, installing: false, info: null };
+  const verNums = (v) => String(v).replace(/^v/, '').split(/[.+-]/).slice(0, 3).map((n) => parseInt(n, 10) || 0);
+  function verCmp(a, b) {
+    const x = verNums(a), y = verNums(b);
+    for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0);
+    return 0;
+  }
+  // 바뀐 점 파일 → [{ version, date, items }] ("## 1.10.0 · 2026-11-09" 아래의 "- " 줄들)
+  function parseChangelog(text) {
+    const out = [];
+    let cur = null;
+    for (const line of toLF(text).split('\n')) {
+      const h = /^##\s+v?(\d+\.\d+\.\d+)\s*(?:·\s*(.*))?$/.exec(line.trim());
+      if (h) { cur = { version: h[1], date: (h[2] || '').trim(), items: [] }; out.push(cur); continue; }
+      if (/^#{1,6}\s/.test(line)) { cur = null; continue; }
+      if (!cur) continue;
+      const li = /^\s*[-*]\s+(.*)$/.exec(line);
+      if (li) cur.items.push(li[1].trim());
+      else if (line.trim() && cur.items.length) cur.items[cur.items.length - 1] += ' ' + line.trim();
+    }
+    return out;
+  }
+  async function fetchChangelog() {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    try {
+      const res = await fetch(CHANGELOG_URL, { signal: ctrl.signal, cache: 'no-store' });
+      if (!res.ok) throw new Error(res.status);
+      return parseChangelog(await res.text());
+    } catch { return null; } finally { clearTimeout(timer); }
+  }
+  // 바뀐 점 목록 (글은 textContent 로만 넣음)
+  function updNotesFrom(info, log) {
+    const box = document.createDocumentFragment();
+    const list = (log || []).filter((v) => verCmp(v.version, info.current) > 0 && verCmp(v.version, info.version) <= 0);
+    for (const v of list) {
+      const h = document.createElement('h4');
+      h.textContent = 'v' + v.version;
+      if (v.date) { const d = document.createElement('small'); d.textContent = v.date; h.append(d); }
+      const ul = document.createElement('ul');
+      for (const it of v.items) { const li = document.createElement('li'); li.textContent = it.replace(/\*\*|`/g, ''); ul.append(li); }
+      box.append(h, ul);
+    }
+    if (list.length) return box;
+    // 바뀐 점 파일을 못 읽으면 Releases 설명(새 버전 것만)으로
+    const plain = String(info.notes || '').replace(/\r/g, '').split(/\n##\s*(?:내려받기|Download)/)[0].replace(/^#{1,6}\s.*$/gm, '').trim();
+    const p = document.createElement('div');
+    p.className = plain ? 'upd-plain' : 'upd-wait';
+    p.textContent = plain || L('바뀐 점은 GitHub Releases 페이지에서 볼 수 있습니다.', 'You can see what changed on the GitHub Releases page.');
+    box.append(p);
+    return box;
+  }
+  function renderUpdFoot() {
+    const foot = $('#updFoot'), info = upd.info;
+    foot.innerHTML = '';
+    $('#updX').disabled = upd.installing;
+    if (upd.installing) {
+      const bar = document.createElement('div');
+      bar.className = 'upd-bar';
+      bar.append(document.createElement('i'));
+      const t = document.createElement('span');
+      t.className = 'upd-hint';
+      t.id = 'updPct';
+      t.style.margin = '0';
+      t.textContent = L('내려받는 중…', 'Downloading…');
+      foot.append(bar, t);
+      return;
+    }
+    const hint = document.createElement('span');
+    hint.className = 'upd-hint';
+    hint.textContent = info.can_install
+      ? L('업데이트하면 markcont가 잠시 닫혔다가 다시 켜집니다.', 'markcont will close for a moment and open again.')
+      : L('이 설치 방식(.deb · .rpm)은 내려받기 페이지에서 새 버전을 받아 주세요.', 'For this install type (.deb · .rpm), get the new version from the download page.');
+    const close = document.createElement('button');
+    close.className = 'btn';
+    close.textContent = L('닫기', 'Close');
+    close.onclick = closeUpdate;
+    const go = document.createElement('button');
+    go.className = 'btn primary';
+    go.textContent = info.can_install ? L('지금 업데이트', 'Update now') : L('내려받기 페이지 열기', 'Open download page');
+    go.onclick = info.can_install ? installUpdate : () => tinvoke('update_open_page').catch((e) => toast(String(e), 4000));
+    foot.append(hint, close, go);
+  }
+  async function openUpdate(info) {
+    upd.info = info;
+    $('#updTitle').textContent = L(`새 버전이 나왔습니다: v${info.version}`, `A new version is available: v${info.version}`);
+    const now = document.createElement('p');
+    now.className = 'upd-now';
+    now.textContent = L(`지금 쓰는 버전 v${info.current} → 새 버전 v${info.version}`, `Your version v${info.current} → new version v${info.version}`);
+    const notes = document.createElement('div');
+    notes.className = 'upd-notes';
+    const wait = document.createElement('div');
+    wait.className = 'upd-wait';
+    wait.textContent = L('바뀐 점을 불러오는 중…', 'Loading what changed…');
+    notes.append(wait);
+    $('#updBody').replaceChildren(now, notes);
+    renderUpdFoot();
+    $('#updModal').hidden = false;
+    $('#updFoot .btn.primary')?.focus();
+    const log = await fetchChangelog();
+    if (upd.info === info) notes.replaceChildren(updNotesFrom(info, log));
+  }
+  function closeUpdate() { if (!upd.installing) $('#updModal').hidden = true; }
+  $('#updX').onclick = closeUpdate;
+  $('#updModal').addEventListener('click', (e) => { if (e.target.id === 'updModal') closeUpdate(); });
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#updModal').hidden) { e.preventDefault(); e.stopImmediatePropagation(); closeUpdate(); } }, true);
+  async function installUpdate() {
+    if (upd.installing) return;
+    if (state.dirty && !confirm(L('저장하지 않은 변경 사항이 있습니다. 업데이트하면 markcont가 다시 켜지면서 이 내용이 사라집니다. 그래도 업데이트할까요?', 'You have unsaved changes. Updating restarts markcont and they will be lost. Update anyway?'))) return;
+    upd.installing = true;
+    renderUpdFoot();
+    const bar = $('#updFoot .upd-bar i'), pct = $('#updPct');
+    const ch = new window.__TAURI__.core.Channel();
+    ch.onmessage = (m) => {
+      if (m.total) {
+        const r = Math.min(100, Math.round((m.done / m.total) * 100));
+        bar.style.width = r + '%';
+        pct.textContent = r >= 100 ? L('설치하는 중…', 'Installing…') : L(`내려받는 중… ${r}%`, `Downloading… ${r}%`);
+      } else pct.textContent = L(`내려받는 중… ${(m.done / 1048576).toFixed(1)} MB`, `Downloading… ${(m.done / 1048576).toFixed(1)} MB`);
+    };
+    try {
+      await tinvoke('update_install', { onProgress: ch }); // 잘 되면 프로그램이 다시 켜져서 여기로 돌아오지 않음
+    } catch (e) {
+      try { await tinvoke('update_check'); } catch {} // 다시 누를 수 있게 새 버전 정보를 다시 받아 둠
+      upd.installing = false;
+      renderUpdFoot();
+      toast(L('업데이트하지 못했습니다: ', "Couldn't update: ") + e, 6000);
+    }
+  }
+  async function checkUpdate({ manual = false } = {}) {
+    if (!isTauri() || upd.busy || upd.installing) return;
+    if (manual) { closeMenus(); toast(L('새 버전을 확인하는 중…', 'Checking for updates…'), 3000); }
+    upd.busy = true;
+    let info;
+    try { info = await tinvoke('update_check'); }
+    catch (e) { if (manual) toast(L('새 버전을 확인하지 못했습니다: ', "Couldn't check for updates: ") + e, 5000); return; }
+    finally { upd.busy = false; }
+    store.set(UPD_CHECKED, String(Date.now()));
+    if (info) openUpdate(info);
+    else if (manual) toast(L(`지금 최신 버전입니다 (v${APP_VERSION})`, `You're up to date (v${APP_VERSION})`));
+  }
+  if (isTauri()) {
+    $('#mUpdate').hidden = false;
+    $('#optUpdateRow').hidden = false;
+    $('#mUpdate').onclick = () => checkUpdate({ manual: true });
+    // 켜고 몇 초 뒤, 마지막 확인에서 20시간이 지났을 때만 (닫기를 누르면 다음 날 다시 알림)
+    const autoCheck = () => {
+      if (settings.updateCheck === false) return;
+      if (Date.now() - (+store.get(UPD_CHECKED) || 0) < 20 * 3600e3) return;
+      if (!$('#tour').hidden || document.querySelector('.modal:not([hidden])')) { setTimeout(autoCheck, 60000); return; } // 다른 창이 떠 있으면 조금 뒤에
+      checkUpdate();
+    };
+    setTimeout(autoCheck, 5000);
+  }
 
   /* =========================================================
      처음 사용 안내 (튜토리얼): 처음 한 번 자동으로, ⋯ 메뉴에서 다시 보기

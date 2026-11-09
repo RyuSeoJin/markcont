@@ -5,6 +5,7 @@
 mod history;
 mod mcp;
 mod textfile;
+mod update;
 
 use serde::Serialize;
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
@@ -315,6 +316,9 @@ fn main() {
         return;
     }
     tauri::Builder::default()
+        // 새 버전 확인 · 설치 (update.rs, 설정은 tauri.conf.json 의 plugins.updater)
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(update::Pending::default())
         .invoke_handler(tauri::generate_handler![
             set_lang,
             read_file,
@@ -340,7 +344,10 @@ fn main() {
             history_read,
             history_add,
             history_clear,
-            history_prune
+            history_prune,
+            update::update_check,
+            update::update_install,
+            update::update_open_page
         ])
         .run(tauri::generate_context!())
         .expect("markcont를 실행하지 못했습니다");

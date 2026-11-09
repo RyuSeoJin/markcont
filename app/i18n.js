@@ -78,6 +78,8 @@
     '깨진 링크 · 제목 단계 · 표 · 긴 문장, 다른 뷰어에서 다르게 보이는 곳을 문서 위에 알려 줍니다 (문서 정보 「뷰어: markcont」 면 그 문서는 다른 뷰어 안내만 끔)': 'Notes broken links, heading levels, tables, long sentences and spots that look different in other viewers at the top of a document ("viewer: markcont" in the document info turns off only the other-viewer notes for that document)',
     '문서 점검': 'Document check',
     '원본과 미리보기가 같은 위치를 보여줍니다': 'Keeps the source and preview at the same spot',
+    '시작할 때 새 버전 확인': 'Check for updates at startup',
+    'PC 프로그램이 하루에 한 번 GitHub에서 새 버전이 있는지 봅니다. 문서 내용은 보내지 않습니다': 'Once a day, the PC app checks GitHub for a new version. Your documents are never sent',
     // ⋯ 메뉴
     '더 보기': 'More',
     '밝게 / 어둡게': 'Light / Dark',
@@ -97,6 +99,8 @@
     '마크다운 작성 규칙': 'Markdown writing rules',
     '오픈소스 라이선스': 'Open-source licenses',
     '처음 사용 안내 다시 보기': 'Replay the tour',
+    '업데이트 확인': 'Check for updates',
+    '새 버전': 'New version',
     '새 문서 쓰기': 'New document',
     // 사이드바
     '파일': 'Files',

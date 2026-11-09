@@ -1,6 +1,6 @@
 ---
 title: markcont User guide
-version: 1.9.7
+version: 1.10.0
 ---
 
 # markcont User guide
@@ -346,6 +346,14 @@ Open the window with the **History** button in the editing toolbar (<kbd>Ctrl</k
 - **Phone**: Open the web app address and choose **Add to Home Screen** from the browser menu
 - **PC browser**: Open the web app address and click the **Install** button at the right of the address bar
 - **PC app**: From GitHub **Releases**, get Windows `-setup.exe`, macOS `.dmg`, or Linux `.AppImage` / `.deb`
+
+### Updating to a new version (PC app)
+
+- When a new version is out, a window shows up at startup with **what changed since your version**. **Update now** downloads and installs it, then opens markcont again. **Close** reminds you again the next day.
+- Check anytime with **⋯ → Help → Check for updates**. Turn off automatic checks with **Check for updates at startup** in View settings (Aa).
+- The check runs once a day and only fetches version info from GitHub. Your documents and file paths are never sent. Only installers with a valid signature are installed.
+- If you installed with a Linux `.deb` or `.rpm`, it opens the download page instead of installing directly.
+- Updates start with 1.10.0. For older versions, download and install it from Releases once.
 
 ---
 
