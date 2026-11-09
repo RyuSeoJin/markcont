@@ -3,6 +3,10 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.11.2 · 2026-11-09
+
+- PC app: checks for a new version every time it starts. If you close the notice, that version stays hidden until the next day (20 hours later), and a newer version is shown right away
+
 ## 1.11.1 · 2026-11-09
 
 - Flowcharts: with a `@view Name: N1 N2` line, keep the table once and pick the nodes to draw in each block. Lines leaving them become connectors

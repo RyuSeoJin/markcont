@@ -1,6 +1,6 @@
 // 오프라인에서도 열리도록 앱 파일을 저장해 두는 서비스 워커
 // 새 버전을 올릴 때는 아래 VERSION 숫자를 올리세요.
-const VERSION = 'v1.11.1';
+const VERSION = 'v1.11.2';
 // 웹 앱만 고쳐 다시 올릴 때는 BUILD 숫자를 올리세요 (PC 프로그램 버전과 따로)
 const BUILD = 1;
 const CACHE = 'markcont-' + VERSION + '-' + BUILD;
