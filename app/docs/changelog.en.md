@@ -3,6 +3,10 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.11.4 · 2026-11-10
+
+- Flowcharts: connector text, the connector's view · section · document line, and line labels are no longer cut short with an ellipsis (…). Long text makes the shape or label box bigger instead
+
 ## 1.11.3 · 2026-11-09
 
 - User guide: added how to install a new version over the old one with "Do not uninstall", and notes for PCs with Windows Smart App Control turned on
