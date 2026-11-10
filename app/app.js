@@ -4141,6 +4141,14 @@
   /* ---------- 폴더 읽기 · 다시 읽기 ---------- */
   const isTauri = () => !!(window.__TAURI__ && window.__TAURI__.core);
   const tinvoke = (cmd, args) => window.__TAURI__.core.invoke(cmd, args);
+  // PC 프로그램의 파일 · 폴더 선택 창은 한 번에 하나만: 처음 창은 늦게 뜰 수 있어서, 그사이 다시 눌러도 또 열지 않음
+  //  (예전에는 요청이 쌓여 창이 늦게 뜨거나 연달아 떴음). 이미 떠 있으면 undefined 를 돌려줘 부른 쪽이 그냥 끝남
+  let pickerBusy = false;
+  async function pickOnce(cmd, args) {
+    if (pickerBusy) return undefined;
+    pickerBusy = true;
+    try { return await tinvoke(cmd, args); } finally { pickerBusy = false; }
+  }
   // PC 프로그램: 파일 선택 창 제목 · 오류 문구도 화면 언어로
   if (isTauri()) tinvoke('set_lang', { lang: LANG }).catch(() => {});
   // 여러 폴더(작업 공간): 모든 경로는 "폴더이름/안쪽/경로" 처럼 맨 앞이 그 폴더의 이름(key)
@@ -4811,7 +4819,7 @@
     closeMenus();
     if (isTauri()) {
       try {
-        const path = await tinvoke('pick_folder');
+        const path = await pickOnce('pick_folder');
         if (path) await openFolder({ kind: 'tauri', path, name: path.split(/[\\/]/).filter(Boolean).pop() || path });
       } catch (e) { toast(L('폴더 선택 창을 열지 못했습니다: ', "Couldn't open the folder picker: ") + e, 4000); }
       return;
@@ -6577,7 +6585,7 @@
     try {
       if (isTauri()) {
         const startDir = cur.tauriPath ? cur.tauriPath.replace(/[\\/][^\\/]*$/, '') : null;
-        const path = await tinvoke('pick_save_path', { defaultName: suggestName(cur), startDir });
+        const path = await pickOnce('pick_save_path', { defaultName: suggestName(cur), startDir });
         if (!path) return;
         const modified = await tinvoke('save_file', { path, text, keepHistory: true, ...fmt });
         await adoptSaved({ tauriPath: path, name: path.split(/[\\/]/).pop(), lastModified: modified, fmt }, text);
@@ -6772,7 +6780,7 @@
     try {
       if (isTauri()) {
         const startDir = cur.tauriPath ? cur.tauriPath.replace(/[\\/][^\\/]*$/, '') : null;
-        const path = await tinvoke('pick_save_path', { defaultName: name, startDir });
+        const path = await pickOnce('pick_save_path', { defaultName: name, startDir });
         if (!path) return;
         await tinvoke('save_file', { path, text, eol: '\n', bom: false, enc: 'utf-8' }); // 다른 뷰어용 사본은 늘 BOM 없는 UTF-8 · \n
         done(path);
@@ -6980,7 +6988,7 @@
     try {
       if (isTauri()) {
         const startDir = state.current && state.current.tauriPath ? state.current.tauriPath.replace(/[\\/][^\\/]*$/, '') : null;
-        const path = await tinvoke('pick_save_path', { defaultName: name, startDir, kind: 'css' });
+        const path = await pickOnce('pick_save_path', { defaultName: name, startDir, kind: 'css' });
         if (!path) return;
         await tinvoke('save_file', { path, text, eol: '\n', bom: false, enc: 'utf-8' });
         done(path);
@@ -7950,7 +7958,7 @@ ${clone.innerHTML}
     // 파일 열기 단추는 PC 프로그램의 파일 선택 창을 씀 (원래 파일에 바로 저장 가능)
     const pickInApp = async () => {
       try {
-        const paths = await tauriInvoke('pick_files');
+        const paths = await pickOnce('pick_files');
         if (paths && paths.length) openTauriPaths(paths);
       } catch (e) { toast(L('파일 선택 창을 열지 못했습니다: ', "Couldn't open the file picker: ") + e, 4000); }
     };
