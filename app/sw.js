@@ -1,6 +1,6 @@
 // 오프라인에서도 열리도록 앱 파일을 저장해 두는 서비스 워커
 // 새 버전을 올릴 때는 아래 VERSION 숫자를 올리세요.
-const VERSION = 'v1.11.4';
+const VERSION = 'v1.11.5';
 // 웹 앱만 고쳐 다시 올릴 때는 BUILD 숫자를 올리세요 (PC 프로그램 버전과 따로)
 const BUILD = 1;
 const CACHE = 'markcont-' + VERSION + '-' + BUILD;
@@ -24,6 +24,7 @@ const APP_FILES = [
   './docs/writing-rules.en.md',
   './docs/features.en.md',
   './docs/licenses.en.md',
+  './app.js',
   './i18n.js',
   './diagram.js',
   './portable.js',
@@ -87,9 +88,10 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
 
   if (url.origin === self.location.origin) {
-    // 화면(index.html)과 안내 문서: 인터넷이 되면 항상 새로 받고, 안 될 때만 저장해 둔 것
-    // (저장본을 먼저 쓰면 새 버전을 올려도 예전 화면이 계속 보이는 문제가 있었음)
-    const fresh = req.mode === 'navigate' || /\/(index\.html|manifest\.webmanifest)?$/.test(url.pathname) || url.pathname.includes('/docs/');
+    // 화면(index.html · 화면 본체 app.js)과 안내 문서: 인터넷이 되면 항상 새로 받고, 안 될 때만 저장해 둔 것
+    // (저장본을 먼저 쓰면 새 버전을 올려도 예전 화면이 계속 보이는 문제가 있었음.
+    //  app.js 는 index.html 과 늘 짝이 맞아야 해서 같이 새로 받음)
+    const fresh = req.mode === 'navigate' || /\/(index\.html|app\.js|manifest\.webmanifest)?$/.test(url.pathname) || url.pathname.includes('/docs/');
     if (fresh) {
       event.respondWith(
         caches.open(CACHE).then(async (cache) => {

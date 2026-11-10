@@ -1,0 +1,34 @@
+# 앱에 복사해 둔 라이브러리(app/vendor)의 보안 공지 확인
+# Dependabot 은 복사해 둔 파일을 보지 못하므로, scripts/vendor-versions.json 의 버전을
+# GitHub 보안 공지 데이터베이스에 직접 물어봅니다 (scripts/vendor_advisories.py).
+#  - 매주 월요일 · 직접 실행: 확인이 필요한 공지가 있으면 이슈를 열거나 고치고, 없어지면 닫음
+#  - app/vendor 나 버전 목록을 고쳐 올릴 때(어느 브랜치든): 확인만 하고, 걸리면 실패로 표시
+# 권한: 저장소 읽기 + 이슈 쓰기만. 따로 넣는 비밀 값은 없음 (GitHub 이 주는 기본 토큰만 씀)
+name: 라이브러리 보안 공지 확인
+
+on:
+  schedule:
+    - cron: '23 0 * * 1' # 매주 월요일 09:23 (한국 시각)
+  workflow_dispatch:
+  push:
+    paths:
+      - 'app/vendor/**'
+      - 'scripts/vendor-versions.json'
+      - 'scripts/vendor_advisories.py'
+      - '.github/workflows/vendor-advisories.yml'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 보안 공지 확인
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # 이슈는 정기 확인 · 직접 실행 때만 (브랜치에 올릴 때는 결과만 표시)
+          WITH_ISSUE: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '--issue' || '' }}
+        run: python3 scripts/vendor_advisories.py $WITH_ISSUE

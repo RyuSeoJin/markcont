@@ -1,6 +1,6 @@
 ---
 title: markcont User guide
-version: 1.11.4
+version: 1.11.5
 ---
 
 # markcont User guide
@@ -144,7 +144,7 @@ Shows the documents connected to the current one. Click a row to go to that docu
 | Focus mode | <kbd>Ctrl</kbd>+<kbd>.</kbd> | Leaves only the body text. Press <kbd>Esc</kbd> to exit |
 | Enlarge code | ⤢ in the code block header | Shows the code full screen |
 | Enlarge a diagram | ⤢ at the top right of a diagram | Wheel or pinch to zoom, drag to pan, "Fit to screen" |
-| Enlarge an image | Click the image | The same zoom view as diagrams. While editing side by side, a click jumps to that line of the source instead |
+| Enlarge an image | Click the image | Opens in a pop-up over the document. Wheel or pinch to zoom, drag to pan; click outside it or press Esc to close. While editing side by side, a click jumps to that line of the source instead |
 | Present | **⋯ → Present** | Shows the sections split by dividers (`---`) one slide at a time, full screen (see below) |
 
 - **Document styles (CSS)**: click **Document style → Manage…** at the bottom of View settings (or type `>style` in <kbd>Ctrl</kbd>+<kbd>O</kbd>) to open the styles window.
@@ -325,6 +325,8 @@ Open the window with the **History** button in the editing toolbar (<kbd>Ctrl</k
 - Page numbers (`3 / 12`) are printed at the bottom of each page and the document title at the top. This works in Chrome · Edge 131 or later and the Windows PC app; in other browsers, turn on **Headers and footers** in the print window.
 - Tables · images · diagrams · math · callouts are kept off page boundaries where possible and move to the next page instead. Code lines longer than the paper are wrapped.
 - To start a new page at a spot of your choice, write `<!-- page break -->` on a line there. On screen it shows only as a dashed line.
+- Every tab is printed open with its name, and collapsed content (`<details>` · foldable callouts) is printed open too. When you close the print window, the tabs you picked and what was collapsed on screen stay as they were.
+- A file saved as HTML lets you pick tabs in the browser just like the app (tabs with the same name switch together). Printing that file also opens every tab and all collapsed content, and opening it where scripts are off shows all the content without tabs.
 - Write `cover: yes` in the document info at the top, and the first page becomes a **cover** (title · summary · the rest of the info, like the author). The cover has no page number.
 - Word files keep heading levels · lists · tables · code · callouts · images, and diagrams become images. Math goes in as TeX text (`E=mc^2`). The paper size follows your region (Letter for the US · Canada, A4 elsewhere).
 - Save as Word and Copy with formatting use light colors that suit a white background, even in the dark theme.
