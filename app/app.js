@@ -576,7 +576,7 @@
     md.renderer.rules.page_break = (t, i) => `<div class="page-break" data-line="${t[i].map[0]}" data-label="${escapeHtml(L('쪽 나눔', 'Page break'))}"></div>\n`;
     const attrs = (t, self) => self.renderAttrs(t);
     md.renderer.rules.mc_tabs_open = (t, i, o, env, self) => `<div class="mc-tabs"${attrs(t[i], self)}><div class="mc-tab-bar" role="tablist">` +
-      (t[i].meta.titles || []).map((x, k) => `<button type="button" role="tab" class="mc-tab${k ? '' : ' on'}" data-tab="${escapeHtml(x)}">${escapeHtml(x)}</button>`).join('') + '</div>\n';
+      (t[i].meta.titles || []).map((x, k) => `<button type="button" role="tab" class="mc-tab${k ? '' : ' on'}" aria-selected="${k ? 'false' : 'true'}" data-tab="${escapeHtml(x)}">${escapeHtml(x)}</button>`).join('') + '</div>\n';
     md.renderer.rules.mc_tab_open = (t, i) => `<div class="mc-tab-panel" role="tabpanel" data-tab="${escapeHtml(t[i].meta.title)}"${t[i].meta.index ? ' hidden' : ''}>\n`;
     md.renderer.rules.mc_steps_open = (t, i, o, env, self) => `<div class="mc-steps"${attrs(t[i], self)}>\n`;
     md.renderer.rules.mc_tree_open = (t, i, o, env, self) => `<div class="mc-tree"${attrs(t[i], self)}>\n`;
@@ -7014,16 +7014,64 @@
     });
   }
 
+  // HTML 저장용: 탭은 살려 둠. 고른 탭 말고는 data-tab-off 만 붙이고 hidden 은 빼서,
+  // 스크립트가 돌면 저장본 스크립트(savedTabsScript)가 숨기고, 돌지 않으면 모두 보임
+  function keepTabs(root) {
+    root.querySelectorAll('.mc-tabs').forEach((box) => {
+      const tabs = [...box.querySelectorAll(':scope > .mc-tab-bar > .mc-tab')];
+      const pick = (tabs.find((b) => b.classList.contains('on')) || tabs[0])?.dataset.tab;
+      tabs.forEach((b) => { b.classList.toggle('on', b.dataset.tab === pick); b.setAttribute('aria-selected', String(b.dataset.tab === pick)); });
+      box.querySelectorAll(':scope > .mc-tab-panel').forEach((p) => {
+        p.removeAttribute('hidden');
+        p.toggleAttribute('data-tab-off', p.dataset.tab !== pick);
+      });
+    });
+  }
+  // 저장한 HTML 의 탭 · 인쇄 동작 (그 파일 안에 그대로 들어가는 스크립트라 바깥 변수를 쓰지 않음)
+  //  - 탭: 누르면 그 패널만, 같은 이름의 탭은 문서 전체에서 같이 바뀜 (앱과 같게)
+  //  - 인쇄: 탭은 인쇄 CSS 로 모두 펼치고, 접는 상자도 펴서 찍은 뒤 닫혀 있던 것만 다시 닫음
+  function savedTabsScript() {
+    document.documentElement.classList.add('mc-js');
+    const show = (box, title) => {
+      const tabs = [...box.querySelectorAll(':scope > .mc-tab-bar > .mc-tab')];
+      if (!tabs.some((b) => b.dataset.tab === title)) return;
+      tabs.forEach((b) => { b.classList.toggle('on', b.dataset.tab === title); b.setAttribute('aria-selected', String(b.dataset.tab === title)); });
+      box.querySelectorAll(':scope > .mc-tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== title; p.removeAttribute('data-tab-off'); });
+    };
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.mc-tabs').forEach((box) => {
+        const on = box.querySelector(':scope > .mc-tab-bar > .mc-tab.on') || box.querySelector(':scope > .mc-tab-bar > .mc-tab');
+        if (on) show(box, on.dataset.tab);
+      });
+    });
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest && e.target.closest('.mc-tab');
+      if (!b) return;
+      const top = b.getBoundingClientRect().top;
+      document.querySelectorAll('.mc-tabs').forEach((box) => show(box, b.dataset.tab));
+      window.scrollBy(0, b.getBoundingClientRect().top - top); // 누른 탭이 화면에서 움직이지 않게
+    });
+    let opened = [];
+    window.addEventListener('beforeprint', () => { opened = [...document.querySelectorAll('details:not([open])')]; opened.forEach((d) => (d.open = true)); });
+    window.addEventListener('afterprint', () => { opened.forEach((d) => (d.open = false)); opened = []; });
+  }
+  // 저장본에 함께 넣는 CSS: 스크립트가 돌기 전에는 고르지 않은 탭을 숨겨 깜빡이지 않게,
+  // 스크립트가 꺼진 곳에서는 인쇄처럼 탭 막대 없이 모든 패널을 이름과 함께
+  const SAVED_TABS_CSS = `html.mc-js .markdown-body .mc-tab-panel[data-tab-off] { display: none; }
+html:not(.mc-js) .markdown-body .mc-tab-bar { display: none; }
+html:not(.mc-js) .markdown-body .mc-tab-panel::before { content: attr(data-tab); display: block; font-weight: 700; margin-bottom: .4em; }`;
+
   // 보기 설정을 HTML 저장 · 숨은 틀에 옮길 CSS 변수
   const docVars = () => `:root{--doc-size:${settings.size}px;--doc-width:${WIDTHS[settings.width]};--doc-font:${settings.font === 'serif' ? 'var(--serif)' : 'var(--font)'};--doc-lh:${LINE_H[settings.lh] || LINE_H.normal};--doc-para:${PARA_GAP[settings.para] || PARA_GAP.normal};}`;
   // 내보내기 · 서식 복사 · Word 저장 전에 그린 문서를 정리한 사본: 단추 빼기, 접힌 곳 · 탭 펴기, 찾기 표시 지우기
-  function cleanClone(node) {
+  //  keepTabs: HTML 저장처럼 탭을 펼치지 않고 살려 둠 (Word 저장 · 서식 복사는 펼친 모양)
+  function cleanClone(node, { keepTabs: keep = false } = {}) {
     const clone = node.cloneNode(true);
     clone.querySelectorAll('.copy, .h-tools, .code-head button, .dg-expand, .dt-go').forEach((b) => b.remove());
     clone.querySelectorAll('.code-block.expanded').forEach((b) => b.classList.remove('expanded'));
     clone.querySelectorAll('mark.find-hit').forEach((m) => m.replaceWith(document.createTextNode(m.textContent)));
     clone.querySelectorAll('.fold-hidden, .folded').forEach((n) => n.classList.remove('fold-hidden', 'folded'));
-    expandTabs(clone);
+    if (keep) keepTabs(clone); else expandTabs(clone);
     clone.querySelectorAll('input.task').forEach((c) => { c.disabled = true; if (c.checked) c.setAttribute('checked', ''); });
     return clone;
   }
@@ -7055,7 +7103,7 @@
 
   async function exportHtml() {
     closeMenus();
-    const clone = cleanClone(el.doc);
+    const clone = cleanClone(el.doc, { keepTabs: true });
     for (const m of clone.querySelectorAll('img[src^="blob:"], video[src^="blob:"], audio[src^="blob:"]')) {
       try { m.src = await blobToDataUrl(m.src); } catch {}
     }
@@ -7078,7 +7126,9 @@ ${vars}
 ${userCssText()}
 body { margin: 0; background: var(--bg); padding: 48px 16px 96px; }
 @media print { body { background: #fff; padding: 0; } }
+${SAVED_TABS_CSS}
 </style>
+<script>(${savedTabsScript.toString()})();</script>
 </head>
 <body>
 <article class="markdown-body">
@@ -7433,6 +7483,18 @@ ${clone.innerHTML}
     const t = state.current ? (cover?.textContent.trim() || el.doc.querySelector('h1')?.textContent.trim() || state.current.name.replace(MD_EXT, '')) : '';
     st.textContent = (t ? `@page { @top-right { content: "${t.replace(/[\\"]/g, '\\$&').replace(/\s+/g, ' ').slice(0, 80)}"; font-size: 8.5pt; color: #999; } }` : '') +
       (cover ? '@page :first { @top-right { content: none; } @bottom-center { content: none; } }' : ''); // 표지 쪽에는 머리글 · 쪽 번호 없이
+  });
+  // 인쇄 · PDF: 접는 상자(<details> · 접는 알림 상자 > [!NOTE]-)도 펴서 찍고, 끝나면 닫혀 있던 것만 다시 닫음
+  //  (탭은 인쇄 CSS 로 펼쳐지고 화면의 탭 선택은 그대로. 슬라이드 인쇄는 따로라 건드리지 않음)
+  let printOpened = [];
+  window.addEventListener('beforeprint', () => {
+    if (document.body.classList.contains('printing-slides')) return;
+    printOpened = [...el.doc.querySelectorAll('details:not([open])')];
+    printOpened.forEach((d) => (d.open = true));
+  });
+  window.addEventListener('afterprint', () => {
+    printOpened.forEach((d) => (d.open = false));
+    printOpened = [];
   });
   $('#mPortable').onclick = exportPortable;
   $('#mPrint').onclick = () => { closeMenus(); window.print(); };
