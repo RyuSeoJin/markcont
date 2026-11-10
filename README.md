@@ -121,7 +121,7 @@ app/                 화면 — 웹 앱과 PC 프로그램이 같이 씁니다
   docs/              사용 안내서 · 작성 규칙 · 기능 예제 (앱 안에서도 열림)
   vendor/            markdown-it, DOMPurify, highlight.js, KaTeX, Mermaid (인터넷 없이 동작하도록 포함)
 src-tauri/           PC 프로그램 (Tauri 2) — main.rs, 파일 범위 확인(scope.rs), MCP 서버(mcp.rs)
-.github/workflows/   웹 앱 배포(pages), 설치 파일 만들기(release), PC 코드 확인(check)
+.github/workflows/   웹 앱 배포(pages), 설치 파일 만들기(release), PC 코드 확인(check), 라이브러리 보안 공지 확인(vendor-advisories)
 ```
 
 **웹 앱만 고칠 때**는 아무 정적 서버로 `app/`을 열면 됩니다.
@@ -145,6 +145,7 @@ npm run build   # 설치 파일 만들기
 - 화면 문구는 한국어 · 영어 두 가지입니다. 코드 안 문구는 `L('한국어', 'English')`로 쓰고, `index.html`에 그대로 적힌 문구는 `app/i18n.js`, 안내 문서는 `app/docs/*.en.md`에 있습니다.
 - 화면 코드는 `index.html` 안에 `<script>`로 직접 쓰지 않고 `app.js` 같은 파일에 둡니다. `index.html`의 보안 설정(CSP)이 이 앱의 파일이 아닌 스크립트는 모두 막기 때문입니다 (문서에 숨은 코드가 실행되지 않게).
 - PC 프로그램의 파일 명령(`main.rs`)은 `scope.rs`로 "사용자가 직접 고른 폴더 · 파일 안인지" 먼저 확인합니다. 새 파일 명령을 더할 때도 같은 확인을 넣어 주세요.
+- `app/vendor`의 라이브러리를 올리면 `scripts/vendor-versions.json`의 버전도 함께 고칩니다. 복사해 둔 파일은 Dependabot이 보지 못해서, 이 목록을 GitHub Actions가 매주 GitHub 보안 공지와 맞춰 보고 확인할 것이 있으면 이슈로 알려 줍니다. 직접 확인하려면 `python scripts/vendor_advisories.py` (GitHub CLI 로그인 필요).
 - `main`에 올리면 웹 앱이 GitHub Pages에 자동으로 배포되고, `v1.5.0` 같은 태그를 올리면 설치 파일이 Releases에 올라갑니다.
 - 새 버전을 낼 때는 `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `package.json`의 버전과 `app/sw.js`의 `VERSION`, `app/app.js`의 `APP_VERSION`을 함께 올립니다.
 

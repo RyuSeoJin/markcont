@@ -119,7 +119,7 @@ app/                 UI shared by the web app and the desktop app
   docs/              user guide, writing rules, feature samples (also open inside the app)
   vendor/            markdown-it, DOMPurify, highlight.js, KaTeX, Mermaid (bundled so it works offline)
 src-tauri/           desktop app (Tauri 2) — main.rs, file scope checks (scope.rs), MCP server (mcp.rs)
-.github/workflows/   web deploy (pages), installers (release), desktop compile check (check)
+.github/workflows/   web deploy (pages), installers (release), desktop compile check (check), library security advisories (vendor-advisories)
 ```
 
 **Web app only:** serve `app/` with any static server.
@@ -143,6 +143,7 @@ Good to know:
 - The UI is bilingual (Korean / English). In code, strings are written as `L('한국어', 'English')`; strings in `index.html` live in `app/i18n.js`; docs have `*.en.md` versions.
 - Page code lives in files like `app.js`, never in an inline `<script>` in `index.html`: the security policy (CSP) in `index.html` blocks every script that isn't one of the app's own files, so code hidden in a document can't run.
 - The desktop app's file commands (`main.rs`) first check with `scope.rs` that a path is inside a folder or file the user picked. Add the same check to any new file command.
+- When you update a library in `app/vendor`, update its version in `scripts/vendor-versions.json` too. Dependabot can't see copied files, so a weekly GitHub Actions run checks this list against GitHub security advisories and opens an issue when something needs a look. To check yourself: `python scripts/vendor_advisories.py` (needs a GitHub CLI login).
 - Pushing to `main` deploys the web app to GitHub Pages; pushing a tag like `v1.5.0` builds installers into Releases.
 - When releasing, bump the version in `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `package.json`, plus `VERSION` in `app/sw.js` and `APP_VERSION` in `app/app.js`.
 

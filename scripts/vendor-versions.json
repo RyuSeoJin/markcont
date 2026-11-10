@@ -1,0 +1,71 @@
+{
+  "about": [
+    "app/vendor 에 복사해 둔 라이브러리 버전 목록 (scripts/vendor_advisories.py 가 GitHub 보안 공지와 맞춰 봄)",
+    "Dependabot 은 복사해 둔 파일을 보지 못하므로 이 목록이 유일한 기준입니다. 라이브러리를 올리면 여기도 함께 고치세요.",
+    "file · marker: 그 파일 안에 marker 글이 있어야 함 (파일만 바꾸고 이 목록을 안 고치면 확인이 실패함)",
+    "bundled: 그 파일 안에 함께 묶인 라이브러리. Mermaid 쪽은 Mermaid 10.9.8 릴리스의 pnpm-lock.yaml 기준 (명령줄 · 개발용 의존은 뺌)",
+    "reviewed: 검토해서 markcont 에는 해당하지 않는다고 본 공지. 공지 id · 패키지 · 버전이 모두 같을 때만 건너뜀 (버전이 바뀌면 다시 검토)"
+  ],
+  "libraries": [
+    { "package": "markdown-it", "version": "14.3.3", "file": "app/vendor/markdown-it.min.js", "marker": "markdown-it 14.3.3",
+      "bundled": ["entities@4.5.0", "linkify-it@5.0.2", "mdurl@2.1.0", "punycode.js@2.3.1", "uc.micro@2.1.0"] },
+    { "package": "markdown-it-footnote", "version": "4.0.0", "file": "app/vendor/markdown-it-footnote.min.js", "marker": "markdown-it-footnote 4.0.0" },
+    { "package": "markdown-it-deflist", "version": "4.0.0", "file": "app/vendor/markdown-it-deflist.min.js", "marker": "markdown-it-deflist 4.0.0" },
+    { "package": "markdown-it-mark", "version": "4.0.0", "file": "app/vendor/markdown-it-mark.min.js", "marker": "markdown-it-mark 4.0.0" },
+    { "package": "markdown-it-ins", "version": "4.0.0", "file": "app/vendor/markdown-it-ins.min.js", "marker": "markdown-it-ins 4.0.0" },
+    { "package": "markdown-it-emoji", "version": "3.1.0", "file": "app/vendor/markdown-it-emoji-data.js", "marker": "markdown-it-emoji 3.1.0" },
+    { "package": "dompurify", "version": "3.4.17", "file": "app/vendor/purify.min.js", "marker": "DOMPurify 3.4.17" },
+    { "package": "highlight.js", "version": "11.12.0", "file": "app/vendor/highlight.min.js", "marker": "Highlight.js v11.12.0" },
+    { "package": "katex", "version": "0.19.1", "file": "app/vendor/katex/katex.min.js", "marker": "version:\"0.19.1\"" },
+    { "package": "mermaid", "version": "10.9.8", "file": "app/vendor/mermaid.min.js", "marker": "\"10.9.8\"",
+      "bundled": [
+        "@braintree/sanitize-url@6.0.4", "character-entities@2.0.2", "cose-base@1.0.3", "cytoscape@3.28.1", "cytoscape-cose-bilkent@4.1.0",
+        "d3@7.9.0", "d3@7.8.5", "d3-array@2.12.1", "d3-array@3.2.4", "d3-axis@3.0.0", "d3-brush@3.0.0", "d3-chord@3.0.1", "d3-color@3.1.0",
+        "d3-contour@4.0.2", "d3-delaunay@6.0.4", "d3-dispatch@3.0.1", "d3-drag@3.0.0", "d3-dsv@3.0.1", "d3-ease@3.0.1", "d3-fetch@3.0.1",
+        "d3-force@3.0.0", "d3-format@3.1.0", "d3-geo@3.1.0", "d3-hierarchy@3.1.2", "d3-interpolate@3.0.1", "d3-path@1.0.9", "d3-path@3.1.0",
+        "d3-polygon@3.0.1", "d3-quadtree@3.0.1", "d3-random@3.0.1", "d3-sankey@0.12.3", "d3-scale@4.0.2", "d3-scale-chromatic@3.0.0",
+        "d3-selection@3.0.0", "d3-shape@1.3.7", "d3-shape@3.2.0", "d3-time@3.1.0", "d3-time-format@4.1.0", "d3-timer@3.0.1",
+        "d3-transition@3.0.1", "d3-zoom@3.0.0", "dagre-d3-es@7.0.13", "dayjs@1.11.10", "decode-named-character-reference@1.0.2",
+        "delaunator@5.0.1", "dompurify@3.4.2", "elkjs@0.9.2", "heap@0.2.7", "internmap@1.0.1", "internmap@2.0.3", "js-yaml@4.1.0",
+        "katex@0.16.45", "khroma@2.1.0", "layout-base@1.0.2", "lodash@4.18.1", "lodash-es@4.18.1", "mdast-util-from-markdown@1.3.1",
+        "mdast-util-to-string@3.2.0", "micromark@3.2.0", "micromark-core-commonmark@1.1.0", "micromark-factory-destination@1.1.0",
+        "micromark-factory-label@1.1.0", "micromark-factory-space@1.1.0", "micromark-factory-title@1.1.0",
+        "micromark-factory-whitespace@1.1.0", "micromark-util-character@1.2.0", "micromark-util-chunked@1.1.0",
+        "micromark-util-classify-character@1.1.0", "micromark-util-combine-extensions@1.1.0",
+        "micromark-util-decode-numeric-character-reference@1.1.0", "micromark-util-decode-string@1.1.0", "micromark-util-encode@1.1.0",
+        "micromark-util-html-tag-name@1.2.0", "micromark-util-normalize-identifier@1.1.0", "micromark-util-resolve-all@1.1.0",
+        "micromark-util-sanitize-uri@1.2.0", "micromark-util-subtokenize@1.1.0", "micromark-util-symbol@1.1.0", "micromark-util-types@1.1.0",
+        "non-layered-tidy-tree-layout@2.0.2", "robust-predicates@3.0.2", "stylis@4.3.1", "ts-dedent@2.2.0",
+        "unist-util-stringify-position@3.0.3", "uuid@9.0.1", "web-worker@1.3.0"
+      ] }
+  ],
+  "reviewed_note": [
+    "아래 dompurify@3.4.2 (Mermaid 안) 검토의 공통 근거, 2026-11-10 확인:",
+    "Mermaid 10.9.8 은 DOMPurify 를 sanitize(문자열) 로만 부르고 setConfig · clearConfig 를 부르지 않으며,",
+    "옵션은 기본값 · FORBID_TAGS · ADD_TAGS(foreignobject) · ADD_ATTR(dominant-baseline) · HTML_INTEGRATION_POINTS 뿐이고,",
+    "hook 2개는 <a> 의 target 속성만 옮김. 문서의 %%{init}%% 로 dompurifyConfig 를 바꿀 수 없는 것도 화면에서 확인함.",
+    "또 화면의 CSP 가 이 앱 파일이 아닌 스크립트(onerror= · javascript: 등)는 실행하지 않음."
+  ],
+  "reviewed": [
+    { "ghsa": "GHSA-mrv2-3pqr-j5jr", "package": "dompurify", "version": "3.4.2", "checked": "2026-11-10", "reason": "IN_PLACE 를 쓰지 않음 (문자열만 넘김)" },
+    { "ghsa": "GHSA-55q2-fjhq-7xh7", "package": "dompurify", "version": "3.4.2", "checked": "2026-11-10", "reason": "IN_PLACE 를 쓰지 않음 (문자열만 넘김)" },
+    { "ghsa": "GHSA-hpcv-96wg-7vj8", "package": "dompurify", "version": "3.4.2", "checked": "2026-11-10", "reason": "IN_PLACE 를 쓰지 않음 (문자열만 넘김)" },
+    { "ghsa": "GHSA-r47g-fvhr-h676", "package": "dompurify", "version": "3.4.2", "checked": "2026-11-10", "reason": "IN_PLACE 를 쓰지 않음 (문자열만 넘김)" },
+    { "ghsa": "GHSA-rp9w-3fw7-7cwq", "package": "dompurify", "version": "3.4.2", "checked": "2026-11-10", "reason": "IN_PLACE 를 쓰지 않음 (문자열만 넘김)" },
+    { "ghsa": "GHSA-6688-9rhm-gjv2", "package": "dompurify", "version": "3.4.2", "checked": "2026-11-10", "reason": "IN_PLACE 를 쓰지 않음 (문자열만 넘김)" },
+    { "ghsa": "GHSA-x4vx-rjvf-j5p4", "package": "dompurify", "version": "3.4.2", "checked": "2026-11-10", "reason": "IN_PLACE 를 쓰지 않음 (문자열만 넘김)" },
+    { "ghsa": "GHSA-76mc-f452-cxcm", "package": "dompurify", "version": "3.4.2", "checked": "2026-11-10", "reason": "hook 이 data.allowedTags · allowedAttributes 를 고치지 않음 (<a> 의 target 속성만 다룸)" },
+    { "ghsa": "GHSA-cmwh-pvxp-8882", "package": "dompurify", "version": "3.4.2", "checked": "2026-11-10", "reason": "setConfig 를 부르지 않음" },
+    { "ghsa": "GHSA-c2j3-45gr-mqc4", "package": "dompurify", "version": "3.4.2", "checked": "2026-11-10", "reason": "CUSTOM_ELEMENT_HANDLING 을 쓰지 않음" },
+    { "ghsa": "GHSA-c6gr-qvv4-5v3f", "package": "dompurify", "version": "3.4.2", "checked": "2026-11-10", "reason": "PARSER_MEDIA_TYPE 을 바꾸지 않음 (기본 text/html)" },
+    { "ghsa": "GHSA-gvmj-g25r-r7wr", "package": "dompurify", "version": "3.4.2", "checked": "2026-11-10", "reason": "SAFE_FOR_TEMPLATES · DOM 출력 방식을 쓰지 않음 (템플릿 엔진도 없음)" },
+    { "ghsa": "GHSA-vxr8-fq34-vvx9", "package": "dompurify", "version": "3.4.2", "checked": "2026-11-10", "reason": "RETURN_TRUSTED_TYPE · clearConfig 를 쓰지 않음" },
+    { "ghsa": "GHSA-2883-xcg3-v3hh", "package": "js-yaml", "version": "4.1.0", "checked": "2026-11-10", "reason": "Mermaid 는 앞머리 YAML 을 JSON_SCHEMA 로 읽어 병합 키(<<)를 해석하지 않음 (js-yaml 4.1.0 으로 직접 시험)" },
+    { "ghsa": "GHSA-52cp-r559-cp3m", "package": "js-yaml", "version": "4.1.0", "checked": "2026-11-10", "reason": "Mermaid 는 앞머리 YAML 을 JSON_SCHEMA 로 읽어 병합 키(<<)를 해석하지 않음 (js-yaml 4.1.0 으로 직접 시험)" },
+    { "ghsa": "GHSA-h67p-54hq-rp68", "package": "js-yaml", "version": "4.1.0", "checked": "2026-11-10", "reason": "Mermaid 는 앞머리 YAML 을 JSON_SCHEMA 로 읽어 병합 키(<<)를 해석하지 않음 (js-yaml 4.1.0 으로 직접 시험)" },
+    { "ghsa": "GHSA-mh29-5h37-fv8m", "package": "js-yaml", "version": "4.1.0", "checked": "2026-11-10", "reason": "Mermaid 는 앞머리 YAML 을 JSON_SCHEMA 로 읽어 병합 키(<<)를 해석하지 않음. prototype 오염이 생기지 않는 것을 직접 시험" },
+    { "ghsa": "GHSA-5p4m-2wfm-xmqj", "package": "js-yaml", "version": "4.1.0", "checked": "2026-11-10", "reason": "JSON_SCHEMA 에는 !!omap 이 없어 읽기 오류로 끝남 (js-yaml 4.1.0 으로 직접 시험)" },
+    { "ghsa": "GHSA-w5hq-g745-h8pq", "package": "uuid", "version": "9.0.1", "checked": "2026-11-10", "reason": "Mermaid(erDiagram)는 v5(글, 이름공간) 으로만 부르고 buf 인자를 넘기지 않음" },
+    { "ghsa": "GHSA-238p-pmpm-9mq7", "package": "katex", "version": "0.16.45", "checked": "2026-11-10", "reason": "앞서 prototype 오염이 있어야 하는 공지인데 알려진 오염 경로가 없음 (js-yaml 병합 키는 해당 없음, Mermaid 설정 오염은 10.9.8 에서 고쳐짐). 그래도 javascript: 링크는 CSP 가 실행을 막음" }
+  ]
+}
