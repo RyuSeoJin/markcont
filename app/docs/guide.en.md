@@ -151,6 +151,7 @@ Shows the documents connected to the current one. Click a row to go to that docu
   - Bring in a `.css` file with **Load CSS file…** or make one with **＋ New style**, then edit it — something like `h2 { color: teal; }` applies right away. **Save as file…** exports it as a `.css` file to share with another computer or other people.
   - Under **Applies to**, choose for each style: **all documents · a folder · this document**. A folder style also covers its subfolders. Each document uses one style, chosen in this order: **this document → nearest folder → all documents**.
   - Only the document changes, so the menus stay usable even if you make a mistake. Save as HTML and Copy with formatting also carry that document's style.
+  - Names (classes) to target, color variables, what changes in each output (HTML · print · Word) and examples are in the [Document style rules](style-rules.en.md).
   - Parts that load fonts or images from the internet (`url(https://…)`, `@import`) are skipped, so nothing about opening your documents reaches outside servers. Embed images and fonts as `data:` URLs instead.
 - **Hidden notes** `%%note%%` don't show up when viewing, printing or exporting (chapter 9 of the [writing rules](writing-rules.en.md)).
 

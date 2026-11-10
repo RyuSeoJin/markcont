@@ -8,12 +8,13 @@
     guide: { file: L('guide.md', 'guide.en.md'), name: L('사용-안내서.md', 'User-Guide.md'), title: L('사용 안내서', 'User guide') },
     rules: { file: L('writing-rules.md', 'writing-rules.en.md'), name: L('마크다운-작성-규칙.md', 'Markdown-Writing-Rules.md'), title: L('마크다운 작성 규칙', 'Markdown writing rules') },
     workflow: { file: L('workflow-rules.md', 'workflow-rules.en.md'), name: L('워크플로우-작성-규칙.md', 'Workflow-Writing-Rules.md'), title: L('워크플로우 작성 규칙', 'Workflow writing rules') },
+    styles: { file: L('style-rules.md', 'style-rules.en.md'), name: L('문서-스타일-규칙.md', 'Document-Style-Rules.md'), title: L('문서 스타일 규칙', 'Document style rules') },
     features: { file: L('features.md', 'features.en.md'), name: L('기능-예제.md', 'Feature-Examples.md'), title: L('기능 예제', 'Feature examples') },
     licenses: { file: L('licenses.md', 'licenses.en.md'), name: L('오픈소스-라이선스.md', 'Open-Source-Licenses.md'), title: L('오픈소스 라이선스', 'Open-source licenses') },
   };
   const builtinPath = (key) => L('markcont 안내/', 'markcont docs/') + BUILTIN[key].name;
   // 링크가 앱에 들어 있는 안내 문서를 가리키는지 (한국어 · 영어 이름, guide.md 같은 파일 이름 모두)
-  const BUILTIN_NAMES = { guide: ['사용-안내서', 'user-guide', 'guide'], rules: ['마크다운-작성-규칙', 'markdown-writing-rules', 'writing-rules'], workflow: ['워크플로우-작성-규칙', 'workflow-writing-rules', 'workflow-rules'], features: ['기능-예제', 'feature-examples', 'features'], licenses: ['오픈소스-라이선스', 'open-source-licenses', 'licenses'] };
+  const BUILTIN_NAMES = { guide: ['사용-안내서', 'user-guide', 'guide'], rules: ['마크다운-작성-규칙', 'markdown-writing-rules', 'writing-rules'], workflow: ['워크플로우-작성-규칙', 'workflow-writing-rules', 'workflow-rules'], styles: ['문서-스타일-규칙', 'document-style-rules', 'style-rules'], features: ['기능-예제', 'feature-examples', 'features'], licenses: ['오픈소스-라이선스', 'open-source-licenses', 'licenses'] };
   function builtinKeyFor(ref) {
     let d = ref;
     try { d = decodeURIComponent(ref); } catch {}

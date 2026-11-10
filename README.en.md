@@ -143,6 +143,12 @@ Good to know:
 - The UI is bilingual (Korean / English). In code, strings are written as `L('한국어', 'English')`; strings in `index.html` live in `app/i18n.js`; docs have `*.en.md` versions.
 - Page code lives in files like `app.js`, never in an inline `<script>` in `index.html`: the security policy (CSP) in `index.html` blocks every script that isn't one of the app's own files, so code hidden in a document can't run.
 - The desktop app's file commands (`main.rs`) first check with `scope.rs` that a path is inside a folder or file the user picked. Add the same check to any new file command.
+- **Export · CSS rules** (the user-facing explanation is in the [Document style rules](app/docs/style-rules.en.md)):
+  - When you add a syntax or block, decide how it looks on screen, in Save as HTML, Print (PDF), Copy with formatting, Save as Word and Save for other viewers, and add it to the tables in the Document style rules. Keep the class names in those tables stable — users' CSS relies on them.
+  - Document CSS goes in `<style id="doc-css">` in `index.html`; it is also included in saved HTML and Copy with formatting. The second `<style>` (app UI) is not.
+  - Hide things on screen with the `hidden` attribute. The app has a global `[hidden] { display: none !important; }`, so a print rule that shows them again needs `!important`.
+  - Scripts written into saved HTML must work on their own, with no outside files or variables (like `savedTabsScript`).
+  - After changing an export, open the Feature examples document and check the screen, Save as HTML, print preview and Save as Word.
 - When you update a library in `app/vendor`, update its version in `scripts/vendor-versions.json` too. Dependabot can't see copied files, so a weekly GitHub Actions run checks this list against GitHub security advisories and opens an issue when something needs a look. To check yourself: `python scripts/vendor_advisories.py` (needs a GitHub CLI login).
 - Pushing to `main` deploys the web app to GitHub Pages; pushing a tag like `v1.5.0` builds installers into Releases.
 - When releasing, bump the version in `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `package.json`, plus `VERSION` in `app/sw.js` and `APP_VERSION` in `app/app.js`.
