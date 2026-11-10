@@ -3,6 +3,11 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.11.7 · 2026-11-10
+
+- Desktop app: the first click on Open folder or Open file after starting sometimes didn't open the picker. The picker now always shows on top of the markcont window and opens right away, even while the last folders are being reloaded
+- Save as HTML: images are always put inside the file. Images from web addresses are included too (when the site allows it), and if some images can't be included you get a list before saving. Sharing a single HTML file now keeps its images
+
 ## 1.11.6 · 2026-11-10
 
 - Print · PDF: printing a document with tabs printed only the selected tab. Now every tab is printed with its name
