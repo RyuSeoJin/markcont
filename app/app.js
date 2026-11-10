@@ -1634,7 +1634,7 @@
     c.setAttribute('height', h);
     openZoomViewer(c, w, h, 2);
   }
-  // 그림 크게 보기: 원래 크기를 넘겨 늘리지는 않고, 화면보다 크면 화면에 맞춤
+  // 그림 크게 보기: 문서 위에 뜨는 팝업 상자로. 원래 크기를 넘겨 늘리지는 않고, 화면보다 크면 화면에 맞춤
   function openImageViewer(img) {
     const rect = img.getBoundingClientRect();
     const w = img.naturalWidth || rect.width, h = img.naturalHeight || rect.height;
@@ -1645,23 +1645,37 @@
     c.width = w;
     c.height = h;
     c.draggable = false;
-    openZoomViewer(c, w, h, 1);
+    openZoomViewer(c, w, h, 1, true);
   }
-  function openZoomViewer(node, w, h, maxFit) {
+  // 팝업 상자 크기: 그림을 (늘리지 않고) 다 보여 줄 만큼, 화면의 92% × 88% 안에서
+  function dgvPopupSize() {
+    const box = $('#dgBox'), bar = box.querySelector('.dg-viewer-bar');
+    const pad = 48, barH = bar.offsetHeight; // pad: dgvFit 의 여백과 같게 (작은 그림이 100% 로 보이게)
+    const maxW = window.innerWidth * 0.92, maxH = window.innerHeight * 0.88 - barH;
+    const s = Math.min(1, (maxW - pad) / dgv.w, (maxH - pad) / dgv.h);
+    box.style.width = Math.round(Math.min(maxW, Math.max(Math.min(420, maxW), dgv.w * s + pad))) + 'px';
+    box.style.height = Math.round(Math.min(maxH, Math.max(160, dgv.h * s + pad)) + barH) + 'px';
+  }
+  function openZoomViewer(node, w, h, maxFit, popup) {
     const v = $('#dgViewer');
     if (!v.dataset.ready) {
       v.dataset.ready = '1';
-      v.innerHTML = `<div class="dg-viewer-bar">
+      const hint = L('휠 · 두 손가락으로 확대 · 축소, 끌어서 옮기기', 'Wheel or pinch to zoom, drag to pan');
+      v.innerHTML = `<div class="dg-viewer-box" id="dgBox" role="dialog" aria-modal="true" aria-label="${L('크게 보기', 'Enlarged view')}"><div class="dg-viewer-bar">
           <button class="btn icon" id="dgZoomOut" title="${L('축소', 'Zoom out')}">−</button>
           <span class="zoom" id="dgZoomVal">100%</span>
           <button class="btn icon" id="dgZoomIn" title="${L('확대', 'Zoom in')}">+</button>
           <button class="btn" id="dgFit">${L('화면에 맞추기', 'Fit to screen')}</button>
           <button class="btn" id="dgActual">100%</button>
-          <span class="hint">${L('휠 · 두 손가락으로 확대 · 축소, 끌어서 옮기기', 'Wheel or pinch to zoom, drag to pan')}</span>
-          <span style="flex:1"></span>
-          <button class="btn" id="dgClose">${L('닫기 (Esc)', 'Close (Esc)')}</button>
+          <span class="hint">${hint}</span>
+          <span class="dg-spacer"></span>
+          <button class="btn" id="dgClose" title="${L('닫기 (Esc)', 'Close (Esc)')}" aria-label="${L('닫기 (Esc)', 'Close (Esc)')}"><span class="dg-close-x" aria-hidden="true">✕</span><span class="dg-close-text">${L('닫기 (Esc)', 'Close (Esc)')}</span></button>
         </div>
-        <div class="dg-viewer-area" id="dgArea"><div class="dg-viewer-stage" id="dgStage"></div></div>`;
+        <div class="dg-viewer-area" id="dgArea" title="${hint}"><div class="dg-viewer-stage" id="dgStage"></div></div></div>`;
+      // 팝업일 때 상자 밖(어두운 곳)을 누르면 닫음
+      v.addEventListener('click', (e) => { if (e.target === v && v.classList.contains('popup')) closeDiagramViewer(); });
+      // 팝업일 때 창 크기가 바뀌면 상자 크기 · 맞춤을 다시
+      window.addEventListener('resize', () => { if (!v.hidden && v.classList.contains('popup')) { dgvPopupSize(); dgvFit(); } });
       $('#dgZoomIn').onclick = () => dgvCenterZoom(1.25);
       $('#dgZoomOut').onclick = () => dgvCenterZoom(1 / 1.25);
       $('#dgFit').onclick = dgvFit;
@@ -1705,8 +1719,12 @@
     const stage = $('#dgStage');
     stage.innerHTML = '';
     stage.append(node);
+    v.classList.toggle('popup', !!popup);
+    $('#dgBox').removeAttribute('style');
     v.hidden = false;
+    if (popup) dgvPopupSize();
     requestAnimationFrame(dgvFit);
+    $('#dgClose').focus({ preventScroll: true });
   }
   function closeDiagramViewer() { $('#dgViewer').hidden = true; $('#dgStage').innerHTML = ''; }
 

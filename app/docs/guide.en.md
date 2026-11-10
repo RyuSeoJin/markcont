@@ -144,7 +144,7 @@ Shows the documents connected to the current one. Click a row to go to that docu
 | Focus mode | <kbd>Ctrl</kbd>+<kbd>.</kbd> | Leaves only the body text. Press <kbd>Esc</kbd> to exit |
 | Enlarge code | ⤢ in the code block header | Shows the code full screen |
 | Enlarge a diagram | ⤢ at the top right of a diagram | Wheel or pinch to zoom, drag to pan, "Fit to screen" |
-| Enlarge an image | Click the image | The same zoom view as diagrams. While editing side by side, a click jumps to that line of the source instead |
+| Enlarge an image | Click the image | Opens in a pop-up over the document. Wheel or pinch to zoom, drag to pan; click outside it or press Esc to close. While editing side by side, a click jumps to that line of the source instead |
 | Present | **⋯ → Present** | Shows the sections split by dividers (`---`) one slide at a time, full screen (see below) |
 
 - **Document styles (CSS)**: click **Document style → Manage…** at the bottom of View settings (or type `>style` in <kbd>Ctrl</kbd>+<kbd>O</kbd>) to open the styles window.
