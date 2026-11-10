@@ -1,6 +1,10 @@
 // markcont (markdown controller) PC 프로그램
 // 화면은 app/ 의 웹 화면을 그대로 쓰고, 여기서는 파일 읽기 · 저장 · 선택 창만 맡습니다.
 // 화면이 부르는 파일 명령은 모두 scope.rs 로 "사용자가 직접 고른 폴더 · 파일 안인지" 먼저 확인합니다.
+// 스레드: 파일을 읽고 쓰는 명령은 #[tauri::command(async)] 로 메인 스레드 밖에서 돕니다.
+//  (async 가 아닌 명령은 메인 스레드에서 차례로 돌아서, 켤 때 큰 폴더를 다시 읽는 동안 「폴더 열기」 창이 그 뒤에서 기다렸음)
+//  파일 선택 창(pick_*)은 macOS · Linux 에서 메인 스레드에 있어야 해서 그대로 두고, 부모 창을 markcont 창으로 정합니다
+//  (부모가 없으면 처음 창이 늦게 뜨는 동안 markcont 창을 누르면 선택 창이 그 뒤로 숨음)
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod history;
@@ -37,7 +41,7 @@ fn modified_ms(p: &PathBuf) -> u64 {
 }
 
 /// UTF-8(아니면 EUC-KR)로 읽고 BOM 을 떼고 줄 끝을 \n 으로 맞춥니다. 원래 글자 방식은 eol · bom · enc 로 알려 줍니다.
-#[tauri::command]
+#[tauri::command(async)]
 fn read_file(path: String) -> Result<OpenedFile, String> {
     scope::check(&path, Allowed::read_doc)?;
     let p = PathBuf::from(&path);
@@ -60,7 +64,7 @@ fn read_file(path: String) -> Result<OpenedFile, String> {
 /// keep_history 가 true 면 바뀌기 전 내용과 새 내용을 저장 기록에 남깁니다 (history.rs)
 /// eol · bom · enc: 쓸 글자 방식 (read_file 이 알려 준 원래 방식). 없는 것은 지금 파일의 방식을 따릅니다.
 /// EUC-KR 에 없는 글자를 EUC-KR 로 쓰려 하면 쓰지 않고 오류 (화면은 저장 전에 UTF-8 로 바꿀지 먼저 물음)
-#[tauri::command]
+#[tauri::command(async)]
 fn save_file(path: String, text: String, keep_history: Option<bool>, eol: Option<String>, bom: Option<bool>, enc: Option<String>) -> Result<u64, String> {
     scope::check(&path, Allowed::write_doc)?;
     let p = PathBuf::from(&path);
@@ -74,35 +78,35 @@ fn save_file(path: String, text: String, keep_history: Option<bool>, eol: Option
 }
 
 // ---------- 저장 기록 ----------
-#[tauri::command]
+#[tauri::command(async)]
 fn history_list(path: String) -> Vec<history::Version> {
     if scope::check(&path, Allowed::doc).is_err() {
         return vec![];
     }
     history::list(&PathBuf::from(path))
 }
-#[tauri::command]
+#[tauri::command(async)]
 fn history_read(path: String, id: String) -> Result<String, String> {
     scope::check(&path, Allowed::doc)?;
     history::read(&PathBuf::from(path), &id)
 }
-#[tauri::command]
+#[tauri::command(async)]
 fn history_add(path: String, text: String, kind: String) -> Result<(), String> {
     scope::check(&path, Allowed::doc)?;
     history::add(&PathBuf::from(path), &text, &kind)
 }
-#[tauri::command]
+#[tauri::command(async)]
 fn history_clear(path: String) -> Result<(), String> {
     scope::check(&path, Allowed::doc)?;
     history::clear(&PathBuf::from(path))
 }
-#[tauri::command]
+#[tauri::command(async)]
 fn history_prune() {
     history::prune_all();
 }
 
 /// 고친 시각 (밀리초). 범위 밖이거나 없으면 0
-#[tauri::command]
+#[tauri::command(async)]
 fn file_modified(path: String) -> u64 {
     if scope::check(&path, Allowed::stat).is_err() {
         return 0;
@@ -117,8 +121,9 @@ fn startup_file() -> Option<String> {
 }
 
 #[tauri::command]
-fn pick_files() -> Vec<String> {
+fn pick_files(window: tauri::Window) -> Vec<String> {
     rfd::FileDialog::new()
+        .set_parent(&window)
         .set_title(mcp::tr("마크다운 파일 열기", "Open markdown file"))
         .add_filter(mcp::tr("마크다운", "Markdown"), scope::MD_EXT)
         .pick_files()
@@ -162,9 +167,9 @@ fn reveal_in_folder(path: String) -> Result<(), String> {
 /// "새 파일로 저장" 창: 고른 경로를 돌려줌 (취소하면 None)
 /// kind 가 "css" 면 문서 스타일(.css)을 저장하는 창
 #[tauri::command]
-fn pick_save_path(default_name: String, start_dir: Option<String>, kind: Option<String>) -> Option<String> {
+fn pick_save_path(window: tauri::Window, default_name: String, start_dir: Option<String>, kind: Option<String>) -> Option<String> {
     let css = kind.as_deref() == Some("css");
-    let mut dialog = rfd::FileDialog::new();
+    let mut dialog = rfd::FileDialog::new().set_parent(&window);
     dialog = if css {
         dialog
             .set_title(mcp::tr("문서 스타일을 파일로 저장", "Save document style as file"))
@@ -184,8 +189,9 @@ fn pick_save_path(default_name: String, start_dir: Option<String>, kind: Option<
 }
 
 #[tauri::command]
-fn pick_folder() -> Option<String> {
+fn pick_folder(window: tauri::Window) -> Option<String> {
     let p = rfd::FileDialog::new()
+        .set_parent(&window)
         .set_title(mcp::tr("폴더 열기", "Open folder"))
         .pick_folder()?;
     scope::allow_dir(&p);
@@ -202,7 +208,7 @@ struct FolderListing {
 }
 
 /// 폴더 안의 마크다운 파일 · 그림 · 하위 폴더를 모두 찾습니다 (상대 경로, / 로 구분).
-#[tauri::command]
+#[tauri::command(async)]
 fn list_dir(root: String) -> Result<FolderListing, String> {
     scope::check(&root, Allowed::folder)?;
     let base = PathBuf::from(&root);
@@ -250,13 +256,13 @@ fn list_dir(root: String) -> Result<FolderListing, String> {
 }
 
 /// 그림 · 동영상 같은 파일을 그대로 읽어 보냅니다.
-#[tauri::command]
+#[tauri::command(async)]
 fn read_binary(path: String) -> Result<tauri::ipc::Response, String> {
     scope::check(&path, Allowed::read_media)?;
     fs::read(&path).map(tauri::ipc::Response::new).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn create_file(path: String, text: String) -> Result<u64, String> {
     use std::io::Write;
     scope::check(&path, Allowed::new_doc)?;
@@ -271,7 +277,7 @@ fn create_file(path: String, text: String) -> Result<u64, String> {
 }
 
 /// 붙여 넣은 그림 저장 (폴더가 없으면 만들고, 같은 이름이 있으면 덮어쓰지 않음)
-#[tauri::command]
+#[tauri::command(async)]
 fn save_binary(path: String, data: Vec<u8>) -> Result<(), String> {
     use std::io::Write;
     scope::check(&path, Allowed::new_media)?;
@@ -287,7 +293,7 @@ fn save_binary(path: String, data: Vec<u8>) -> Result<(), String> {
     f.write_all(&data).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn create_dir(path: String) -> Result<(), String> {
     scope::check(&path, Allowed::folder)?;
     let p = PathBuf::from(&path);
@@ -297,7 +303,7 @@ fn create_dir(path: String) -> Result<(), String> {
     fs::create_dir(&p).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn rename_path(from: String, to: String) -> Result<(), String> {
     let from_is_dir = scope::check(&from, Allowed::entry)?.is_dir();
     scope::check(&to, |a, real| a.rename_to(real, from_is_dir))?;
@@ -325,7 +331,7 @@ fn delete_path(path: String) -> Result<(), String> {
 
 // ---------- Claude 연결 (MCP) : 화면에서 쓰는 명령 ----------
 /// Claude 가 다룰 수 있는 폴더 · 지금 문서를 알려 줌. 사용자가 고른 범위 밖은 빼고 남김
-#[tauri::command]
+#[tauri::command(async)]
 fn set_mcp_state(roots: Vec<mcp::McpRoot>, current: Option<String>, selection: Option<String>, lang: Option<String>, suggest_only: Option<bool>) -> Result<(), String> {
     let roots = roots.into_iter().filter(|r| scope::check(&r.path, Allowed::folder).is_ok()).collect();
     let current = current.filter(|c| scope::check(c, Allowed::doc).is_ok());
@@ -344,7 +350,7 @@ fn mcp_setup_info() -> serde_json::Value {
 fn mcp_add_claude_desktop() -> Result<String, String> {
     mcp::add_to_claude_desktop()
 }
-#[tauri::command]
+#[tauri::command(async)]
 fn mcp_activity(since: u64) -> Vec<serde_json::Value> {
     mcp::read_activity(since)
 }
