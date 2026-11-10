@@ -759,7 +759,12 @@
     for (const k of state.assets.keys()) if (baseName(k).toLowerCase() === name) return k;
     return null;
   }
-  async function assetUrl(key) {
+  // 그림 · 동영상 읽기를 모아 둠: HTML · Word 저장 전에 아직 읽는 중인 것까지 기다렸다가 넣으려고 (settleMedia)
+  const mediaLoads = new Set();
+  function trackMedia(p) { mediaLoads.add(p); const done = () => mediaLoads.delete(p); p.then(done, done); return p; }
+  async function settleMedia() { for (let i = 0; i < 5 && mediaLoads.size; i++) await Promise.allSettled([...mediaLoads]); }
+  function assetUrl(key) { return trackMedia(loadAsset(key)); }
+  async function loadAsset(key) {
     if (state.assetUrls.has(key)) return state.assetUrls.get(key);
     const a = state.assets.get(key);
     let file;
@@ -1201,9 +1206,9 @@
           const parts = dir.split(/[\\/]/);
           for (const seg of rel.split('/')) { if (seg === '..') parts.pop(); else if (seg && seg !== '.') parts.push(seg); }
           const abs = parts.join(dir.includes('\\') ? '\\' : '/');
-          tinvoke('read_binary', { path: abs })
+          trackMedia(tinvoke('read_binary', { path: abs })
             .then((buf) => { img.src = URL.createObjectURL(new Blob([buf], /\.svg$/i.test(abs) ? { type: 'image/svg+xml' } : {})); })
-            .catch(() => img.replaceWith(missingImage(src, false)));
+            .catch(() => img.replaceWith(missingImage(src, false))));
           return;
         }
         img.replaceWith(missingImage(src, leavesRoot(base, rel)));
@@ -6760,9 +6765,13 @@
   /* =========================================================
      HTML로 저장
      ========================================================= */
+  // 주소(blob: · https:)의 내용을 data: 주소로. 받지 못했거나(404 등) 그림이 아니면 오류 (엉뚱한 오류 페이지를 넣지 않게)
   async function blobToDataUrl(url) {
-    const blob = await (await fetch(url)).blob();
-    return new Promise((r) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(String(res.status));
+    const blob = await res.blob();
+    if (/^https?:/i.test(url) && blob.type && !/^(image|video|audio)\//.test(blob.type)) throw new Error(blob.type);
+    return new Promise((r, j) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.onerror = () => j(fr.error); fr.readAsDataURL(blob); });
   }
   /* ---------- 다른 뷰어용(표준 마크다운) 사본 저장 ---------- */
   async function exportPortable() {
@@ -7128,12 +7137,43 @@ html:not(.mc-js) .markdown-body .mc-tab-panel::before { content: attr(data-tab);
     return fr;
   }
 
+  // HTML 저장본에 그림을 넣음: 읽어 둔 그림(blob:)과 인터넷 그림(https:)을 data: 주소로.
+  //  못 넣은 것(화면에서 못 찾은 그림, 그 사이트가 허락하지 않는 인터넷 그림)은 { src, why } 로 모아 돌려줌
+  async function inlineMedia(root) {
+    let added = 0;
+    const skipped = [];
+    for (const m of root.querySelectorAll('img[src], video[src], audio[src]')) {
+      const src = m.getAttribute('src');
+      const web = /^https?:/i.test(src);
+      if (!src.startsWith('blob:') && !(web && m.tagName === 'IMG')) continue; // 인터넷 동영상 · 소리는 크기가 커서 주소로 둠
+      try { m.setAttribute('src', await blobToDataUrl(src)); added++; }
+      catch (e) { // 유튜브 썸네일은 알리지 않음. TypeError = 사이트가 허락하지 않음 · 연결 안 됨, 그 밖 = 404 등 그 주소에 그림이 없음
+        if (!m.closest('a.yt')) skipped.push({ src, why: !web ? 'read' : e instanceof TypeError ? 'web' : 'webGone' });
+      }
+    }
+    root.querySelectorAll('.img-missing').forEach((sp) => skipped.push({ src: sp.querySelector('code')?.textContent || '', why: 'missing' }));
+    root.querySelectorAll('img.broken:not([src])').forEach((m) => skipped.push({ src: m.alt || '', why: 'missing' }));
+    return { added, skipped };
+  }
+  function confirmSkippedMedia(list) {
+    const why = { missing: L('찾지 못함', 'not found'), read: L('읽지 못함', "couldn't read"), web: L('인터넷 그림 — 받아 올 수 없어 주소로 남김, 받는 사람이 인터넷에 연결돼 있으면 보임', "web image — couldn't fetch it, so the address is kept; readers see it when online"), webGone: L('인터넷 주소에 그림이 없음 — 받는 사람에게도 안 보임', "no image at that web address — readers won't see it either") };
+    const NL = String.fromCharCode(10);
+    const lines = list.slice(0, 8).map((x) => `• ${x.src} (${why[x.why]})`).join(NL) + (list.length > 8 ? NL + L(`… 외 ${list.length - 8}개`, `… and ${list.length - 8} more`) : '');
+    return confirm([
+      L(`그림 ${list.length}개는 HTML 파일 안에 넣지 못했습니다.`, `${list.length} image${list.length === 1 ? '' : 's'} couldn't be put inside the HTML file.`),
+      lines,
+      L('찾지 못한 그림은 그 자리에 파일이 있는지, 웹 앱이라면 그림이 들어 있는 위 폴더를 「폴더 열기」로 열었는지 확인해 주세요. 인터넷 그림은 받는 사람이 인터넷에 연결돼 있으면 보입니다.',
+        'For images not found, check that the file is there, and in the web app that you opened the parent folder that contains the images with Open folder. Web images show up when the reader is online.'),
+      L('그래도 저장할까요?', 'Save anyway?'),
+    ].join(NL + NL));
+  }
+
   async function exportHtml() {
     closeMenus();
+    await settleMedia(); // 아직 읽는 중인 그림까지
     const clone = cleanClone(el.doc, { keepTabs: true });
-    for (const m of clone.querySelectorAll('img[src^="blob:"], video[src^="blob:"], audio[src^="blob:"]')) {
-      try { m.src = await blobToDataUrl(m.src); } catch {}
-    }
+    const media = await inlineMedia(clone);
+    if (media.skipped.length && !confirmSkippedMedia(media.skipped)) return;
     const theme = document.documentElement.dataset.theme;
     const hl = theme === 'dark' ? 'github-dark' : 'github';
     const title = escapeHtml(state.current.name.replace(MD_EXT, ''));
@@ -7164,7 +7204,9 @@ ${clone.innerHTML}
 </body>
 </html>`;
     download(state.current.name.replace(MD_EXT, '') + '.html', out, 'text/html;charset=utf-8');
-    toast(L('HTML 파일을 다운로드 폴더에 저장했습니다', 'Saved the HTML file to Downloads'));
+    toast(media.added
+      ? L(`HTML 파일을 다운로드 폴더에 저장했습니다 (그림 ${media.added}개를 파일 안에 넣음)`, `Saved the HTML file to Downloads (${media.added} image${media.added === 1 ? '' : 's'} included in the file)`)
+      : L('HTML 파일을 다운로드 폴더에 저장했습니다', 'Saved the HTML file to Downloads'));
   }
 
   /* =========================================================
@@ -7440,6 +7482,7 @@ ${clone.innerHTML}
     toast(L('Word 파일을 만드는 중…', 'Making the Word file…'), 2000);
     let fr = null;
     try {
+      await settleMedia(); // 아직 읽는 중인 그림까지
       fr = await lightFrame(el.doc);
       const title = el.doc.querySelector('.print-cover .cover-title')?.textContent.trim() || el.doc.querySelector('h1')?.textContent.trim() || state.current.name.replace(MD_EXT, '');
       const blob = await MarkDocx.build(fr.root, { title, lang: navigator.language });
