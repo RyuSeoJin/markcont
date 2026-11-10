@@ -85,7 +85,7 @@ fn decode(bytes: Vec<u8>) -> (String, bool, Enc) {
     }
 }
 
-/// 글이 주로 쓰는 줄 끝: \r\n 이 줄바꿈의 절반을 넘으면 "\r\n", 아니면 "\n" (app/index.html 의 eolOf 와 같음)
+/// 글이 주로 쓰는 줄 끝: \r\n 이 줄바꿈의 절반을 넘으면 "\r\n", 아니면 "\n" (app/app.js 의 eolOf 와 같음)
 pub fn eol_of(s: &str) -> &'static str {
     let crlf = s.matches("\r\n").count();
     if crlf > 0 && crlf * 2 > s.matches('\n').count() {
