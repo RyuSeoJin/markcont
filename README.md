@@ -145,6 +145,12 @@ npm run build   # 설치 파일 만들기
 - 화면 문구는 한국어 · 영어 두 가지입니다. 코드 안 문구는 `L('한국어', 'English')`로 쓰고, `index.html`에 그대로 적힌 문구는 `app/i18n.js`, 안내 문서는 `app/docs/*.en.md`에 있습니다.
 - 화면 코드는 `index.html` 안에 `<script>`로 직접 쓰지 않고 `app.js` 같은 파일에 둡니다. `index.html`의 보안 설정(CSP)이 이 앱의 파일이 아닌 스크립트는 모두 막기 때문입니다 (문서에 숨은 코드가 실행되지 않게).
 - PC 프로그램의 파일 명령(`main.rs`)은 `scope.rs`로 "사용자가 직접 고른 폴더 · 파일 안인지" 먼저 확인합니다. 새 파일 명령을 더할 때도 같은 확인을 넣어 주세요.
+- **내보내기 · CSS 규칙** (사용자용 설명은 [문서 스타일 규칙](app/docs/style-rules.md)):
+  - 새 문법 · 블록을 만들 때는 화면 · HTML 저장 · 인쇄(PDF) · 서식 복사 · Word 저장 · 다른 뷰어용 저장에서 어떻게 보일지 정하고, 문서 스타일 규칙의 표에 더합니다. 그 표의 클래스 이름은 사용자 CSS가 기대므로 되도록 바꾸지 않습니다.
+  - 문서 모양 CSS는 `index.html`의 `<style id="doc-css">`에 씁니다. HTML 저장본과 서식 복사에도 들어갑니다. 두 번째 `<style>`(앱 화면용)은 들어가지 않습니다.
+  - 화면에서 숨길 때는 `hidden` 속성을 씁니다. 앱 전체에 `[hidden] { display: none !important; }`가 있어서, 인쇄에서 다시 보이게 하는 규칙에는 `!important`가 필요합니다.
+  - HTML 저장본에 넣는 스크립트는 바깥 파일 · 바깥 변수 없이 그 파일만으로 돌아가야 합니다(`savedTabsScript`처럼).
+  - 내보내기를 고쳤으면 「기능 예제」 문서로 화면 · HTML 저장 · 인쇄 미리보기 · Word 저장을 열어 봅니다.
 - `app/vendor`의 라이브러리를 올리면 `scripts/vendor-versions.json`의 버전도 함께 고칩니다. 복사해 둔 파일은 Dependabot이 보지 못해서, 이 목록을 GitHub Actions가 매주 GitHub 보안 공지와 맞춰 보고 확인할 것이 있으면 이슈로 알려 줍니다. 직접 확인하려면 `python scripts/vendor_advisories.py` (GitHub CLI 로그인 필요).
 - `main`에 올리면 웹 앱이 GitHub Pages에 자동으로 배포되고, `v1.5.0` 같은 태그를 올리면 설치 파일이 Releases에 올라갑니다.
 - 새 버전을 낼 때는 `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `package.json`의 버전과 `app/sw.js`의 `VERSION`, `app/app.js`의 `APP_VERSION`을 함께 올립니다.

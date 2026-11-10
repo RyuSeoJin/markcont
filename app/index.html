@@ -243,7 +243,7 @@
 .markdown-body .mc-tree li.dir::before { content: '📁'; }
 @media print {
   .markdown-body .mc-tab-bar { display: none; }
-  .markdown-body .mc-tab-panel[hidden] { display: block; }
+  .markdown-body .mc-tab-panel[hidden] { display: block !important; } /* 앱 전체의 [hidden] { display: none !important } 를 이기려면 !important */
   .markdown-body .mc-tab-panel::before { content: attr(data-tab); display: block; font-weight: 700; margin-bottom: .4em; }
   .markdown-body .mc-tabs, .markdown-body .mc-tree { break-inside: avoid; }
 }

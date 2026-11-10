@@ -1,6 +1,6 @@
 // 오프라인에서도 열리도록 앱 파일을 저장해 두는 서비스 워커
 // 새 버전을 올릴 때는 아래 VERSION 숫자를 올리세요.
-const VERSION = 'v1.11.5';
+const VERSION = 'v1.11.6';
 // 웹 앱만 고쳐 다시 올릴 때는 BUILD 숫자를 올리세요 (PC 프로그램 버전과 따로)
 const BUILD = 1;
 const CACHE = 'markcont-' + VERSION + '-' + BUILD;
@@ -19,10 +19,12 @@ const APP_FILES = [
   './docs/workflow-rules.md',
   './docs/workflow-rules.en.md',
   './docs/features.md',
+  './docs/style-rules.md',
   './docs/licenses.md',
   './docs/guide.en.md',
   './docs/writing-rules.en.md',
   './docs/features.en.md',
+  './docs/style-rules.en.md',
   './docs/licenses.en.md',
   './app.js',
   './i18n.js',
