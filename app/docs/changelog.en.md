@@ -3,6 +3,11 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.11.6 · 2026-11-10
+
+- Print · PDF: printing a document with tabs printed only the selected tab. Now every tab is printed with its name
+- New guide "Document style rules": the names and color variables you can change with Document style (CSS), what changes in Save as HTML, Print and Save as Word, and ready-to-use examples
+
 ## 1.11.5 · 2026-11-10
 
 - Security: the libraries used by the interface are updated to versions that fix security issues (Mermaid 10.9.8 · markdown-it 14.3.3 · KaTeX 0.19.1 · DOMPurify 3.4.17 · highlight.js 11.12.0). Code hidden in diagram text can no longer run, and a specially made document can no longer freeze the screen
