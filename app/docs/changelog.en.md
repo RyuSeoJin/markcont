@@ -3,6 +3,15 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.11.5 · 2026-11-10
+
+- Security: the libraries used by the interface are updated to versions that fix security issues (Mermaid 10.9.8 · markdown-it 14.3.3 · KaTeX 0.19.1 · DOMPurify 3.4.17 · highlight.js 11.12.0). Code hidden in diagram text can no longer run, and a specially made document can no longer freeze the screen
+- Security: the interface no longer runs any script that isn't one of the app's own files, so code hidden in a document doesn't run
+- Desktop app: it only works with the folders and files you picked with Open folder · Open file · Save as new file, and files you double-clicked. Links to documents outside the picked folders don't open; use Open file instead. Folders you had open last time and files with saved versions still open as before
+- Enlarge an image: clicking an image opens it in a pop-up over the document. Zoom buttons are at the bottom; click outside it or press Esc to close
+- Print · PDF: collapsed boxes are expanded when printing. Tabs can be switched in files saved as HTML too
+- Open-source licenses: libraries bundled inside other libraries are now all listed
+
 ## 1.11.4 · 2026-11-10
 
 - Flowcharts: connector text, the connector's view · section · document line, and line labels are no longer cut short with an ellipsis (…). Long text makes the shape or label box bigger instead
