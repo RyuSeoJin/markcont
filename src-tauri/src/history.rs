@@ -197,6 +197,17 @@ pub fn prune_all() {
     }
 }
 
+/// 기록이 남아 있는 파일들의 원래 경로 (path.txt).
+/// scope.rs 가 처음 켤 때, 예전부터 다루던 파일을 다시 고르지 않아도 열 수 있게 하는 데 씀
+pub fn known_paths() -> Vec<PathBuf> {
+    let Ok(rd) = fs::read_dir(root()) else { return vec![] };
+    rd.flatten()
+        .filter_map(|e| fs::read_to_string(e.path().join("path.txt")).ok())
+        .map(|s| PathBuf::from(s.trim()))
+        .filter(|p| !p.as_os_str().is_empty())
+        .collect()
+}
+
 /// 파일 이름을 바꾸면 기록도 새 이름으로 옮김 (새 이름에 기록이 이미 있으면 그대로 둠)
 pub fn moved(from: &Path, to: &Path) {
     let (a, b) = (dir_of(from), dir_of(to));

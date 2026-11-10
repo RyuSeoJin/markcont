@@ -107,17 +107,18 @@ You can paste the node table from an existing planning doc as is. Shapes, branch
 
 ## Make it your own
 
-Feel free to fork it and adapt it to your team's document rules. The viewer is a single HTML app with no build step, so it's easy to poke at.
+Feel free to fork it and adapt it to your team's document rules. The viewer is plain HTML and JS files with no build step, so it's easy to poke at.
 
 ```
 app/                 UI shared by the web app and the desktop app
-  index.html         the viewer (Markdown rendering, editor, workspace)
+  index.html         page skeleton, styles, security policy (CSP)
+  app.js             the viewer (Markdown rendering, editor, workspace)
   diagram.js         markcont-only blocks (flow · ui · data …)
   i18n.js            UI string table
   sw.js              offline cache
   docs/              user guide, writing rules, feature samples (also open inside the app)
-  vendor/            markdown-it, highlight.js, KaTeX (bundled so it works offline)
-src-tauri/           desktop app (Tauri 2) — main.rs, MCP server (mcp.rs)
+  vendor/            markdown-it, DOMPurify, highlight.js, KaTeX, Mermaid (bundled so it works offline)
+src-tauri/           desktop app (Tauri 2) — main.rs, file scope checks (scope.rs), MCP server (mcp.rs)
 .github/workflows/   web deploy (pages), installers (release), desktop compile check (check)
 ```
 
@@ -140,8 +141,10 @@ npm run build   # build installers
 Good to know:
 
 - The UI is bilingual (Korean / English). In code, strings are written as `L('한국어', 'English')`; strings in `index.html` live in `app/i18n.js`; docs have `*.en.md` versions.
+- Page code lives in files like `app.js`, never in an inline `<script>` in `index.html`: the security policy (CSP) in `index.html` blocks every script that isn't one of the app's own files, so code hidden in a document can't run.
+- The desktop app's file commands (`main.rs`) first check with `scope.rs` that a path is inside a folder or file the user picked. Add the same check to any new file command.
 - Pushing to `main` deploys the web app to GitHub Pages; pushing a tag like `v1.5.0` builds installers into Releases.
-- When releasing, bump the version in `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `package.json`, plus `VERSION` in `app/sw.js` and `APP_VERSION` in `app/index.html`.
+- When releasing, bump the version in `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `package.json`, plus `VERSION` in `app/sw.js` and `APP_VERSION` in `app/app.js`.
 
 ## Contributing
 

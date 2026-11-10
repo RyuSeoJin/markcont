@@ -1,12 +1,15 @@
 // markcont (markdown controller) PC 프로그램
-// 화면은 app/index.html 을 그대로 쓰고, 여기서는 파일 읽기 · 저장 · 선택 창만 맡습니다.
+// 화면은 app/ 의 웹 화면을 그대로 쓰고, 여기서는 파일 읽기 · 저장 · 선택 창만 맡습니다.
+// 화면이 부르는 파일 명령은 모두 scope.rs 로 "사용자가 직접 고른 폴더 · 파일 안인지" 먼저 확인합니다.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod history;
 mod mcp;
+mod scope;
 mod textfile;
 mod update;
 
+use scope::Allowed;
 use serde::Serialize;
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
 
@@ -36,6 +39,7 @@ fn modified_ms(p: &PathBuf) -> u64 {
 /// UTF-8(아니면 EUC-KR)로 읽고 BOM 을 떼고 줄 끝을 \n 으로 맞춥니다. 원래 글자 방식은 eol · bom · enc 로 알려 줍니다.
 #[tauri::command]
 fn read_file(path: String) -> Result<OpenedFile, String> {
+    scope::check(&path, Allowed::read_doc)?;
     let p = PathBuf::from(&path);
     let (text, fmt) = textfile::read(&p).map_err(|e| e.to_string())?;
     let name = p
@@ -58,6 +62,7 @@ fn read_file(path: String) -> Result<OpenedFile, String> {
 /// EUC-KR 에 없는 글자를 EUC-KR 로 쓰려 하면 쓰지 않고 오류 (화면은 저장 전에 UTF-8 로 바꿀지 먼저 물음)
 #[tauri::command]
 fn save_file(path: String, text: String, keep_history: Option<bool>, eol: Option<String>, bom: Option<bool>, enc: Option<String>) -> Result<u64, String> {
+    scope::check(&path, Allowed::write_doc)?;
     let p = PathBuf::from(&path);
     let want = textfile::Want { eol: eol.as_deref(), bom, enc: enc.as_deref() };
     if keep_history.unwrap_or(false) {
@@ -71,18 +76,24 @@ fn save_file(path: String, text: String, keep_history: Option<bool>, eol: Option
 // ---------- 저장 기록 ----------
 #[tauri::command]
 fn history_list(path: String) -> Vec<history::Version> {
+    if scope::check(&path, Allowed::doc).is_err() {
+        return vec![];
+    }
     history::list(&PathBuf::from(path))
 }
 #[tauri::command]
 fn history_read(path: String, id: String) -> Result<String, String> {
+    scope::check(&path, Allowed::doc)?;
     history::read(&PathBuf::from(path), &id)
 }
 #[tauri::command]
 fn history_add(path: String, text: String, kind: String) -> Result<(), String> {
+    scope::check(&path, Allowed::doc)?;
     history::add(&PathBuf::from(path), &text, &kind)
 }
 #[tauri::command]
 fn history_clear(path: String) -> Result<(), String> {
+    scope::check(&path, Allowed::doc)?;
     history::clear(&PathBuf::from(path))
 }
 #[tauri::command]
@@ -90,32 +101,44 @@ fn history_prune() {
     history::prune_all();
 }
 
+/// 고친 시각 (밀리초). 범위 밖이거나 없으면 0
 #[tauri::command]
 fn file_modified(path: String) -> u64 {
+    if scope::check(&path, Allowed::stat).is_err() {
+        return 0;
+    }
     modified_ms(&PathBuf::from(path))
 }
 
-/// .md 파일을 더블클릭해서 프로그램을 열었을 때 그 파일 경로
+/// .md 파일을 더블클릭해서 프로그램을 열었을 때 그 파일 경로 (main 에서 범위에 넣어 둠)
 #[tauri::command]
 fn startup_file() -> Option<String> {
-    std::env::args().skip(1).find(|a| !a.starts_with('-'))
+    scope::startup_path().map(|p| p.to_string_lossy().into_owned())
 }
 
 #[tauri::command]
 fn pick_files() -> Vec<String> {
     rfd::FileDialog::new()
         .set_title(mcp::tr("마크다운 파일 열기", "Open markdown file"))
-        .add_filter(mcp::tr("마크다운", "Markdown"), &["md", "markdown", "mdown", "mkd", "txt"])
+        .add_filter(mcp::tr("마크다운", "Markdown"), scope::MD_EXT)
         .pick_files()
         .unwrap_or_default()
         .into_iter()
-        .map(|p| p.to_string_lossy().into_owned())
+        .map(|p| {
+            scope::allow_file(&p);
+            p.to_string_lossy().into_owned()
+        })
         .collect()
 }
 
 /// 파일 탐색기(Finder)에서 이 파일이 있는 폴더를 열고 파일을 선택해 보여줌
 #[tauri::command]
 fn reveal_in_folder(path: String) -> Result<(), String> {
+    scope::check(&path, Allowed::doc)?;
+    // Windows 는 explorer 에 따옴표로 감싸 넘기므로, 경로에 따옴표가 있으면 다른 인자를 끼워 넣을 수 있음
+    if path.contains('"') {
+        return Err(mcp::tr("경로에 쓸 수 없는 글자가 있습니다", "The path has a character that can't be used").into());
+    }
     #[cfg(target_os = "windows")]
     {
         use std::os::windows::process::CommandExt;
@@ -155,15 +178,18 @@ fn pick_save_path(default_name: String, start_dir: Option<String>, kind: Option<
     if let Some(dir) = start_dir {
         dialog = dialog.set_directory(dir);
     }
-    dialog.save_file().map(|p| p.to_string_lossy().into_owned())
+    let p = dialog.save_file()?;
+    scope::allow_file(&p);
+    Some(p.to_string_lossy().into_owned())
 }
 
 #[tauri::command]
 fn pick_folder() -> Option<String> {
-    rfd::FileDialog::new()
+    let p = rfd::FileDialog::new()
         .set_title(mcp::tr("폴더 열기", "Open folder"))
-        .pick_folder()
-        .map(|p| p.to_string_lossy().into_owned())
+        .pick_folder()?;
+    scope::allow_dir(&p);
+    Some(p.to_string_lossy().into_owned())
 }
 
 #[derive(Serialize)]
@@ -175,15 +201,10 @@ struct FolderListing {
     dirs: Vec<String>,
 }
 
-const MD_EXT: &[&str] = &["md", "markdown", "mdown", "mkd", "txt"];
-const ASSET_EXT: &[&str] = &[
-    "png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "avif", "mp4", "webm", "ogv", "mov", "mp3", "wav", "aac",
-    "flac", "m4a", "oga", "ogg",
-];
-
 /// 폴더 안의 마크다운 파일 · 그림 · 하위 폴더를 모두 찾습니다 (상대 경로, / 로 구분).
 #[tauri::command]
 fn list_dir(root: String) -> Result<FolderListing, String> {
+    scope::check(&root, Allowed::folder)?;
     let base = PathBuf::from(&root);
     if !base.is_dir() {
         return Err(mcp::tr("폴더를 찾을 수 없습니다", "Folder not found").into());
@@ -216,9 +237,9 @@ fn list_dir(root: String) -> Result<FolderListing, String> {
                 }
             } else {
                 let ext = path.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
-                if MD_EXT.contains(&ext.as_str()) {
+                if scope::MD_EXT.contains(&ext.as_str()) {
                     out.files.push(p);
-                } else if ASSET_EXT.contains(&ext.as_str()) {
+                } else if scope::ASSET_EXT.contains(&ext.as_str()) {
                     out.assets.push(p);
                 }
             }
@@ -231,12 +252,14 @@ fn list_dir(root: String) -> Result<FolderListing, String> {
 /// 그림 · 동영상 같은 파일을 그대로 읽어 보냅니다.
 #[tauri::command]
 fn read_binary(path: String) -> Result<tauri::ipc::Response, String> {
+    scope::check(&path, Allowed::read_media)?;
     fs::read(&path).map(tauri::ipc::Response::new).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn create_file(path: String, text: String) -> Result<u64, String> {
     use std::io::Write;
+    scope::check(&path, Allowed::new_doc)?;
     let p = PathBuf::from(&path);
     let mut f = fs::OpenOptions::new()
         .write(true)
@@ -251,6 +274,7 @@ fn create_file(path: String, text: String) -> Result<u64, String> {
 #[tauri::command]
 fn save_binary(path: String, data: Vec<u8>) -> Result<(), String> {
     use std::io::Write;
+    scope::check(&path, Allowed::new_media)?;
     let p = PathBuf::from(&path);
     if let Some(dir) = p.parent() {
         fs::create_dir_all(dir).map_err(|e| e.to_string())?;
@@ -265,6 +289,7 @@ fn save_binary(path: String, data: Vec<u8>) -> Result<(), String> {
 
 #[tauri::command]
 fn create_dir(path: String) -> Result<(), String> {
+    scope::check(&path, Allowed::folder)?;
     let p = PathBuf::from(&path);
     if p.exists() {
         return Err(mcp::tr("같은 이름이 이미 있습니다", "That name is already taken").into());
@@ -274,6 +299,8 @@ fn create_dir(path: String) -> Result<(), String> {
 
 #[tauri::command]
 fn rename_path(from: String, to: String) -> Result<(), String> {
+    let from_is_dir = scope::check(&from, Allowed::entry)?.is_dir();
+    scope::check(&to, |a, real| a.rename_to(real, from_is_dir))?;
     let target = PathBuf::from(&to);
     if target.exists() {
         return Err(mcp::tr("같은 이름이 이미 있습니다", "That name is already taken").into());
@@ -292,12 +319,16 @@ fn rename_path(from: String, to: String) -> Result<(), String> {
 /// 지운 파일 · 폴더는 휴지통으로 보냅니다 (되살릴 수 있음).
 #[tauri::command]
 fn delete_path(path: String) -> Result<(), String> {
+    scope::check(&path, Allowed::entry)?;
     trash::delete(&path).map_err(|e| e.to_string())
 }
 
 // ---------- Claude 연결 (MCP) : 화면에서 쓰는 명령 ----------
+/// Claude 가 다룰 수 있는 폴더 · 지금 문서를 알려 줌. 사용자가 고른 범위 밖은 빼고 남김
 #[tauri::command]
 fn set_mcp_state(roots: Vec<mcp::McpRoot>, current: Option<String>, selection: Option<String>, lang: Option<String>, suggest_only: Option<bool>) -> Result<(), String> {
+    let roots = roots.into_iter().filter(|r| scope::check(&r.path, Allowed::folder).is_ok()).collect();
+    let current = current.filter(|c| scope::check(c, Allowed::doc).is_ok());
     mcp::write_state(&mcp::McpState { roots, current, selection, lang, suggest_only: suggest_only.unwrap_or(false) })
 }
 /// 화면 언어를 알려줌 (파일 선택 창 제목 · 오류 문구에 씀)
@@ -323,6 +354,10 @@ fn main() {
     if std::env::args().any(|a| a == "--mcp") {
         mcp::serve();
         return;
+    }
+    // 더블클릭해서 연 파일은 사용자가 고른 것이므로 범위에 넣음
+    if let Some(p) = scope::startup_path() {
+        scope::allow_file(&p);
     }
     tauri::Builder::default()
         // 새 버전 확인 · 설치 (update.rs, 설정은 tauri.conf.json 의 plugins.updater)
