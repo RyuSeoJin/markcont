@@ -32,19 +32,36 @@
 
   function plugin(md, opts) {
     const relax = !(opts && opts.relax === false); // relax: false → CommonMark 그대로 (위치만 기록)
-    const { isWhiteSpace, isPunctChar, isMdAsciiPunct } = md.utils;
-    const punct = (c) => isMdAsciiPunct(c) || isPunctChar(String.fromCharCode(c));
+    const { isWhiteSpace, isPunctChar, isPunctCharCode, isMdAsciiPunct } = md.utils;
+    // 글자 번호(코드 포인트)로 문장부호인지 (markdown-it 14.3 부터 isPunctCharCode 가 있음)
+    const punct = (c) => isMdAsciiPunct(c) || (isPunctCharCode ? isPunctCharCode(c) : isPunctChar(String.fromCodePoint(c)));
     const Base = md.inline.State;
 
     class CjkState extends Base {
-      // markdown-it 14.1.0 의 scanDelims 와 같고, 반대쪽이 한중일 글자인 경우만 더함
+      // markdown-it 14.3.3 의 scanDelims 와 같고, 반대쪽이 한중일 글자인 경우만 더함
       scanDelims(start, canSplitWord) {
         const src = this.src, max = this.posMax, marker = src.charCodeAt(start);
-        const lastChar = start > 0 ? src.charCodeAt(start - 1) : 0x20;
+        // 앞 · 뒤 글자: 서로게이트 쌍은 한 글자로 합치고, 깨진 쌍은 U+FFFD 로 봄 (markdown-it 과 같게)
+        let lastChar;
+        if (start === 0) lastChar = 0x20;
+        else if (start === 1) {
+          lastChar = src.charCodeAt(0);
+          if ((lastChar & 0xf800) === 0xd800) lastChar = 0xfffd;
+        } else {
+          lastChar = src.charCodeAt(start - 1);
+          if ((lastChar & 0xfc00) === 0xdc00) {
+            const hi = src.charCodeAt(start - 2);
+            lastChar = (hi & 0xfc00) === 0xd800 ? 0x10000 + ((hi - 0xd800) << 10) + (lastChar - 0xdc00) : 0xfffd;
+          } else if ((lastChar & 0xfc00) === 0xd800) lastChar = 0xfffd;
+        }
         let pos = start;
         while (pos < max && src.charCodeAt(pos) === marker) pos++;
         const count = pos - start;
-        const nextChar = pos < max ? src.charCodeAt(pos) : 0x20;
+        let nextChar = pos < max ? src.charCodeAt(pos) : 0x20;
+        if ((nextChar & 0xfc00) === 0xd800) {
+          const lo = src.charCodeAt(pos + 1);
+          nextChar = (lo & 0xfc00) === 0xdc00 ? 0x10000 + ((nextChar - 0xd800) << 10) + (lo - 0xdc00) : 0xfffd;
+        } else if ((nextChar & 0xfc00) === 0xdc00) nextChar = 0xfffd;
         const lastP = punct(lastChar), nextP = punct(nextChar);
         const lastW = isWhiteSpace(lastChar), nextW = isWhiteSpace(nextChar);
         const left = !nextW && (!nextP || lastW || lastP || (relax && cjkBefore(src, start)));
