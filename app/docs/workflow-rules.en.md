@@ -72,7 +72,7 @@ The more lines leave one shape, the more crowded lines and labels get.
 | Line labels | **12 characters or fewer** — `save failed` · `none` |
 | yes · no | Only on decisions |
 
-- Labels sit **on the first segment** of their line. Long labels wrap to two lines; anything longer is cut with an ellipsis (hover to see it all). Move long explanations into **the target shape's text or the policy table**.
+- Labels sit **on the first segment** of their line. Long labels wrap over several lines and are never cut short. Long labels still make the chart bigger, so move long explanations into **the target shape's text or the policy table**.
 - For shapes that naturally have many branches (like a screen with many user actions), don't merge node codes (simulators and QA use them) — split by feature with `@view` instead.
 - Document check **only points out** where branches, labels or shape text go over these guidelines (not counted as issues).
 

@@ -337,15 +337,15 @@
     for (const n of nodes.values()) {
       const small = n.type === 'goto' || n.type === 'ret';
       const size = small ? 12 : 13;
+      // 글은 줄이지 않고(「…」 없이) 다 보여 줌: 줄이 늘면 도형이 그만큼 높아짐
       n.lines = n.text ? wrap(n.text, small ? 120 : 150, size) : [];
-      if (small && n.lines.length > 2) n.lines = [n.lines[0], n.lines[1] + '…'];
       n.codeText = n.virtual ? n.code : (f.hideCodes || n.type === 'ref' ? '' : n.id);
       if (n.type === 'sub') n.codeText = (n.codeText ? n.codeText + ' ' : '') + '▸';
       if (n.type === 'ref' && !n.lines.length) n.lines = [n.id];
-      // 연결자: 도착이 어느 보기 · 섹션 · 문서인지 문구 위에 작게 한 줄
-      n.whereLine = n.where ? wrap(n.where, 130, 10.5, 600)[0] + (wrap(n.where, 130, 10.5, 600).length > 1 ? '…' : '') : '';
-      const tw = Math.max(n.codeText ? textW(n.codeText, 11.5, 700) : 0, n.whereLine ? textW(n.whereLine, 10.5, 600) : 0, ...n.lines.map((l) => textW(l, size)), 0);
-      const th = (n.codeText ? 15 : 0) + (n.whereLine ? 13 : 0) + n.lines.length * 17;
+      // 연결자: 도착이 어느 보기 · 섹션 · 문서인지 문구 위에 작게 (길면 여러 줄)
+      n.whereLines = n.where ? wrap(n.where, 130, 10.5, 600) : [];
+      const tw = Math.max(n.codeText ? textW(n.codeText, 11.5, 700) : 0, ...n.whereLines.map((l) => textW(l, 10.5, 600)), ...n.lines.map((l) => textW(l, size)), 0);
+      const th = (n.codeText ? 15 : 0) + n.whereLines.length * 13 + n.lines.length * 17;
       n.th = th;
       switch (n.type) {
         case 'decision': n.w = Math.max(100, tw * 1.5 + 30); n.h = Math.max(66, th * 1.6 + 24); break;
@@ -379,7 +379,7 @@
       gapCount.set(k, (gapCount.get(k) || 0) + 1);
     }
     // 선 글자는 첫 선분 위에 얹으므로, 틈은 가장 긴 선 글자 + 세로 통로(선마다 12px)를 넣을 만큼
-    const labW = (e) => (e.label ? Math.max(...wrap(e.label, 130, 11, 600).slice(0, 2).map((l) => textW(l, 11, 600))) + 10 : 0);
+    const labW = (e) => (e.label ? Math.max(...wrap(e.label, 130, 11, 600).map((l) => textW(l, 11, 600))) + 10 : 0);
     const gapLab = new Map();
     for (const e of edges) {
       if (e.hidden || e.back || !nodes.has(e.to)) continue;
@@ -626,8 +626,7 @@
     for (const e of vis) {
       if (!e.label) continue;
       const [p0, p1] = e.pts;
-      let lines = wrap(e.label, 130, 11, 600);
-      if (lines.length > 2) { lines = [lines[0], lines[1]]; while (lines[1].length > 1 && textW(lines[1] + '…', 11, 600) > 130) lines[1] = lines[1].slice(0, -1); lines[1] += '…'; }
+      const lines = wrap(e.label, 130, 11, 600); // 줄이지 않고 다 보여 줌
       const w = Math.max(...lines.map((l) => textW(l, 11, 600))) + 10, h = lines.length * 14 + 3;
       const cands = [];
       if (Math.abs(p0.y - p1.y) < 0.5) {
@@ -672,8 +671,8 @@
     let text = '';
     const top = n.cy - n.th / 2;
     if (n.codeText) { text += `<text class="dg-code" x="${r1(cx)}" y="${r1(top + 7.5)}">${esc(n.codeText)}</text>`; }
-    if (n.whereLine) text += `<text class="dg-where" x="${r1(cx)}" y="${r1(top + (n.codeText ? 15 : 0) + 6.5)}">${esc(n.whereLine)}</text>`;
-    const t0 = top + (n.codeText ? 15 : 0) + (n.whereLine ? 13 : 0);
+    n.whereLines.forEach((l, i) => { text += `<text class="dg-where" x="${r1(cx)}" y="${r1(top + (n.codeText ? 15 : 0) + 6.5 + i * 13)}">${esc(l)}</text>`; });
+    const t0 = top + (n.codeText ? 15 : 0) + n.whereLines.length * 13;
     n.lines.forEach((l, i) => lines.push(`<text class="dg-text${small ? ' small' : ''}" x="${r1(cx)}" y="${r1(t0 + (i + 0.5) * 17)}">${esc(l)}</text>`));
     text += lines.join('');
     // 마우스를 올리면: 연결자는 도착 코드 · 문구 · 보기(섹션) · 선 글자를 줄마다
