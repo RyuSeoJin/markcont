@@ -70,6 +70,7 @@ Or grab a file from [Releases](https://github.com/RyuSeoJin/markcont/releases/la
 
 **Planning-doc blocks** (markcont only)
 - `flow` flowcharts: write nodes as a table and get a diagram split into user and system zones.
+- `summary` flows: a top-to-bottom overview of a whole feature by stage, role and decision.
 - `ui` placement: shows where a feature lives and what appears when you enter it, as a tree.
 - `data` definitions: one card per data type, one row per field.
 - Also `sequence`, `state` and `timeline`.

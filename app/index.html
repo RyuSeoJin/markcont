@@ -544,6 +544,29 @@
 .dg-svg .dg-tl-dur.in { fill: var(--text); text-anchor: middle; }
 .dg-svg .dg-today { stroke: var(--dg-no); stroke-width: 1.4; stroke-dasharray: 4 3; }
 .dg-svg .dg-today-label { font-size: 10.5px; font-weight: 700; fill: var(--dg-no); }
+/* 요약 흐름도 (```요약흐름): 왼쪽 단계 · 가운데 같은 크기 칸 · 오른쪽 설명. 역할 색은 칸의 --t (data-role="역할 이름"), 칸 너비는 --sf-box-width
+   넓은 모양(설명이 칸 오른쪽) · 좁은 모양(설명이 칸 아래)을 둘 다 그려 두고 블록 폭에 맞는 쪽만 보임:
+   .sf-probe 폭 = 블록 폭 × 1000 ÷ 넓은 모양 폭 → 1000px 이상이면 넓은 모양이 들어감 (그림마다 다른 기준을 규칙 하나로 · 인쇄 · HTML 저장본에서도 같음) */
+.dg-sum .sf { overflow: hidden; }
+.dg-sum .sf-probe { container: mc-sf / inline-size; width: calc(100% * 1000 / var(--sf-w, 600)); }
+.dg-sum .sf-in { width: calc(100% * var(--sf-w, 600) / 1000); }
+.dg-sum .sf-wide { display: none; }
+@container mc-sf (min-width: 999.9px) { .dg-sum .sf-wide { display: block; } .dg-sum .sf-narrow { display: none; } }
+/* 좁은 모양도 넘치면 원래 크기의 70% 까지 줄여 한눈에 보이게 (그보다 좁으면 옆으로 넘김) */
+.markdown-body .dg-sum .sf-narrow svg { width: clamp(calc(var(--sf-n, 480px) * .7), 100%, var(--sf-n, 480px)); height: auto; }
+.markdown-body .dg svg.dg-summary { overflow: visible; } /* 글꼴이 달라 설명이 조금 길어져도 그림 끝에서 잘리지 않게 */
+/* 인쇄 · PDF: 종이는 늘 흰 바탕이라 어두운 테마여도 밝은 색으로 (단계 이름 · 설명처럼 칸 밖의 글자가 흐려지지 않게) */
+@media print { .dg-svg.dg-summary { --text: #1f2328; --muted: #6a6f76; --dg-node: #ffffff; --dg-stroke: #64748b; --dg-yes: #2563eb; --dg-no: #dc2626; --c-blue: #2f6feb; --c-green: #1f883d; --c-purple: #8250df; --c-amber: #9a6700; --c-red: #cf222e; } }
+.dg-svg .sf-shape { fill: color-mix(in srgb, var(--t) 12%, var(--dg-node)); stroke: var(--t); stroke-width: 1; }
+.dg-svg .sf-title { font-size: 14px; font-weight: 600; fill: color-mix(in srgb, var(--t) 55%, var(--text)); }
+.dg-svg .sf-desc, .dg-svg .sf-elabel { font-size: 12px; fill: var(--muted); text-anchor: start; }
+.dg-svg .sf-desc.mid, .dg-svg .sf-elabel.mid { text-anchor: middle; }
+.dg-svg .sf-stage { font-size: 14px; font-weight: 600; }
+.dg-svg .sf-stage-line { stroke: var(--dg-stroke); stroke-width: 1; stroke-dasharray: 3 3; }
+.dg-svg .sf-edge { fill: none; stroke: var(--dg-stroke); stroke-width: 1.3; }
+.dg-svg .sf-arrow { fill: none; stroke: var(--dg-stroke); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.dg-svg .sf-edge.yes, .dg-svg .sf-arrow.yes { stroke: var(--dg-yes); }
+.dg-svg .sf-edge.no, .dg-svg .sf-arrow.no { stroke: var(--dg-no); }
 
 /* 자주 묻는 질문 (details) */
 .markdown-body details:not(.callout):not(.front-matter) { padding: 0; background: var(--surface); overflow: hidden; }

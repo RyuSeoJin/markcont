@@ -126,6 +126,20 @@ Review: 2d
 ◆ Share: 2026-11-12
 ```
 
+Summary flow (a whole feature at a glance: stages on the left · boxes in the middle · notes on the right):
+
+```summary
+# Open
+- [user] Open a folder
+  The document list shows on the left
+# Edit
+- [user] Edit a document
+  The preview updates as you type
+- [system] Any changes?
+  - no → [system] Left as is
+- yes → [system] Save · keep a save record
+```
+
 ## 8. Links
 
 - To another document: [User guide](User-Guide.md), wikilink [[Markdown-Writing-Rules#7-2. Diagrams (markcont style)|the diagrams chapter of the writing rules]]

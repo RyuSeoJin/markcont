@@ -157,7 +157,7 @@
     let st = document.getElementById('userCssStyle');
     if (!st) { st = document.createElement('style'); st.id = 'userCssStyle'; document.head.append(st); }
     const t = userCssText();
-    if (st.textContent !== t) { st.textContent = t; requestAnimationFrame(drawAllDataLinks); }
+    if (st.textContent !== t) { st.textContent = t; requestAnimationFrame(() => { drawAllDataLinks(); redrawSummaries(); }); }
     const s = styleFor(state.current), now = document.getElementById('styleNow');
     if (now) now.textContent = s ? s.style.name : L('없음', 'None');
   }
@@ -911,6 +911,15 @@
     el.doc.querySelectorAll('.dg-html .dt').forEach((dt) => { try { MarkDiagram.drawDataLinks(dt.parentElement); } catch {} });
   }
   if (window.ResizeObserver) new ResizeObserver(() => { clearTimeout(dataLinkRaf); dataLinkRaf = setTimeout(drawAllDataLinks, 60); }).observe(el.doc);
+  // 요약 흐름도: 문서 스타일(CSS)의 칸 너비(--sf-box-width)가 바뀌면 다시 그림
+  function redrawSummaries() {
+    if (!window.MarkDiagram) return;
+    el.doc.querySelectorAll('.dg-sum[data-src]').forEach((d) => {
+      try { d.classList.remove('dg-error'); d.innerHTML = MarkDiagram.render('summary', d.dataset.src); addDgExpand(d); }
+      catch (err) { d.classList.add('dg-error'); d.textContent = L('다이어그램을 그리지 못했습니다\n', "Couldn't draw the diagram\n") + err.message; }
+    });
+    lineTops = null;
+  }
 
   function render(keepScroll = false) {
     if (!libsOk || !state.current) return;
@@ -1247,7 +1256,7 @@
       const lineAttr = pre.dataset.line || code.dataset.line || '';
       const langClass = [...code.classList].find((c) => c.startsWith('language-'));
       const lang = langClass ? langClass.slice(9) : '';
-      // markcont 다이어그램: ```flow · ```sequence · ```state · ```timeline (한글 이름도 됨)
+      // markcont 다이어그램: ```flow · ```sequence · ```state · ```timeline · ```요약흐름 (한글 이름도 됨)
       const dgKind = window.MarkDiagram && MarkDiagram.kindOf(lang);
       if (dgKind) {
         const d = document.createElement('div');
@@ -1260,6 +1269,7 @@
             d.innerHTML = MarkDiagram.render(dgKind, code.textContent); // 카드 사이 연결선은 다 그린 뒤 drawAllDataLinks
           }
           else if (dgKind === 'flow') { d.classList.add('dg-flowblock'); flowJobs.push({ d, src: code.textContent }); } // 문서의 흐름도를 다 모은 뒤 그림 (연결자 도착을 다른 블록에서도 찾게)
+          else if (dgKind === 'summary') { d.classList.add('dg-sum'); d.dataset.src = code.textContent; d.innerHTML = MarkDiagram.render(dgKind, code.textContent); addDgExpand(d); } // 넓은 · 좁은 모양을 함께 (문서 스타일이 바뀌면 data-src 로 다시 그림)
           else { d.innerHTML = '<div class="dg-scroll">' + MarkDiagram.render(dgKind, code.textContent) + '</div>'; addDgExpand(d); }
         }
         catch (err) { d.classList.add('dg-error'); d.textContent = L('다이어그램을 그리지 못했습니다\n', "Couldn't draw the diagram\n") + err.message; }
@@ -1629,7 +1639,9 @@
   }
   function dgvCenterZoom(f) { const r = $('#dgArea').getBoundingClientRect(); dgvZoomAt(f, r.width / 2, r.height / 2); }
   function openDiagramViewer(box) {
-    const svg = box && box.querySelector('svg:not(.dg-expand svg)');
+    // 요약 흐름도는 넓은 · 좁은 모양 가운데 지금 보이는 쪽
+    const svgs = box ? [...box.querySelectorAll('svg:not(.dg-expand svg)')] : [];
+    const svg = svgs.find((x) => x.getClientRects().length) || svgs[0];
     if (!svg) return;
     const vb = svg.viewBox && svg.viewBox.baseVal;
     const rect = svg.getBoundingClientRect();
@@ -3614,14 +3626,17 @@
     add('rules', L('작성 규칙', 'Writing rules'), rules.sort((a, b) => a.line - b.line));
     // 7) 흐름도: @보기 · @자료 · 연결자 도착 (갈래 수 · 글자 수는 알려만 줌)
     if (window.MarkDiagram) {
-      const flowBad = [], flowInfo = [], cover = new Map(); // @자료 → { first, codes: 보기에 든 코드, all: 표의 코드 }
+      const flowBad = [], flowInfo = [], sumBad = [], cover = new Map(); // @자료 → { first, codes: 보기에 든 코드, all: 표의 코드 }
       const base = cur && cur.path ? cur.path : (state.current && state.current.path) || '';
-      let fence = null, start = 0, buf = null;
+      let fence = null, start = 0, buf = null, kind = null;
       lines.forEach((ln, i) => {
         const fm = ln.match(/^ {0,3}(`{3,}|~{3,})\s*([^`\s]*)/);
         if (fence) {
           if (fm && fm[1][0] === fence[0] && fm[1].length >= fence.length && !fm[2]) {
-            if (buf) {
+            if (buf && kind === 'summary') {
+              // 요약 흐름도: 모르는 역할 · 판정 없는 예/아니오 · 빈 단계 같은 문법 오류
+              for (const it of MarkDiagram.summaryCheck(buf.join('\n'))) sumBad.push({ line: start + (it.ln || 1), what: it.msg, text: buf[(it.ln || 1) - 1] || '' });
+            } else if (buf) {
               const src = buf.join('\n'), s = MarkDiagram.flowSource(src);
               const data = s ? flowState.data.get(flowDataKey(base, s)) : undefined;
               for (const it of MarkDiagram.flowCheck(src, { data, ctx: flowState.ctx })) (it.info ? flowInfo : flowBad).push({ line: start + (it.ln || 1), what: it.msg, text: buf[(it.ln || 1) - 1] || '', info: it.info });
@@ -3636,7 +3651,7 @@
           } else if (buf) buf.push(ln);
           return;
         }
-        if (fm) { fence = fm[1]; start = i; buf = MarkDiagram.kindOf(fm[2]) === 'flow' ? [] : null; }
+        if (fm) { fence = fm[1]; start = i; kind = MarkDiagram.kindOf(fm[2]); buf = kind === 'flow' || kind === 'summary' ? [] : null; }
       });
       // 같은 @자료를 @보기로 나눴는데 어느 보기에도 들지 않은 노드
       for (const c of cover.values()) {
@@ -3644,6 +3659,7 @@
         if (miss.length) flowInfo.push({ line: c.first, what: L(`어느 @보기에도 들지 않은 노드 ${miss.length}개`, `${miss.length} node${miss.length === 1 ? '' : 's'} in no @view`), text: miss.slice(0, 12).join(' ') + (miss.length > 12 ? ' …' : '') });
       }
       add('flow', L('흐름도', 'Flowcharts'), flowBad.sort((a, b) => a.line - b.line));
+      add('summary', L('요약 흐름도', 'Summary flows'), sumBad);
       add('flowInfo', L('흐름도 작성 기준 (문제로 세지 않음)', 'Flowchart guidelines (not counted as issues)'), flowInfo.sort((a, b) => a.line - b.line), true);
     }
     const problems = groups.reduce((s, g) => s + (g.info ? 0 : g.items.length), 0);
@@ -6415,6 +6431,7 @@
       it('체크리스트', 'Checklist', '- [ ]', '- [ ] ¦', 'todo task'),
       it('코드 블록', 'Code block', F, F + '¦\n\n' + F, 'code'),
       it('흐름도', 'Flowchart', F + 'flow', [F + 'flow', ko ? 'A-01 | 유저 | 시작·종료 | ¦시작 | → A-02' : 'A-01 | user | start | ¦Start | → A-02', ko ? 'A-02 | 시스템 | 조건 | 조건? | 예 → A-03 / 아니오 → A-01' : 'A-02 | system | decision | Condition? | yes → A-03 / no → A-01', ko ? 'A-03 | 유저 | 시작·종료 | 끝 | —' : 'A-03 | user | end | End | —', F].join('\n'), 'flow diagram'),
+      it('요약 흐름도', 'Summary flow', F + L('요약흐름', 'summary'), [F + L('요약흐름', 'summary'), L('# ¦단계', '# ¦Stage'), L('- [유저] 하는 일', '- [user] What they do'), L('  한 줄 설명', '  One-line note'), L('- [시스템] 조건 충족?', '- [system] Condition met?'), L('  - 아니오 → [시스템] 끝', '  - no → [system] Ends'), L('- 예 → [시스템] 다음 일', '- yes → [system] Next step'), F].join('\n'), 'summary overview flow'),
       it('주고받는 순서', 'Sequence', F + 'sequence', [F + 'sequence', ko ? '나 -> 앱: ¦요청' : 'Me -> App: ¦Request', ko ? '앱 --> 나: 응답' : 'App --> Me: Response', F].join('\n'), 'sequence diagram'),
       it('노출 위치', 'Exposure tree', F + L('노출', 'ui'), [F + L('노출', 'ui'), L('- ¦화면 이름', '- ¦Screen name'), L('  - 버튼 [열기] (들어오는 곳: 메뉴)', '  - [Open] button (entry: menu)'), L('    - 보이는 것', '    - What shows'), F].join('\n'), 'ui exposure'),
       it('데이터 정의', 'Data definition', F + L('데이터', 'data'), [F + L('데이터', 'data'), L('# ¦데이터 이름 (data_id)', '# ¦Data name (data_id)'), L('필드 | 형식 | 필수 | 설명 | 예시', 'Field | Type | Required | Description | Example'), L('상품 제목 | 글자(40) | 필수 | 목록 · 상세에 보임 | 기본 상품', 'Item title | Text(40) | Required | Shown in the list · details | Basic plan'), F].join('\n'), 'data schema'),
@@ -7122,6 +7139,10 @@ html:not(.mc-js) .markdown-body .mc-tab-panel::before { content: attr(data-tab);
       sheets: ['vendor/katex/katex.min.css', 'vendor/hljs-github.min.css'],
     });
     fr.root.append(...clone.childNodes);
+    // 요약 흐름도: 넓은 · 좁은 모양 가운데 이 폭에서 안 보이는 쪽은 뺌 (그림이 둘 들어가지 않게)
+    fr.root.querySelectorAll('.sf-var').forEach((v) => { if (fr.win.getComputedStyle(v).display === 'none') v.remove(); });
+    //  이 틀과 PNG 로 바꾼 그림은 화면과 다른 글꼴로 그려질 수 있어, 글을 화면에서 잰 너비(data-w)에 맞춤
+    fr.root.querySelectorAll('.dg-summary text[data-w]').forEach((t) => { t.setAttribute('textLength', t.dataset.w); t.setAttribute('lengthAdjust', 'spacingAndGlyphs'); });
     // Mermaid 는 그릴 때 정한 색이 그림 안에 박혀 있어서, 어두운 테마면 밝은 색으로 다시 그림
     const boxes = document.documentElement.dataset.theme === 'dark' ? [...fr.root.querySelectorAll('.mermaid[data-src]')] : [];
     if (boxes.length) {
@@ -7622,7 +7643,7 @@ ${clone.innerHTML}
 
   applySettings();
   // 버전 표시 (새 버전을 낼 때 package.json · tauri.conf.json 과 함께 올리세요)
-  const APP_VERSION = '1.11.7';
+  const APP_VERSION = '1.12.0';
   $('#appVersion').textContent = `markcont v${APP_VERSION} · ${window.__TAURI__ ? L('PC 프로그램', 'PC app') : L('웹 앱', 'web app')}`;
   setSideTab(side.tab);
   renderFileList();

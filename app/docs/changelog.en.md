@@ -3,6 +3,13 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.12.0 · 2026-11-11
+
+- New block, the summary flow (```` ```summary ```` · `요약흐름`): a top-to-bottom overview of a whole feature, for the summary section of a spec. Stage names sit on the left, same-size boxes with only a title in the middle and notes on the right, so long notes never change the box size
+- Summary flow: a `[role]` before the title sets the color (ops = purple · user = green · system = gray) and only the roles you used appear in the legend. A title ending with `?` is a decision (diamond): `yes →` continues down and `no →` ends in a small box on the right. `- fork` puts the last boxes side by side
+- Summary flow: when the block is narrow, notes move below the boxes. It looks the same in print · PDF · saved HTML · Word · copy with formatting, and Save for other viewers turns it into Mermaid
+- Summary flow: mistakes (unknown role · `yes →` without a decision · empty stage) are shown with the line number in place of the diagram and in the document check. Document styles can change role colors and the box width (`--sf-box-width`)
+
 ## 1.11.7 · 2026-11-10
 
 - Desktop app: the first click on Open folder or Open file after starting sometimes didn't open the picker. The picker now always shows on top of the markcont window and opens right away, even while the last folders are being reloaded

@@ -88,6 +88,7 @@ version: 1.0
 | Mermaid | ```` ```mermaid ```` | `.mermaid` (안쪽 색은 그릴 때 정해져 CSS 로 바꾸기 어려움) |
 | markcont 다이어그램 | ```` ```flow ```` · ```` ```sequence ```` … | `.dg` |
 | 데이터 정의 · 노출 위치 | ```` ```데이터 ```` · ```` ```노출 ```` | `.dt-card` · `.ut` |
+| 요약 흐름도 | ```` ```요약흐름 ```` | `.dg-summary`, 칸 `.sf-node`(역할마다 `[data-role="운영"]`, 색은 `--t`), 설명 `.sf-desc`, 단계 이름 `.sf-stage`, 범례 `.sf-key`. 칸 너비는 변수 `--sf-box-width` |
 | 문서 넣기 | `![[문서#제목]]` | `.md-embed` |
 | 쪽 나눔 | `<!-- 쪽 나눔 -->` | `.page-break` (화면에서는 점선) |
 | 각주 | `[^1]` | `.footnote-ref`, `.footnotes` |
@@ -137,6 +138,13 @@ th { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 
 ```css
 .callout[data-callout="warning"] { border-width: 2px; }
+```
+
+**요약 흐름도의 칸 너비 · 역할 색 바꾸기**: 칸 너비는 기본 180px 이고(긴 제목이 있으면 그만큼 넓어짐), 역할 색은 범례에도 함께 바뀝니다.
+
+```css
+--sf-box-width: 220px;
+.dg-summary [data-role="운영"] { --t: #b45309; }
 ```
 
 **인쇄할 때만 글자를 작게, 코드 블록은 쪽 사이에 쪼개지 않게**

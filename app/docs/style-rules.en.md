@@ -88,6 +88,7 @@ Put these at the **top** of your style to change the whole document.
 | Mermaid | ```` ```mermaid ```` | `.mermaid` (colors inside are set when drawn, so CSS can hardly change them) |
 | markcont diagrams | ```` ```flow ```` · ```` ```sequence ```` … | `.dg` |
 | Data definitions · exposure trees | ```` ```data ```` · ```` ```ui ```` | `.dt-card` · `.ut` |
+| Summary flows | ```` ```summary ```` | `.dg-summary`, boxes `.sf-node` (per role `[data-role="ops"]`, color in `--t`), notes `.sf-desc`, stage names `.sf-stage`, legend `.sf-key`. The box width is the variable `--sf-box-width` |
 | Embedded documents | `![[Doc#Heading]]` | `.md-embed` |
 | Page breaks | `<!-- page break -->` | `.page-break` (a dashed line on screen) |
 | Footnotes | `[^1]` | `.footnote-ref`, `.footnotes` |
@@ -137,6 +138,13 @@ th { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 
 ```css
 .callout[data-callout="warning"] { border-width: 2px; }
+```
+
+**Change a summary flow's box width · role color:** the box width is 180px by default (wider when a title is long), and the role color changes in the legend too.
+
+```css
+--sf-box-width: 220px;
+.dg-summary [data-role="ops"] { --t: #b45309; }
 ```
 
 **Smaller text in print only, and don't split code blocks across pages**

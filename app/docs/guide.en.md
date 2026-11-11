@@ -1,6 +1,6 @@
 ---
 title: markcont User guide
-version: 1.11.7
+version: 1.12.0
 ---
 
 # markcont User guide
@@ -206,7 +206,7 @@ Press **Edit** at the top (<kbd>Ctrl</kbd>+<kbd>E</kbd>) to see the source on th
 |:---|:---|
 | `[[` | The **documents** in your open folders. Pick one to get `[[document]]` |
 | `[[document#` · `[[#` | The **headings** of that document (`[[#` = this document) |
-| `/` at the start of a line or after a space | The **block menu**: table · callouts · checklist · code block · flowchart · sequence · exposure tree · data definition · math · tabs · steps · file tree · collapsible · table of contents · page break · divider · embed a document · today's date |
+| `/` at the start of a line or after a space | The **block menu**: table · callouts · checklist · code block · flowchart · summary flow · sequence · exposure tree · data definition · math · tabs · steps · file tree · collapsible · table of contents · page break · divider · embed a document · today's date |
 
 - Keep typing to narrow the list (Korean initial consonants work too). Move with <kbd>↑</kbd> <kbd>↓</kbd> and insert with <kbd>Enter</kbd> · <kbd>Tab</kbd>.
 - Close it with <kbd>Esc</kbd> and what you typed stays as it is.
