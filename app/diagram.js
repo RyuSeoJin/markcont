@@ -1305,22 +1305,79 @@
     ['dot', '🔴', /레드닷|배지|뱃지|알림 점|badge|red\s*dot/i], ['list', '📋', /목록|리스트|list/i],
     ['card', '🃏', /카드|card/i], ['button', '🔘', /^\[[^\]]+\]$/],
   ];
-  const uiType = (t) => UI_TYPES.find(([, , re]) => re.test(t)) || ['item', '▫️'];
+  const UI_ITEM = ['item', '▫️'];
+  const uiType = (t) => UI_TYPES.find(([, , re]) => re.test(t)) || UI_ITEM;
+  // 종류를 직접 붙이기: 「{바텀시트} 대화 방식」 — 이름만으로는 알 수 없거나 잘못 잡히는 줄에 (「{항목}」은 아이콘 없이)
+  const UI_KINDS = [
+    ['screen', /^(화면|탭|페이지|screen|tab|page)$/i], ['sheet', /^(바텀\s*시트|시트|sheet|bottom\s*sheet|drawer)$/i],
+    ['popup', /^(팝업|모달|다이얼로그|popup|modal|dialog)$/i], ['toast', /^(토스트|toast)$/i],
+    ['button', /^(버튼|단추|button)$/i], ['dot', /^(표시|레드닷|배지|뱃지|badge|dot|red\s*dot)$/i],
+    ['list', /^(목록|리스트|list)$/i], ['card', /^(카드|card)$/i], ['item', /^(항목|없음|기타|item|none)$/i],
+  ];
+  function uiKind(label) {
+    const k = UI_KINDS.find(([, re]) => re.test(label.trim()));
+    return k ? (k[0] === 'item' ? UI_ITEM : UI_TYPES.find(([id]) => id === k[0])) : null;
+  }
+  // 줄 앞의 「{종류}」를 떼어 냄 (아는 종류일 때만. 모르는 말이면 글자 그대로 둠)
+  function uiTakeKind(text) {
+    const m = text.match(/^\{([^{}]+)\}\s*/);
+    const type = m && uiKind(m[1]);
+    return type ? { type, text: text.slice(m[0].length) } : { type: null, text };
+  }
+  // 블록 맨 앞의 설정 줄: 「# 제목」(첫 줄일 때만) · 「@범례 켬」(기본은 꺼짐. 「@범례 끔」도 받음)
+  const UI_LEGEND_RE = /^@\s*(범례|legend)\s*[:：]?\s*(끔|끄기|숨김|off|none|hide|켬|켜기|보임|on|show)?\s*$/i;
+  function uiHead(lines) {
+    const head = { title: '', legend: null, skip: new Set() };
+    let first = true;
+    lines.forEach((raw, i) => {
+      const t = raw.trim();
+      if (!t || /^(%%|\/\/)/.test(t)) return;
+      const lg = t.match(UI_LEGEND_RE);
+      if (lg) { head.legend = !/^(끔|끄기|숨김|off|none|hide)$/i.test(lg[2] || ''); head.skip.add(i); return; }
+      if (first && /^#\s+\S/.test(t)) { head.title = t.replace(/^#\s+/, '').replace(/\s+#+$/, ''); head.skip.add(i); }
+      first = false;
+    });
+    return head;
+  }
+  const UI_LEGEND = [
+    ['path', '📍', () => L('위치', 'Location')], ['entry', '🚪', () => L('진입점', 'Entry point')],
+    ['screen', '🖥', () => L('화면 · 탭', 'Screen · tab')], ['sheet', '🗂', () => L('바텀시트', 'Sheet')], ['popup', '🪟', () => L('팝업', 'Popup')],
+    ['toast', '💬', () => L('토스트', 'Toast')], ['button', '🔘', () => L('버튼', 'Button')], ['dot', '🔴', () => L('표시', 'Badge')],
+    ['list', '📋', () => L('목록', 'List')], ['card', '🃏', () => L('카드', 'Card')],
+  ];
   function uiInline(t) {
     return esc(t).replace(/\[([^\]]+)\]/g, '<span class="ut-btn">$1</span>');
+  }
+  // 다른 뷰어용으로 저장: 제목은 굵은 글 한 줄로, 「@범례」 줄과 「{종류}」 표시는 빼고 보통 들여 쓴 목록으로
+  function uiToList(src) {
+    const lines = src.split('\n'), head = uiHead(lines), out = [];
+    if (head.title) out.push('**' + head.title + '**', '');
+    lines.forEach((b, i) => {
+      if (head.skip.has(i)) return;
+      if (!b.trim()) { out.push(b); return; }
+      let m = b.match(/^(\s*)((?:[-*+]|\d+[.)])\s+)?(.*)$/), text = m[3];
+      text = uiTakeKind(text).text.replace(/((?:→|->)\s*)\{([^{}]+)\}\s*/, (all, arrow, k) => (uiKind(k) ? arrow : all));
+      out.push(m[1] + (m[2] || '- ') + text);
+    });
+    return out.join('\n');
   }
   function renderUiTree(src) {
     const root = { kids: [], level: -1 };
     const stack = [{ node: root, indent: -1 }];
     let count = 0;
-    for (const raw of src.split('\n')) {
-      if (!raw.trim() || /^\s*(%%|\/\/)/.test(raw)) continue;
+    const lines = src.split('\n'), head = uiHead(lines);
+    for (let li = 0; li < lines.length; li++) {
+      const raw = lines[li];
+      if (head.skip.has(li) || !raw.trim() || /^\s*(%%|\/\/)/.test(raw)) continue;
       const indent = raw.replace(/\t/g, '    ').match(/^ */)[0].length;
       let text = raw.trim().replace(/^([-*+]|\d+[.)])\s+/, '');
       const n = { kids: [], entry: false };
+      // 줄 맨 앞의 {종류}
+      let kind = uiTakeKind(text);
+      text = kind.text;
       // 진입점: 「🚪 」 · 「진입:」 · 「[진입]」 으로 시작하거나 「(들어오는 곳 …)」 이 붙은 줄
       const em = text.match(/^(🚪|진입\s*[:：]|\[진입\]|entry\s*[:：])\s*/i);
-      if (em) { n.entry = true; text = text.slice(em[0].length); }
+      if (em) { n.entry = true; text = text.slice(em[0].length); if (!kind.type) { kind = uiTakeKind(text); text = kind.text; } }
       if (/\((들어오는\s*곳|진입)[^)]*\)/.test(text)) n.entry = true;
       // 끝의 (설명)
       const nm = text.match(/^(.*?)\s*\(([^()]*)\)\s*$/);
@@ -1329,7 +1386,10 @@
       const parts = text.split(/\s*(?:→|->)\s*/);
       if (parts.length > 1 && parts[0]) { n.trigger = parts[0]; n.name = parts.slice(1).join(' → '); }
       else n.name = text.replace(/^\s*(?:→|->)\s*/, '');
-      n.type = uiType(n.name);
+      // 「조작 → {종류} 결과」: 결과 쪽에 붙인 종류
+      const rk = uiTakeKind(n.name);
+      if (rk.type) n.name = rk.text;
+      n.type = rk.type || kind.type || uiType(n.name);
       while (stack.length > 1 && stack[stack.length - 1].indent >= indent) stack.pop();
       stack[stack.length - 1].node.kids.push(n);
       stack.push({ node: n, indent });
@@ -1354,10 +1414,13 @@
         : list(n.kids);
       return `<li class="${n.entry ? 'ut-entry' : n.path ? 'ut-path' : ''}">${row(n)}${sub}</li>`;
     }).join('') + '</ul>';
-    const legend = (hasEntry ? [['📍', L('위치', 'Location')], ['🚪', L('진입점', 'Entry point')]] : [])
-      .concat([['🖥', L('화면 · 탭', 'Screen · tab')], ['🗂', L('바텀시트', 'Sheet')], ['🪟', L('팝업', 'Popup')], ['💬', L('토스트', 'Toast')], ['🔘', L('버튼', 'Button')], ['🔴', L('표시', 'Badge')]])
-      .map(([i, t]) => `<span>${i} ${esc(t)}</span>`).join('');
-    return `<div class="ut"><div class="ut-legend">${legend}</div>${list(root.kids)}</div>`;
+    // 범례: 기본은 꺼짐. 「@범례 켬」을 쓴 블록에서만, 이 블록에 실제로 쓰인 아이콘만 (하나도 없으면 숨김). 제목이 있으면 제목 아래에
+    const seen = new Set();
+    (function walk(kids) { for (const n of kids) { seen.add(n.entry ? 'entry' : n.path ? 'path' : n.type[0]); walk(n.kids); } })(root.kids);
+    const showLegend = head.legend === true;
+    const legend = showLegend ? UI_LEGEND.filter(([id]) => seen.has(id)).map(([, i, t]) => `<span>${i} ${esc(t())}</span>`).join('') : '';
+    return '<div class="ut">' + (head.title ? `<div class="ut-title${legend ? ' with-legend' : ''}">${uiInline(head.title)}</div>` : '') +
+      (legend ? `<div class="ut-legend">${legend}</div>` : '') + list(root.kids) + '</div>';
   }
 
   /* =====================================================================
@@ -1815,6 +1878,7 @@
     },
     drawDataLinks,
     dataToTables,
+    uiToList,
     flowTable,
     // 파일 안의 노드 표 모두 (머리 첫 칸이 「코드」인 표)
     flowTables(text) {
