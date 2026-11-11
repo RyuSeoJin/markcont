@@ -239,6 +239,7 @@ Diagrams that markcont draws itself. Flowcharts follow the **markcont flowchart 
 | `timeline` | Timeline | Project schedules, milestones |
 | `ui` (or `노출`) | Exposure locations | Where a feature sits and what shows after entering it |
 | `data` (or `데이터`) | Data definition | Data and fields developers manage |
+| `summary` (or `요약흐름`) | Summary flow | A whole feature at a glance in a spec's overview (stages · roles · decisions) |
 
 > [!NOTE]
 > These are markcont-only. GitHub and Obsidian show them as plain code blocks. If the diagram must render elsewhere too, use Mermaid (7-3).
@@ -444,6 +445,48 @@ Reward list | Reward list | required | In attachment order | Ticket 3
 # Reward (reward)
 Reward type | ticket · illustration card · video card | required
 Amount | number | required
+```
+````
+
+#### Summary flow
+
+Use it to show **a whole feature at a glance**, such as in the overview of a spec. It runs top to bottom in one line: stage names on the left, same-size boxes with only a title in the middle, and notes on the right. For detailed screen navigation and branching, use a `flow` flowchart.
+
+| Line | Meaning |
+|:---|:---|
+| `# Name` | A stage. The name sits on the left, with a dotted vertical line as tall as that stage's boxes |
+| `- [role] Title` | A box, linked by an arrow from the box above. Without `[role]` it is system |
+| Indented text under a box (no `-`) | That box's note. Each line you write is one line to the right of the box (two lines at most is best) |
+| A box whose title ends with `?` | A decision (diamond) |
+| `- yes → [role] Title` | The branch that continues after a decision (downward · blue line) |
+| `- no → [role] Title`, indented under a decision | The branch that ends (a small box on the right · red line) |
+| `- fork` + indented boxes | The parallel end. It splits from the box above into one row, with notes under each box (only at the end of the block) |
+| `role name: color` (top of the block) | Change a role's color or add a role (`blue` `green` `orange` `red` `purple` `gray`) |
+
+- The built-in roles are `ops` (purple) · `user` (green) · `system` (gray), and only the roles you used appear in the legend under the diagram.
+- All boxes share one width (fitted to the longest title) and one height. Long notes never change the box size.
+- When the block is narrow (side-by-side view · phones), notes move right below the boxes.
+- Save for other viewers turns it into a Mermaid flowchart (stages become groups, notes go inside the boxes).
+- Mistakes (unknown role · `yes →` without a decision · empty stage) are shown with the line number in place of the diagram and in the document check.
+
+````markdown example
+```summary
+# Setup
+- [ops] Open the event
+  Set the period · rewards
+# Entry
+- [user] Apply
+  Enter the ID on the entry screen
+- [system] Eligible?
+  - no → [system] Can't apply
+    Show what's missing
+- yes → [system] Applied
+# Rewards
+- fork
+  - [system] Entry reward
+    Everyone · mailbox
+  - [system] Draw reward
+    Winners only
 ```
 ````
 
@@ -778,6 +821,7 @@ Check **where it works** first, and if the document will be opened elsewhere too
 | Diagram (Mermaid) | ```` ```mermaid ```` | ✅ | ✅ | ✅ |
 | Diagram (markcont style) | ```` ```flow ```` ```` ```sequence ```` ```` ```state ```` ```` ```timeline ```` | ✅ | ❌ shown as code | ❌ shown as code |
 | Exposure · data definition | ```` ```ui ```` · ```` ```data ```` | ✅ | ❌ shown as code | ❌ shown as code |
+| Summary flow | ```` ```summary ```` | ✅ | ❌ shown as code | ❌ shown as code |
 | Wikilink | `[[document]]` · `[[document#heading\|alias]]` | ✅ | ❌ | ✅ |
 | Embed image (wiki style) | `![[picture.png]]` | ✅ | ❌ | ✅ |
 | Embed document | `![[doc#heading]]` (on a line of its own) | ✅ | ❌ | ✅ |
@@ -898,7 +942,7 @@ Open the `.dmg` file and move the app.
 :::
 ```
 
-- **Tabs**: each `== name` line starts a tab. Tabs with the same name switch together across the document, and your choice is remembered. Print · PDF · Save as Word show every tab with its name, and collapsible content inside tabs (`<details>` · foldable callouts) is printed open too. A file saved as HTML keeps tabs you can pick in the browser, and printing that file opens everything the same way.
+- **Tabs**: each `== name` line starts a tab. Everything inside the border is the **tab box**, the row of names at the top is the **tab bar**, each name in it is a **tab**, and what shows under the selected tab is the **tab content**. Tabs with the same name switch together across the document, and your choice is remembered. Print · PDF print each tab as its own tab box, one after another, with that tab selected in the tab bar (the tab bar repeats on every page the tab content runs over). Save as Word shows every tab with its name, and collapsible content inside tabs (`<details>` · foldable callouts) is printed open too. A file saved as HTML keeps tabs you can pick in the browser, and printing that file opens everything the same way.
 - **Steps**: draws the numbered list inside as numbered circles joined by a line.
 - **File tree**: draws the list inside with folder · file icons. An item with a list inside, or a name ending in `/`, is a folder.
 - Save for other viewers turns tabs into bold titles + content, and steps · trees into plain lists.

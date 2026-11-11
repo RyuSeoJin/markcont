@@ -50,7 +50,7 @@ Put these at the **top** of your style to change the whole document.
 | | Screen | Save as HTML | Print · PDF | Copy with formatting | Save as Word | Save for other viewers |
 |:---|:---|:---|:---|:---|:---|:---|
 | Document style (CSS) | ✅ | ✅ included in the file | ✅ including `@media print` | ✅ as computed in the light theme | ❌ Word's own formatting | ❌ Markdown text only |
-| Tabs | Selected tab | Switchable | All, with their names | All, with their names | All, with their names | Bold name + content |
+| Tabs | Selected tab | Switchable | One tab box per tab, in order | All, with their names | All, with their names | Bold name + content |
 | Collapsible content · collapsible callouts | As collapsed | As when saved (expanded when that file is printed) | Expanded | Expanded | Expanded | Unchanged |
 | Math · diagrams | ✅ | ✅ | ✅ | Images (PNG) | Diagrams as images, math as TeX text | Original text |
 
@@ -76,8 +76,9 @@ Put these at the **top** of your style to change the whole document.
 | One kind of callout | `[!TIP]` · `[!WARNING]` … | `.callout[data-callout="tip"]` — the kind in lowercase |
 | Collapsible callouts | `> [!NOTE]-` | `details.callout` |
 | Collapsible content | `<details>` | `details`, `summary` |
-| Tabs | `::: tabs` | `.mc-tabs`, `.mc-tab-bar`, `.mc-tab` (selected `.mc-tab.on`), `.mc-tab-panel` |
-| One tab | `== Name` | `.mc-tab-panel[data-tab="Name"]` |
+| Tabs | `::: tabs` | tab box `.mc-tabs`, tab bar `.mc-tab-bar`, tab `.mc-tab` (selected `.mc-tab.on`), tab content `.mc-tab-panel` |
+| One tab's content | `== Name` | `.mc-tab-panel[data-tab="Name"]` |
+| Tab bar in print · PDF | `::: tabs` | `.mc-tab-head` (the tab bar added above each tab content — inside it are the same `.mc-tab-bar` · `.mc-tab` · `.mc-tab.on` as on screen) |
 | Steps | `::: steps` | `.mc-steps` |
 | File tree | `::: tree` | `.mc-tree`, folder rows `.mc-tree li.dir` |
 | Code blocks | ```` ``` ```` | `.code-block`, `.code-head` (language · title), `.code-body`, `pre code`, highlighted lines `.hl-band` |
@@ -88,6 +89,7 @@ Put these at the **top** of your style to change the whole document.
 | Mermaid | ```` ```mermaid ```` | `.mermaid` (colors inside are set when drawn, so CSS can hardly change them) |
 | markcont diagrams | ```` ```flow ```` · ```` ```sequence ```` … | `.dg` |
 | Data definitions · exposure trees | ```` ```data ```` · ```` ```ui ```` | `.dt-card` · `.ut` |
+| Summary flows | ```` ```summary ```` | `.dg-summary`, boxes `.sf-node` (per role `[data-role="ops"]`, color in `--t`), notes `.sf-desc`, stage names `.sf-stage`, legend `.sf-key`. The box width is the variable `--sf-box-width` |
 | Embedded documents | `![[Doc#Heading]]` | `.md-embed` |
 | Page breaks | `<!-- page break -->` | `.page-break` (a dashed line on screen) |
 | Footnotes | `[^1]` | `.footnote-ref`, `.footnotes` |
@@ -137,6 +139,19 @@ th { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 
 ```css
 .callout[data-callout="warning"] { border-width: 2px; }
+```
+
+**Change a summary flow's box width · role color:** the box width is 180px by default (wider when a title is long), and the role color changes in the legend too.
+
+```css
+--sf-box-width: 220px;
+.dg-summary [data-role="ops"] { --t: #b45309; }
+```
+
+**Start each tab on a new page in print · PDF:** by default the tab boxes follow one another.
+
+```css
+@media print { .mc-tab-panel + .mc-tab-panel { break-before: page; } }
 ```
 
 **Smaller text in print only, and don't split code blocks across pages**

@@ -50,7 +50,7 @@ version: 1.0
 | | 화면 | HTML 저장 | 인쇄 · PDF | 서식 복사 | Word 저장 | 다른 뷰어용 저장 |
 |:---|:---|:---|:---|:---|:---|:---|
 | 문서 스타일(CSS) | ✅ | ✅ 파일 안에 함께 | ✅ `@media print` 포함 | ✅ 밝은 테마로 계산한 모양 | ❌ Word 기본 서식 | ❌ 마크다운 글만 |
-| 탭 | 고른 탭 | 골라 볼 수 있음 | 모두 이름과 함께 | 모두 이름과 함께 | 모두 이름과 함께 | 굵은 이름 + 내용 |
+| 탭 | 고른 탭 | 골라 볼 수 있음 | 탭마다 탭 상자 하나씩 차례로 | 모두 이름과 함께 | 모두 이름과 함께 | 굵은 이름 + 내용 |
 | 접는 내용 · 접는 알림 상자 | 접힌 대로 | 저장할 때 모양 (그 파일을 인쇄하면 펼침) | 펼쳐서 찍음 | 펼침 | 펼침 | 그대로 |
 | 수식 · 다이어그램 | ✅ | ✅ | ✅ | 그림(PNG) | 다이어그램은 그림, 수식은 TeX 글자 | 원래 글 |
 
@@ -76,8 +76,9 @@ version: 1.0
 | 알림 상자 종류 | `[!TIP]` · `[!WARNING]` … | `.callout[data-callout="tip"]` 처럼 종류 이름(소문자) |
 | 접는 알림 상자 | `> [!NOTE]-` | `details.callout` |
 | 접는 내용 | `<details>` | `details`, `summary` |
-| 탭 | `::: tabs` | `.mc-tabs`, `.mc-tab-bar`, `.mc-tab`(고른 탭 `.mc-tab.on`), `.mc-tab-panel` |
-| 탭 하나만 | `== 이름` | `.mc-tab-panel[data-tab="이름"]` |
+| 탭 | `::: tabs` | 탭 상자 `.mc-tabs`, 탭 막대 `.mc-tab-bar`, 탭 `.mc-tab`(고른 탭 `.mc-tab.on`), 탭 내용 `.mc-tab-panel` |
+| 탭 내용 하나만 | `== 이름` | `.mc-tab-panel[data-tab="이름"]` |
+| 인쇄 · PDF 의 탭 막대 | `::: tabs` | `.mc-tab-head` (탭 내용마다 위에 붙는 탭 막대 — 안쪽은 화면과 같은 `.mc-tab-bar` · `.mc-tab` · `.mc-tab.on`) |
 | 단계 | `::: steps` | `.mc-steps` |
 | 파일 트리 | `::: tree` | `.mc-tree`, 폴더 줄 `.mc-tree li.dir` |
 | 코드 블록 | ```` ``` ```` | `.code-block`, `.code-head`(언어 · 제목), `.code-body`, `pre code`, 강조 줄 `.hl-band` |
@@ -88,6 +89,7 @@ version: 1.0
 | Mermaid | ```` ```mermaid ```` | `.mermaid` (안쪽 색은 그릴 때 정해져 CSS 로 바꾸기 어려움) |
 | markcont 다이어그램 | ```` ```flow ```` · ```` ```sequence ```` … | `.dg` |
 | 데이터 정의 · 노출 위치 | ```` ```데이터 ```` · ```` ```노출 ```` | `.dt-card` · `.ut` |
+| 요약 흐름도 | ```` ```요약흐름 ```` | `.dg-summary`, 칸 `.sf-node`(역할마다 `[data-role="운영"]`, 색은 `--t`), 설명 `.sf-desc`, 단계 이름 `.sf-stage`, 범례 `.sf-key`. 칸 너비는 변수 `--sf-box-width` |
 | 문서 넣기 | `![[문서#제목]]` | `.md-embed` |
 | 쪽 나눔 | `<!-- 쪽 나눔 -->` | `.page-break` (화면에서는 점선) |
 | 각주 | `[^1]` | `.footnote-ref`, `.footnotes` |
@@ -137,6 +139,19 @@ th { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 
 ```css
 .callout[data-callout="warning"] { border-width: 2px; }
+```
+
+**요약 흐름도의 칸 너비 · 역할 색 바꾸기**: 칸 너비는 기본 180px 이고(긴 제목이 있으면 그만큼 넓어짐), 역할 색은 범례에도 함께 바뀝니다.
+
+```css
+--sf-box-width: 220px;
+.dg-summary [data-role="운영"] { --t: #b45309; }
+```
+
+**인쇄 · PDF 에서 탭마다 새 쪽에서 시작**: 기본은 탭 상자가 이어서 찍힙니다.
+
+```css
+@media print { .mc-tab-panel + .mc-tab-panel { break-before: page; } }
 ```
 
 **인쇄할 때만 글자를 작게, 코드 블록은 쪽 사이에 쪼개지 않게**

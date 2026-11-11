@@ -3,6 +3,7 @@
 // 왼쪽 → 오른쪽 배치, 수평 · 수직 선만, 예 = 파랑 · 아니오 = 빨강, 분기 값은 선의 출발 쪽,
 // 다른 섹션으로 가거나 멀리 건너가는 선은 「→ 코드」 · 「↩ 코드」 연결자로 끊음.
 // 같은 모양 규칙으로 주고받는 순서(sequence) · 상태 변화(state) · 일정표(timeline)도 그립니다.
+// 요약 흐름도(summary)는 기능 전체를 한눈에 보는 그림: 위 → 아래 한 줄기, 왼쪽 단계 · 가운데 같은 크기 칸 · 오른쪽 설명.
 (function () {
   const L = (ko, en) => (window.L ? window.L(ko, en) : ko);
   const FONT = '"Pretendard Variable", Pretendard, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif';
@@ -1514,9 +1515,288 @@
     return out.join('\n').trim();
   }
 
+  /* =====================================================================
+     요약 흐름도 (summary) — 기능 전체를 한눈에: 위 → 아래 한 줄기
+       # 단계                      왼쪽 단계 이름 + 그 단계 칸들 높이만큼 세로 점선
+       - [역할] 제목                가운데 칸 (모두 같은 너비 · 제목 한 줄 높이). 제목이 ? 로 끝나면 마름모(판정)
+         설명 줄                    칸 오른쪽의 작은 회색 글 (칸 크기는 그대로)
+         - 아니오 → [역할] 제목     판정의 끝나는 갈래 (오른쪽 작은 칸)
+       - 예 → [역할] 제목           판정 다음의 이어지는 갈래 (아래로)
+       - 갈래 + 들여 쓴 칸들        나란한 끝 (한 줄에 나란히, 설명은 각 칸 아래)
+       역할 이름: 색                역할 색 (기본 운영 = 보라 · 유저 = 초록 · 시스템 = 회색)
+     넓은 모양(설명이 칸 오른쪽)과 좁은 모양(설명이 칸 아래)을 둘 다 그려 두고, 블록 폭에 맞는 쪽을 CSS 가 고름
+     ===================================================================== */
+  const SUM_ROLES = [['ops', '운영', 'Ops', 'purple', '운영 운영자 운영팀 ops operator operations admin'],
+    ['user', '유저', 'User', 'green', '유저 사용자 플레이어 user player'],
+    ['system', '시스템', 'System', 'gray', '시스템 서버 system server']];
+  const SUM_FORK = /^(갈래|나란히|병렬|fork|split|parallel)$/i;
+  const SUM_ARROW = /^(.*?)\s*(?:→|->|=>)\s*(.*)$/;
+  const sumClean = (s) => String(s || '').replace(/\*\*|`/g, '').trim();
+  function parseSummary(src, errs) {
+    const roles = new Map();
+    for (const [id, ko, en, tint, names] of SUM_ROLES) {
+      const r = { id, name: L(ko, en), tint, typed: false };
+      names.split(' ').forEach((n) => roles.set(normKey(n), r));
+    }
+    const stages = [], chain = [], stack = [], used = [];
+    let stage = null, anyRole = false;
+    const rows = src.split('\n').map((raw, i) => ({ raw: raw.replace(/\t/g, '    '), ln: i + 1 })).filter((r) => r.raw.trim() && !/^\s*(%%|\/\/)/.test(r.raw));
+    const base = Math.min(...rows.map((r) => r.raw.match(/^ */)[0].length), Infinity);
+    // 「[역할] 제목」 · 「예 → [역할] 제목」 → { label, role, title }
+    const head = (text) => {
+      let label = '', m = text.match(/^\[([^\]]*)\]\s*(.*)$/);
+      if (!m) {
+        const a = text.match(SUM_ARROW);
+        if (a) { label = sumClean(a[1]); text = a[2].trim(); m = text.match(/^\[([^\]]*)\]\s*(.*)$/); }
+      }
+      return { label, role: m ? m[1].trim() : '', title: sumClean(m ? m[2] : text) };
+    };
+    const box = (h, ln) => {
+      if (!h.title) errs.push({ ln, msg: L('칸 제목이 비어 있습니다', 'The box title is empty') });
+      if (h.role) anyRole = true;
+      return { title: h.title, roleName: h.role, desc: [], label: h.label, kind: kindOfLabel(h.label), decision: /[?？]$/.test(h.title), ln };
+    };
+    const noDecision = (label, ln) => errs.push({ ln, msg: L(`「${label} →」 앞에 판정 칸이 없습니다 (제목이 ? 로 끝나는 칸 다음에 씁니다 · 제목에 → 를 쓰려면 앞에 [역할])`, `"${label} →" has no decision before it (put it after a box whose title ends with "?" · to use → in a title, start with [role])`) });
+    for (const { raw, ln } of rows) {
+      const indent = raw.match(/^ */)[0].length - base, line = raw.trim();
+      let m;
+      while (stack.length && stack[stack.length - 1].indent >= indent) stack.pop();
+      const parent = stack[stack.length - 1];
+      if (!parent && (m = line.match(/^#{1,6}\s*(.+?)\s*$/))) { stage = { name: sumClean(m[1]), ln, items: [] }; stages.push(stage); continue; }
+      if ((m = line.match(/^[-*+]\s+(.*)$/))) {
+        const text = m[1].trim();
+        if (!parent) {
+          const last = chain[chain.length - 1];
+          if (last && last.fork && !last.after) { last.after = true; errs.push({ ln, msg: L('갈래(나란한 끝) 뒤에는 칸을 둘 수 없습니다', 'Nothing can follow a fork (the parallel end)') }); }
+          let it;
+          if (SUM_FORK.test(text)) it = { fork: true, boxes: [], ln };
+          else {
+            it = box(head(text), ln);
+            it.sides = [];
+            if (it.label && !(last && last.decision)) noDecision(it.label, ln);
+          }
+          it.stage = stage;
+          if (stage) stage.items.push(it);
+          chain.push(it);
+          stack.push({ indent, node: it, kind: it.fork ? 'fork' : 'box' });
+        } else if (parent.kind === 'fork') {
+          const h = head(text);
+          if (h.label && !/^\[/.test(text)) { errs.push({ ln, msg: L('갈래 안의 칸은 「- [역할] 제목」으로 씁니다', 'Write boxes in a fork as "- [role] title"') }); continue; }
+          const b = box(h, ln);
+          parent.node.boxes.push(b);
+          stack.push({ indent, node: b, kind: 'leaf' });
+        } else if (parent.kind === 'box') {
+          const h = head(text);
+          if (!h.label) { errs.push({ ln, msg: L('칸 아래에 들여 쓴 「-」 줄은 「- 아니오 → [역할] 제목」처럼 갈래로 씁니다 (설명은 「-」 없이)', 'An indented "-" line under a box is a branch like "- no → [role] title" (write descriptions without "-")') }); continue; }
+          const b = box(h, ln);
+          if (!parent.node.decision) noDecision(h.label, ln);
+          parent.node.sides.push(b);
+          stack.push({ indent, node: b, kind: 'leaf' });
+        } else errs.push({ ln, msg: L('여기에는 칸을 더 들여 쓸 수 없습니다', "Boxes can't be nested this deep") });
+        continue;
+      }
+      if (!parent) {
+        // 역할 색: 「역할 이름1, 이름2: 색」 (「역할」은 빼도 됨)
+        const kw = line.match(/^(?:역할|role)\s+(.+?)\s*[:：]\s*(\S+)\s*$/i), bare = kw ? null : line.match(/^([^:：]+?)\s*[:：]\s*(\S+)\s*$/);
+        const tint = TINT[normKey((kw || bare || [])[2])];
+        if (kw && !tint) errs.push({ ln, msg: L(`모르는 색: ${kw[2]} (파랑 · 초록 · 주황 · 빨강 · 보라 · 회색)`, `Unknown color: ${kw[2]} (blue, green, orange, red, purple, gray)`) });
+        else if (tint) {
+          for (const name of (kw || bare)[1].split(/[,，]/).map((s) => s.trim()).filter(Boolean)) {
+            const r = roles.get(normKey(name));
+            if (r) r.tint = tint; else roles.set(normKey(name), { id: '', name, tint, typed: true });
+          }
+        } else errs.push({ ln, msg: L('알 수 없는 줄입니다 (칸은 「- [역할] 제목」, 설명은 칸 아래에 들여 씁니다)', 'Unknown line (write boxes as "- [role] title" and indent descriptions under a box)') });
+        continue;
+      }
+      if (parent.kind === 'fork') errs.push({ ln, msg: L('갈래에는 설명을 달 수 없습니다 (갈래 안의 칸 아래에 씁니다)', "A fork can't have a description (put it under a box in the fork)") });
+      else parent.node.desc.push(sumClean(line));
+    }
+    // 역할: 그린 순서대로 (범례 순서). [역할] 이 없으면 시스템
+    const system = roles.get('시스템');
+    const setRole = (b) => {
+      let r = b.roleName ? roles.get(normKey(b.roleName)) : system;
+      if (!r) { errs.push({ ln: b.ln, msg: L(`모르는 역할: ${b.roleName} (운영 · 유저 · 시스템 — 다른 역할은 블록 맨 위에 「역할 ${b.roleName}: 주황」)`, `Unknown role: ${b.roleName} (ops, user, system — add others at the top: "role ${b.roleName}: orange")`) }); r = system; }
+      else if (b.roleName && !r.typed) { r.name = b.roleName; r.typed = true; } // 범례에는 문서에 쓴 이름 그대로
+      b.role = r;
+      if (!used.includes(r)) used.push(r);
+    };
+    for (const it of chain) {
+      if (it.fork) {
+        if (!it.boxes.length) errs.push({ ln: it.ln, msg: L('갈래 아래에 칸이 없습니다 (들여 써서 「- [역할] 제목」)', 'The fork has no boxes (indent "- [role] title" under it)') });
+        it.boxes.forEach(setRole);
+      } else { setRole(it); it.sides.forEach(setRole); }
+    }
+    for (const s of stages) if (!s.items.length) errs.push({ ln: s.ln, msg: L(`빈 단계입니다: ${s.name} (아래에 칸이 없음)`, `Empty stage: ${s.name} (no boxes under it)`) });
+    if (!chain.length && !errs.length) errs.push({ msg: L('칸이 하나도 없습니다 (「- [역할] 제목」)', 'No boxes (write "- [role] title")') });
+    errs.sort((p, q) => (p.ln || 0) - (q.ln || 0)); // 줄 순서대로 알려 줌
+    return { stages, chain, roles: used, anyRole };
+  }
+
+  // 문서 스타일(CSS)에서 정한 길이 (--sf-box-width 등). 없으면 0
+  function cssLen(name) {
+    try {
+      const host = document.querySelector('.markdown-body') || document.documentElement;
+      const v = parseFloat(getComputedStyle(host).getPropertyValue(name));
+      return v > 0 ? v : 0;
+    } catch { return 0; }
+  }
+  function drawSummary(model, uid, narrow, boxMin) {
+    const { stages, chain, roles, anyRole } = model;
+    const H = 40, DH = 56, GAP = 16, DGAP = 20, FGAP = 24, LH = 18, COLGAP = 20, TOP = 14, X0 = 6;
+    const tW = (t) => textW(t, 14, 600), dW = (t) => textW(t, 12);
+    const boxes = chain.flatMap((it) => (it.fork ? it.boxes : [it])), sides = chain.flatMap((it) => it.sides || []);
+    // 칸 너비: 가장 긴 제목에 맞춰 모두 같게 (마름모는 가운데 줄 폭이 좁아 더 넓게)
+    const boxW = Math.ceil(Math.max(boxMin, ...boxes.map((b) => (b.decision ? tW(b.title) / 0.66 + 16 : tW(b.title) + 36))) / 2) * 2;
+    const sideW = Math.ceil(Math.max(Math.round(boxMin * 2 / 3), ...sides.map((b) => tW(b.title) + 32)) / 2) * 2;
+    const named = stages.filter((s) => s.name);
+    for (const s of named) s.lines = wrap(s.name, 96, 14, 600);
+    const area = named.length ? Math.max(84, Math.ceil(Math.max(...named.flatMap((s) => s.lines.map(tW)))) + 28) : 0;
+    const lineX = X0 + area, boxX = named.length ? lineX + 20 : 10, cx = boxX + boxW / 2;
+    // 설명: 넓은 모양은 쓴 줄 그대로 칸 오른쪽 (아주 길 때만 나눔), 칸 아래에 둘 때는 칸 폭에 맞춰 나눔
+    const lines = (b, maxW) => b.desc.flatMap((d) => wrap(d, maxW, 12));
+    const under = (n) => (n ? 6 + n * LH : 0); // 칸 아래 설명이 차지하는 높이
+    let svg = '', maxX = boxX + boxW, y = TOP, prev = null;
+    // data-w: 그릴 때 잰 글 너비 — Word 저장 · 서식 복사에서 글꼴이 달라져도 그 너비에 맞춤 (설명이 그림 밖으로 잘리지 않게)
+    const text = (cls, x, yy, s) => `<text class="${cls}" x="${r1(x)}" y="${r1(yy)}" data-w="${r1(/sf-(title|stage)/.test(cls) ? tW(s) : dW(s))}">${esc(s)}</text>`;
+    const descRight = (ls, x, cy) => { ls.forEach((l, i) => { svg += text('sf-desc', x, cy + (i - (ls.length - 1) / 2) * LH, l); maxX = Math.max(maxX, x + dW(l)); }); };
+    const descUnder = (ls, x, bottom) => { ls.forEach((l, i) => { svg += text('sf-desc mid', x, bottom + 16 + i * LH, l); maxX = Math.max(maxX, x + dW(l) / 2); }); };
+    const node = (b, x, top, w, h, cls) => {
+      const mx = x + w / 2, my = top + h / 2;
+      const shape = b.decision && cls !== 'side'
+        ? `<polygon class="sf-shape" points="${r1(mx)},${r1(top)} ${r1(x + w)},${r1(my)} ${r1(mx)},${r1(top + h)} ${r1(x)},${r1(my)}"/>`
+        : `<rect class="sf-shape" x="${r1(x)}" y="${r1(top)}" width="${r1(w)}" height="${r1(h)}" rx="8"/>`;
+      svg += `<g class="sf-node ${cls} tint-${b.role.tint}" data-role="${esc(b.role.name)}"><title>${esc([b.title, ...b.desc].join('\n'))}</title>${shape}${text('sf-title', mx, my, b.title)}</g>`;
+      maxX = Math.max(maxX, x + w);
+    };
+    const edge = (pts, kind) => { svg += `<path class="sf-edge ${kind}" d="${pathD(pts)}" marker-end="url(#${uid}-${kind})"/>`; };
+    for (const it of chain) {
+      if (prev) y = prev.bottom + (it.fork ? FGAP : prev.decision ? DGAP : GAP);
+      if (it.fork) {
+        // 나란한 끝: 위 칸에서 갈라져 한 줄에, 설명은 각 칸 아래
+        const top = y;
+        let bottom = top + H;
+        it.boxes.forEach((b, k) => {
+          const x = boxX + k * (boxW + COLGAP), mx = x + boxW / 2, ls = lines(b, boxW + 12);
+          if (prev) edge(k ? [{ x: cx, y: top - 14 }, { x: mx, y: top - 14 }, { x: mx, y: top - 2 }] : [{ x: cx, y: prev.out }, { x: cx, y: top - 2 }], 'normal');
+          node(b, x, top, boxW, H, b.decision ? 'decision' : 'box');
+          descUnder(ls, mx, top + H);
+          bottom = Math.max(bottom, top + H + under(ls.length));
+        });
+        it.top = top; it.bottom = bottom;
+        prev = { bottom, out: bottom, decision: false };
+        continue;
+      }
+      const h = it.decision ? DH : H;
+      const below = narrow || it.sides.length > 0; // 설명을 칸 아래에: 좁은 모양이거나 오른쪽에 갈래 칸이 있을 때
+      const own = lines(it, below ? boxW + 16 : 340);
+      // 끝나는 갈래: 오른쪽 작은 칸 (첫 칸은 판정과 같은 높이, 더 있으면 그 아래로)
+      const sd = it.sides.map((b) => {
+        const ls = lines(b, narrow ? sideW + 16 : 300);
+        return { b, ls, h: narrow ? H + under(ls.length) : Math.max(H, ls.length * LH + 4), off: narrow ? H / 2 : Math.max(H, ls.length * LH + 4) / 2 };
+      });
+      const rowH = below ? h : Math.max(h, own.length * LH + 4);
+      const top = y, cy = top + Math.max(rowH / 2, sd.length ? sd[0].off : 0), shapeTop = cy - h / 2, shapeBottom = cy + h / 2;
+      let bottom = Math.max(top + rowH, shapeBottom + (below ? under(own.length) : 0));
+      if (prev) {
+        edge([{ x: cx, y: prev.out }, { x: cx, y: shapeTop - 2 }], it.kind);
+        if (it.label) { svg += text('sf-elabel', cx + 12, (prev.out + shapeTop - 2) / 2, it.label); maxX = Math.max(maxX, cx + 12 + dW(it.label)); }
+      }
+      node(it, boxX, shapeTop, boxW, h, it.decision ? 'decision' : 'box');
+      if (below) descUnder(own, cx, shapeBottom); else descRight(own, boxX + boxW + COLGAP, cy);
+      if (sd.length) {
+        const x1 = boxX + boxW, many = sd.length > 1;
+        const gap = Math.max(40, ...sd.map((s) => Math.ceil(dW(s.b.label)) + 6)) + (many ? 14 : 0), sx = x1 + gap; // 선 글자가 판정과 갈래 칸 사이에 들어가게
+        let st = cy - sd[0].off;
+        sd.forEach((s, k) => {
+          const my = st + s.off, xm = x1 + 14;
+          edge(k ? [{ x: x1, y: cy }, { x: xm, y: cy }, { x: xm, y: my }, { x: sx - 2, y: my }] : [{ x: x1, y: cy }, { x: sx - 2, y: my }], s.b.kind);
+          svg += text('sf-elabel mid', ((many ? xm : x1) + sx - 2) / 2, my - 14, s.b.label);
+          node(s.b, sx, my - H / 2, sideW, H, 'side');
+          if (narrow) descUnder(s.ls, sx + sideW / 2, my + H / 2); else descRight(s.ls, sx + sideW + 12, my);
+          st += s.h + 12;
+        });
+        bottom = Math.max(bottom, st - 12);
+      }
+      it.top = Math.min(top, shapeTop); it.bottom = bottom;
+      prev = { bottom, out: below && own.length ? shapeBottom + under(own.length) + 2 : shapeBottom, decision: it.decision };
+    }
+    // 단계: 왼쪽에 이름, 그 단계 칸들 높이만큼 세로 점선
+    let stageSvg = '';
+    for (const s of named) {
+      const y0 = Math.min(...s.items.map((it) => it.top)), y1 = Math.max(...s.items.map((it) => it.bottom));
+      stageSvg += `<line class="sf-stage-line" x1="${r1(lineX)}" x2="${r1(lineX)}" y1="${r1(y0)}" y2="${r1(y1)}"/>` +
+        s.lines.map((l, i) => text('sf-stage', X0 + area / 2, (y0 + y1) / 2 + (i - (s.lines.length - 1) / 2) * 17, l)).join('');
+    }
+    let bottom = prev.bottom, W = Math.ceil(maxX) + 12;
+    // 범례: 쓴 역할만, 그림 아래 가운데
+    let legend = '';
+    if (anyRole && roles.length) {
+      const ws = roles.map((r) => 20 + dW(r.name)), total = ws.reduce((a, b) => a + b, 0) + (roles.length - 1) * 26;
+      W = Math.max(W, Math.ceil(total) + 24);
+      let x = (W - total) / 2;
+      const ly = bottom + 24;
+      roles.forEach((r, i) => {
+        legend += `<g class="sf-key tint-${r.tint}" data-role="${esc(r.name)}"><rect class="sf-shape" x="${r1(x)}" y="${r1(ly)}" width="14" height="14" rx="3"/>${text('sf-desc', x + 20, ly + 7, r.name)}</g>`;
+        x += ws[i] + 26;
+      });
+      bottom = ly + 14;
+    }
+    const defs = '<defs>' + ['normal', 'yes', 'no'].map((k) => `<marker id="${uid}-${k}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="sf-arrow ${k}" d="M2 1L8 5L2 9"/></marker>`).join('') + '</defs>';
+    return { svg: svgWrap('dg-summary' + (narrow ? ' narrow' : ''), W, bottom + 14, defs + stageSvg + svg + legend, L('요약 흐름도', 'Summary flow')), w: W };
+  }
+  function renderSummary(src, uid, opt = {}) {
+    const errs = [];
+    const model = parseSummary(src, errs);
+    if (errs.length) fail(errs);
+    const boxMin = Math.min(400, Math.max(80, opt.boxWidth || cssLen('--sf-box-width') || 180));
+    const wide = drawSummary(model, uid + 'w', false, boxMin), slim = drawSummary(model, uid + 'n', true, boxMin);
+    // 설명이 없어 두 모양이 같으면 하나만
+    if (slim.w >= wide.w) return `<div class="dg-scroll">${wide.svg}</div>`;
+    // 블록 폭이 넓은 모양보다 좁으면 좁은 모양 (CSS 컨테이너 쿼리 — 인쇄 · HTML 저장본에서도 같은 규칙)
+    return `<div class="sf" style="--sf-w:${wide.w + 1};--sf-n:${slim.w}px"><div class="sf-probe"><div class="sf-in">` +
+      `<div class="sf-var sf-wide dg-scroll">${wide.svg}</div><div class="sf-var sf-narrow dg-scroll">${slim.svg}</div></div></div></div>`;
+  }
+  // 다른 뷰어용: 단계 = subgraph, 설명은 칸 안 둘째 줄부터
+  function summaryMermaid(src) {
+    const errs = [];
+    const { stages, chain } = parseSummary(src, errs);
+    if (errs.length) fail(errs);
+    const out = ['flowchart TD'], links = [], styles = [], all = [];
+    let n = 0;
+    const id = (b) => { if (!b.mid) { b.mid = 'n' + ++n; all.push(b); } return b.mid; };
+    const decl = (b) => { const l = mq([b.title, ...b.desc].join('<br>')); return `${id(b)}${b.decision ? `{${l}}` : `[${l}]`}`; };
+    const link = (a, b, label, kind) => {
+      if (kind === 'yes') styles.push(`  linkStyle ${links.length} stroke:#2563eb,color:#2563eb`);
+      if (kind === 'no') styles.push(`  linkStyle ${links.length} stroke:#dc2626,color:#dc2626`);
+      links.push(`  ${id(a)} -->${label ? '|' + mq(label) + '|' : ''} ${id(b)}`);
+    };
+    const put = (it, ind) => {
+      if (it.fork) { for (const b of it.boxes) out.push(ind + decl(b)); return; }
+      out.push(ind + decl(it));
+      for (const s of it.sides) out.push(ind + decl(s));
+    };
+    let gi = 0;
+    for (const it of chain.filter((c) => !c.stage)) put(it, '  ');
+    for (const s of stages) {
+      out.push(`  subgraph g${++gi}[${mq(s.name)}]`);
+      for (const it of s.items) put(it, '    ');
+      out.push('  end');
+    }
+    let prev = null;
+    for (const it of chain) {
+      if (it.fork) { if (prev) for (const b of it.boxes) link(prev, b, '', 'normal'); prev = null; continue; }
+      if (prev) link(prev, it, it.label, it.kind);
+      for (const s of it.sides) link(it, s, s.label, s.kind);
+      prev = it;
+    }
+    out.push(...links, ...styles, ...tintLines(all.map((b) => ({ tint: b.role.tint, mid: b.mid })), (b) => b.mid));
+    return out.join('\n');
+  }
+
   /* ===================================================================== */
   const KIND = {};
-  [['flow', 'flow 흐름도'], ['sequence', 'sequence seq 주고받기 순서'], ['state', 'state 상태'], ['timeline', 'timeline schedule 일정표 일정'], ['ui', 'ui 노출 노출위치 exposure'], ['data', 'data 데이터 데이터정의 schema']]
+  [['flow', 'flow 흐름도'], ['sequence', 'sequence seq 주고받기 순서'], ['state', 'state 상태'], ['timeline', 'timeline schedule 일정표 일정'], ['ui', 'ui 노출 노출위치 exposure'], ['data', 'data 데이터 데이터정의 schema'],
+    ['summary', 'summary summaryflow 요약흐름 요약흐름도']]
     .forEach(([k, names]) => names.split(' ').forEach((n) => (KIND[n] = k)));
   let uidN = 0;
   window.MarkDiagram = {
@@ -1530,6 +1810,7 @@
       if (kind === 'timeline') return renderTimeline(src, uid);
       if (kind === 'ui') return renderUiTree(src);
       if (kind === 'data') return renderData(src, uid);
+      if (kind === 'summary') return renderSummary(src, uid, opt || {});
       throw new Error('unknown diagram kind');
     },
     drawDataLinks,
@@ -1587,12 +1868,19 @@
       for (const e of f.edges) if (e.label && [...e.label].length > 12) out.push({ ln: e.ln, info: true, msg: L(`선 글자 12자 넘음: ${e.label}`, `Line label over 12 chars: ${e.label}`) });
       return out;
     },
+    // 요약 흐름도 문서 점검: 문법 오류 { ln, msg }
+    summaryCheck(src) {
+      const errs = [];
+      parseSummary(src, errs);
+      return errs.map((e) => ({ ln: e.ln, msg: e.msg }));
+    },
     // 다른 뷰어용: 같은 내용을 Mermaid 문법으로
     toMermaid(kind, src, opt) {
       if (kind === 'flow') return flowMermaid(src, opt || {});
       if (kind === 'sequence') return renderSequence(src, 'm', true);
       if (kind === 'state') return renderState(src, 'm', true);
       if (kind === 'timeline') return renderTimeline(src, 'm', true);
+      if (kind === 'summary') return summaryMermaid(src);
       throw new Error('unknown diagram kind');
     },
   };

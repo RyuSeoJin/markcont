@@ -241,11 +241,24 @@
 .markdown-body .mc-tree li p { display: inline; margin: 0; }
 .markdown-body .mc-tree li::before { content: '📄'; margin-right: .45em; }
 .markdown-body .mc-tree li.dir::before { content: '📁'; }
+/* 인쇄할 때만 탭 내용마다 위에 붙는 탭 막대 사본 (.mc-tab-head · printTabHeads) — 화면에서는 숨김 */
+.markdown-body .mc-tab-head { display: none; }
 @media print {
-  .markdown-body .mc-tab-bar { display: none; }
-  .markdown-body .mc-tab-panel[hidden] { display: block !important; } /* 앱 전체의 [hidden] { display: none !important } 를 이기려면 !important */
-  .markdown-body .mc-tab-panel::before { content: attr(data-tab); display: block; font-weight: 700; margin-bottom: .4em; }
-  .markdown-body .mc-tabs, .markdown-body .mc-tree { break-inside: avoid; }
+  /* 탭은 모두 펼쳐 탭마다 탭 상자 하나로: 탭 막대(그 탭이 켜진 모양) + 탭 내용 — 화면에서 그 탭을 고른 모양과 같게 */
+  .markdown-body .mc-tabs { border: 0; border-radius: 0; overflow: visible; margin-bottom: 0; }
+  .markdown-body .mc-tabs > .mc-tab-bar { display: none; }
+  .markdown-body .mc-tab-panel, .markdown-body .mc-tab-panel[hidden] { display: block !important; border: 1px solid var(--border); border-radius: 6px; margin: 0 0 1.1em; } /* 앱 전체의 [hidden] { display: none !important } 를 이기려면 !important */
+  /* 탭 막대가 붙지 않았을 때(스크립트가 돌지 않는 곳): 탭 이름만 */
+  .markdown-body .mc-tab-panel::before { content: attr(data-tab); display: block; font-weight: 700; color: var(--accent); margin-bottom: .5em; }
+  .markdown-body .mc-tab-panel.mc-tab-print { padding-top: 0; }
+  .markdown-body .mc-tab-panel.mc-tab-print::before { content: none; display: none; }
+  .markdown-body .mc-tab-head { display: block; break-inside: avoid; break-after: avoid; }
+  .markdown-body .mc-tab-head > .mc-tab-bar { display: flex; flex-wrap: wrap; overflow: visible; margin: 0 -1.1em .9em; border-radius: 5px 5px 0 0; }
+  .markdown-body .mc-tab-head .mc-tab { font-size: .8em; padding: 5px 9px; cursor: default; }
+  /* 여러 쪽에 걸친 탭 상자: 탭 내용을 표처럼 두면 탭 막대가 표 머리줄처럼 쪽마다 다시 나옴 (Chromium 에서만 켬 — printTabHeads) */
+  .markdown-body .mc-tab-panel.mc-tab-repeat, .markdown-body .mc-tab-panel.mc-tab-repeat[hidden] { display: table !important; table-layout: fixed; width: 100%; box-sizing: border-box; }
+  .markdown-body .mc-tab-repeat > .mc-tab-head { display: table-header-group; }
+  .markdown-body .mc-tree { break-inside: avoid; }
 }
 /* 교정 표기 (CriticMarkup) */
 .markdown-body .critic { border-radius: 3px; cursor: pointer; }
@@ -544,6 +557,29 @@
 .dg-svg .dg-tl-dur.in { fill: var(--text); text-anchor: middle; }
 .dg-svg .dg-today { stroke: var(--dg-no); stroke-width: 1.4; stroke-dasharray: 4 3; }
 .dg-svg .dg-today-label { font-size: 10.5px; font-weight: 700; fill: var(--dg-no); }
+/* 요약 흐름도 (```요약흐름): 왼쪽 단계 · 가운데 같은 크기 칸 · 오른쪽 설명. 역할 색은 칸의 --t (data-role="역할 이름"), 칸 너비는 --sf-box-width
+   넓은 모양(설명이 칸 오른쪽) · 좁은 모양(설명이 칸 아래)을 둘 다 그려 두고 블록 폭에 맞는 쪽만 보임:
+   .sf-probe 폭 = 블록 폭 × 1000 ÷ 넓은 모양 폭 → 1000px 이상이면 넓은 모양이 들어감 (그림마다 다른 기준을 규칙 하나로 · 인쇄 · HTML 저장본에서도 같음) */
+.dg-sum .sf { overflow: hidden; }
+.dg-sum .sf-probe { container: mc-sf / inline-size; width: calc(100% * 1000 / var(--sf-w, 600)); }
+.dg-sum .sf-in { width: calc(100% * var(--sf-w, 600) / 1000); }
+.dg-sum .sf-wide { display: none; }
+@container mc-sf (min-width: 999.9px) { .dg-sum .sf-wide { display: block; } .dg-sum .sf-narrow { display: none; } }
+/* 좁은 모양도 넘치면 원래 크기의 70% 까지 줄여 한눈에 보이게 (그보다 좁으면 옆으로 넘김) */
+.markdown-body .dg-sum .sf-narrow svg { width: clamp(calc(var(--sf-n, 480px) * .7), 100%, var(--sf-n, 480px)); height: auto; }
+.markdown-body .dg svg.dg-summary { overflow: visible; } /* 글꼴이 달라 설명이 조금 길어져도 그림 끝에서 잘리지 않게 */
+/* 인쇄 · PDF: 종이는 늘 흰 바탕이라 어두운 테마여도 밝은 색으로 (단계 이름 · 설명처럼 칸 밖의 글자가 흐려지지 않게) */
+@media print { .dg-svg.dg-summary { --text: #1f2328; --muted: #6a6f76; --dg-node: #ffffff; --dg-stroke: #64748b; --dg-yes: #2563eb; --dg-no: #dc2626; --c-blue: #2f6feb; --c-green: #1f883d; --c-purple: #8250df; --c-amber: #9a6700; --c-red: #cf222e; } }
+.dg-svg .sf-shape { fill: color-mix(in srgb, var(--t) 12%, var(--dg-node)); stroke: var(--t); stroke-width: 1; }
+.dg-svg .sf-title { font-size: 14px; font-weight: 600; fill: color-mix(in srgb, var(--t) 55%, var(--text)); }
+.dg-svg .sf-desc, .dg-svg .sf-elabel { font-size: 12px; fill: var(--muted); text-anchor: start; }
+.dg-svg .sf-desc.mid, .dg-svg .sf-elabel.mid { text-anchor: middle; }
+.dg-svg .sf-stage { font-size: 14px; font-weight: 600; }
+.dg-svg .sf-stage-line { stroke: var(--dg-stroke); stroke-width: 1; stroke-dasharray: 3 3; }
+.dg-svg .sf-edge { fill: none; stroke: var(--dg-stroke); stroke-width: 1.3; }
+.dg-svg .sf-arrow { fill: none; stroke: var(--dg-stroke); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.dg-svg .sf-edge.yes, .dg-svg .sf-arrow.yes { stroke: var(--dg-yes); }
+.dg-svg .sf-edge.no, .dg-svg .sf-arrow.no { stroke: var(--dg-no); }
 
 /* 자주 묻는 질문 (details) */
 .markdown-body details:not(.callout):not(.front-matter) { padding: 0; background: var(--surface); overflow: hidden; }
