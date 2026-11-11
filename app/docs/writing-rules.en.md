@@ -423,6 +423,29 @@ Put an indented list in a ```` ```ui ```` block and it shows as a **📍 locatio
 ```
 ````
 
+Some lines go at the top of the block, and each line can carry a marker.
+
+| Syntax | Meaning |
+|---|---|
+| First line `# Title` | Shows a title above the block |
+| `@legend on` | Shows the legend (under the title, if there is one) |
+| `{kind} name` | Sets the kind for a line whose name doesn't tell it. The marker is removed and only the icon stays |
+
+- The **legend** is off by default. With `@legend on` it lists only the icons actually used in that block; if no line has an icon, it stays hidden.
+- With neither, only the tree is drawn.
+- **Kinds**: `{screen}` · `{sheet}` · `{popup}` · `{toast}` · `{button}` · `{badge}` · `{list}` · `{card}`. `{item}` shows no icon — use it when a word in the name picks the wrong icon (for example "Cards owned").
+- In an "action → result" line, put it before the result: `[Apply] → {sheet} Chat mode`
+
+````markdown example
+```ui
+# Entry web view
+- Entry title
+- {screen} Entry guide
+- [Apply] → {sheet} Chat mode
+  - {item} Cards owned
+```
+````
+
 #### Data definition
 
 Under `# Data name`, write **one field per line**. Columns are `field | type | required | description | example | status`; a header row sets a different order. Separate columns with `|`, commas (CSV) or tabs, so you can paste straight from a spreadsheet.

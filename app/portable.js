@@ -314,7 +314,7 @@
           continue;
         }
         if (kind === 'ui') {
-          out.push(...body.map((b) => (/^\s*([-*+]|\d+[.)])\s/.test(b) || !b.trim() ? b : b.replace(/^(\s*)/, '$1- '))));
+          out.push(...MarkDiagram.uiToList(body.join('\n')).split('\n')); // 제목은 굵은 글로, 「@범례」 · 「{종류}」 표시는 빼고
           note(ln, 'uiTree', lang);
           i = j + 1;
           continue;

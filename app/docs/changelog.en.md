@@ -3,6 +3,13 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.14.0 · 2026-11-12
+
+- Exposure (`ui`) block: a first line `# Title` shows a title above the block
+- Changed behavior: the legend that always sat at the top of an exposure block is now off by default. With `@legend on` it lists only the icons actually used in that block (under the title, if there is one)
+- Exposure block: set a line's kind directly with a marker such as `{sheet} Chat mode` (screen · sheet · popup · toast · button · badge · list · card). `{item}` shows no icon
+- Save for other viewers: the exposure block's title becomes bold text, and `@legend` lines and `{kind}` markers are removed
+
 ## 1.13.0 · 2026-11-11
 
 - Side view: clicking a link to another document keeps the one you're reading and opens the linked document on the right (read-only). Links inside the side view change only the side view; use Open in main in its header to move it to the main view. Close with Esc or ✕, and drag the border to resize
