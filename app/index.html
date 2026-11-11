@@ -1020,6 +1020,11 @@ body.resizing { cursor: col-resize; user-select: none; }
 .workspace.editing .markdown-body :is(a, button, input, summary) { cursor: pointer; }
 /* 그림을 누르면 크게 보기 (나란히 편집 중에는 원본으로 이동하므로 빼고) */
 .workspace:is(:not(.editing), .mode-preview) .markdown-body img:not(.broken, a img, .ex-src img) { cursor: zoom-in; }
+/* 나란히 편집 중: 다른 문서로 가는 링크는 그냥 누르면 열리지 않고 그 줄로 가므로 글자 커서. Ctrl(⌘)을 누르는 동안에만 「누르면 열림」 모양 */
+.workspace.editing:not(.mode-preview) #doc a[data-path] { cursor: text; }
+.workspace.editing:not(.mode-preview) #doc a[data-path]:hover { border-bottom-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+body.mod-down .workspace.editing:not(.mode-preview) #doc a[data-path] { cursor: pointer; }
+body.mod-down .workspace.editing:not(.mode-preview) #doc a[data-path]:hover { border-bottom: 2px solid var(--accent); }
 /* 링크 · 각주 미리 보기 */
 /* 발표 모드 */
 .present { position: fixed; inset: 0; z-index: 120; display: flex; flex-direction: column; background: var(--bg); }
@@ -1058,13 +1063,23 @@ body.resizing { cursor: col-resize; user-select: none; }
 .critic-pop .btn { height: 30px; font-size: 12.5px; }
 .meta-critic { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--c-purple); font-weight: 600; }
 .link-preview {
-  position: fixed; z-index: 90; width: min(440px, calc(100vw - 16px)); max-height: min(340px, 60vh); overflow: auto;
+  position: fixed; z-index: 90; width: min(440px, calc(100vw - 16px)); max-height: min(380px, 64vh); display: flex; flex-direction: column;
   padding: 10px 14px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
   box-shadow: 0 12px 32px color-mix(in srgb, #000 18%, transparent);
 }
 .link-preview[hidden] { display: none; }
-.link-preview .lp-head { margin-bottom: 6px; font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.link-preview .lp-body.markdown-body { max-width: none; margin: 0; font-size: 14px; line-height: 1.65; }
+.link-preview .lp-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.link-preview .lp-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.link-preview .lp-side { flex: none; height: 24px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font: inherit; font-size: 11.5px; cursor: pointer; }
+.link-preview .lp-side:hover { background: var(--surface-2); }
+.link-preview .lp-side[hidden] { display: none; }
+.link-preview .lp-head, .link-preview .lp-foot { flex: none; }
+.link-preview .lp-body.markdown-body { flex: 1; min-height: 0; overflow: auto; max-width: none; margin: 0; font-size: 14px; line-height: 1.65; }
+.link-preview .lp-foot { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 12px; line-height: 1.6; color: var(--muted); }
+.link-preview .lp-foot[hidden] { display: none; }
+.link-preview .lp-foot > div { display: flex; gap: 8px; }
+.link-preview .lp-foot > .lp-when { display: block; margin-bottom: 2px; font-weight: 600; }
+.link-preview .lp-foot b { flex: none; min-width: 5em; color: var(--text); font-weight: 600; }
 .link-preview .lp-body > div > :first-child { margin-top: 0; }
 .link-preview .lp-body > div > :last-child { margin-bottom: 0; }
 .link-preview .lp-body :is(h1, h2, h3, h4, h5, h6) { margin: .7em 0 .35em; font-size: 1.08em; }
@@ -1112,6 +1127,29 @@ body.resizing { cursor: col-resize; user-select: none; }
   position: absolute; left: -10000px; top: 0; visibility: hidden; white-space: pre-wrap; overflow-wrap: break-word; box-sizing: border-box;
 }
 .preview-pane { overflow-y: auto; min-height: 0; padding: 44px 40px 120px; position: relative; }
+/* 옆 보기: 본문 오른쪽 칸. 편집 중 나란히 보기에서는 세 칸, 자리가 모자라면(.side-over) 미리보기 자리를 대신함 */
+.side-view { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; border-left: 1px solid var(--border); background: var(--bg); }
+.side-view[hidden] { display: none; }
+.sv-head { flex: none; display: flex; align-items: center; gap: 2px; height: 44px; padding: 0 8px 0 6px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.sv-head .btn { height: 30px; }
+.sv-head .btn.icon { width: 30px; }
+.sv-title { flex: 1; min-width: 0; padding: 0 8px; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sv-title small { margin-right: 6px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.sv-promote { font-size: 12.5px; padding: 0 10px; }
+.sv-scroll { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 28px 28px 80px; }
+.sv-note { color: var(--muted); font-size: 14px; }
+.sv-resizer { position: absolute; top: 0; left: -4px; bottom: 0; width: 8px; cursor: col-resize; z-index: 5; }
+.sv-resizer:hover, .sv-resizer.drag { background: color-mix(in srgb, var(--accent) 25%, transparent); }
+.side-view .markdown-body .h-tools { display: none; }
+.workspace.editing .side-view .markdown-body [data-line] { cursor: auto; }
+.workspace.editing .side-view .markdown-body :is(a, button, summary) { cursor: pointer; }
+.side-view .markdown-body img:not(.broken, a img, .ex-src img) { cursor: zoom-in; }
+@media (min-width: 901px) {
+  .workspace.has-side { grid-template-columns: minmax(0, 1fr) min(var(--sv-w, 45%), 72%); }
+  .workspace.editing.has-side { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) min(var(--sv-w, 34%), 42%); }
+  .workspace.editing.has-side:is(.side-over, .mode-edit, .mode-preview) { grid-template-columns: minmax(0, 1fr) min(var(--sv-w, 45%), 72%); }
+  .workspace.editing.has-side.side-over .preview-pane { display: none; }
+}
 .doc-meta { max-width: var(--doc-width, 820px); margin: 0 auto 28px; font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
 .meta-loc { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
 .meta-loc .loc-text { color: var(--text); font-weight: 500; overflow-wrap: anywhere; }
@@ -1390,7 +1428,7 @@ body.zen .zen-exit:hover { opacity: 1; }
 }
 .fab svg { width: 22px; height: 22px; }
 .fab:hover { background: var(--surface-2); }
-.fab-top { right: 24px; bottom: 24px; }
+.fab-top { right: calc(24px + var(--sv-px, 0px)); bottom: 24px; }
 .fab-top.show { display: inline-flex; }
 .only-narrow-item { display: none; }
 
@@ -1434,6 +1472,11 @@ body.zen .zen-exit:hover { opacity: 1; }
   .sidebar.open { transform: none; }
   .scrim.show { display: block; position: fixed; inset: 56px 0 0; z-index: 25; background: rgba(0,0,0,.25); }
   .preview-pane { padding: 28px 16px 100px; }
+  /* 휴대폰: 옆 보기는 본문을 덮는 화면으로 */
+  .side-view { position: fixed; inset: 64px 0 0; z-index: 24; border-left: 0; }
+  .sv-resizer { display: none; }
+  .sv-scroll { padding: 22px 16px 80px; }
+  body.sv-open .fab { display: none; }
   .workspace.editing { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
   .workspace.editing .editor-pane { border-right: 0; border-bottom: 1px solid var(--border); }
   .workspace.editing.mode-edit, .workspace.editing.mode-preview { grid-template-rows: 1fr; }
@@ -1451,7 +1494,7 @@ body.zen .zen-exit:hover { opacity: 1; }
 
 @media print {
   body { overflow: visible; background: #fff; }
-  .topbar, .sidebar, .editor-pane, .doc-meta, .toast, .drop-overlay, .scrim, .copy, .h-tools, .zen-exit, .menu, .fab, .find-bar, .code-head button, .link-preview, .qo, .critic-pop { display: none !important; }
+  .topbar, .sidebar, .editor-pane, .doc-meta, .toast, .drop-overlay, .scrim, .copy, .h-tools, .zen-exit, .menu, .fab, .find-bar, .code-head button, .link-preview, .qo, .critic-pop, .side-view { display: none !important; }
   .layout, .main, .workspace, .preview-pane { display: block !important; height: auto !important; overflow: visible !important; padding: 0 !important; }
   .markdown-body { max-width: none; font-size: 11pt; }
   .markdown-body pre, .markdown-body .table-wrap, .markdown-body img, .markdown-body figure, .markdown-body .callout, .markdown-body nav.toc-inline,
@@ -1881,6 +1924,12 @@ body.zen .zen-exit:hover { opacity: 1; }
         <div class="doc-meta" id="docMeta"></div>
         <article class="markdown-body" id="doc"></article>
       </div>
+      <!-- 옆 보기: 본문은 그대로 두고 링크의 문서를 오른쪽에서 읽음 (읽기 전용) -->
+      <aside class="side-view" id="sideView" hidden>
+        <div class="sv-resizer" id="svResizer"></div>
+        <div class="sv-head" id="svHead"></div>
+        <div class="sv-scroll" id="svScroll"><article class="markdown-body" id="sideDoc"></article></div>
+      </aside>
     </div>
     <button class="btn zen-exit" id="zenExit" title="집중 모드 끝내기 (Esc)">집중 모드 끝내기</button>
     <div class="find-bar" id="findBar" hidden>

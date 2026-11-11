@@ -54,10 +54,13 @@
   const el = {
     sidebar: $('#sidebar'), scrim: $('#scrim'), filesSection: $('#filesSection'), fileList: $('#fileList'),
     tocSection: $('#tocSection'), toc: $('#toc'), welcome: $('#welcome'), workspace: $('#workspace'),
-    editor: $('#editor'), preview: $('#preview'), doc: $('#doc'), docMeta: $('#docMeta'), docTitle: $('#docTitle'),
+    editor: $('#editor'), preview: $('#preview'), doc: $('#doc'), sideView: $('#sideView'), sideScroll: $('#svScroll'), sideDoc: $('#sideDoc'), docMeta: $('#docMeta'), docTitle: $('#docTitle'),
     btnEdit: $('#btnEdit'), btnSave: $('#btnSave'), btnTheme: $('#btnTheme'),
     fileInput: $('#fileInput'), folderInput: $('#folderInput'), toast: $('#toast'),
   };
+
+  // 옆 보기: 본문 오른쪽에서 읽는 문서 (hist: 옆 보기만의 뒤로 · 앞으로, text · sig: 그린 내용과 설정 — 바뀌었을 때만 다시 그림)
+  const sv = { hist: [], pos: -1, seq: 0, text: null, sig: '', timer: 0, builtins: new Map(), flows: { data: new Map(), ctx: null, seq: 0 } };
 
   const libsOk = !!(window.markdownit && window.DOMPurify);
   if (!libsOk) $('#libNotice').hidden = false;
@@ -237,6 +240,7 @@
   el.btnTheme.onclick = () => {
     applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
     if (state.current && el.doc.querySelector('.mermaid')) render(true);
+    svSync();
   };
 
   /* =========================================================
@@ -885,11 +889,11 @@
     return o;
   }
   // 인쇄 · PDF 표지 (문서 정보에 「표지: 예」): 제목 · 요약 · 나머지 정보 표 (화면에서는 숨김)
-  function coverHtml(fm, body) {
+  function coverHtml(fm, body, cur = state.current) {
     const rows = fmRows(fm), E = escapeHtml;
     const get = (re) => (rows.find(([k]) => re.test(k.trim().toLowerCase())) || [])[1];
     const h1 = (body.match(/^#\s+(.+?)\s*#*\s*$/m) || [])[1];
-    const title = get(/^(title|제목)$/) || (h1 ? plainInline(h1) : state.current.name.replace(MD_EXT, ''));
+    const title = get(/^(title|제목)$/) || (h1 ? plainInline(h1) : cur.name.replace(MD_EXT, ''));
     const sub = get(/^(description|summary|subtitle|요약|설명|부제)$/);
     const skip = /^(title|제목|description|summary|subtitle|요약|설명|부제|표지|cover|뷰어|viewer|배지|badges?)$/;
     const meta = rows.filter(([k]) => !skip.test(k.trim().toLowerCase()));
@@ -908,13 +912,13 @@
   let dataLinkRaf = 0;
   function drawAllDataLinks() {
     if (!window.MarkDiagram) return;
-    el.doc.querySelectorAll('.dg-html .dt').forEach((dt) => { try { MarkDiagram.drawDataLinks(dt.parentElement); } catch {} });
+    for (const root of [el.doc, el.sideDoc]) root.querySelectorAll('.dg-html .dt').forEach((dt) => { try { MarkDiagram.drawDataLinks(dt.parentElement); } catch {} });
   }
-  if (window.ResizeObserver) new ResizeObserver(() => { clearTimeout(dataLinkRaf); dataLinkRaf = setTimeout(drawAllDataLinks, 60); }).observe(el.doc);
+  if (window.ResizeObserver) { const ro = new ResizeObserver(() => { clearTimeout(dataLinkRaf); dataLinkRaf = setTimeout(drawAllDataLinks, 60); }); ro.observe(el.doc); ro.observe(el.sideDoc); }
   // 요약 흐름도: 문서 스타일(CSS)의 칸 너비(--sf-box-width)가 바뀌면 다시 그림
   function redrawSummaries() {
     if (!window.MarkDiagram) return;
-    el.doc.querySelectorAll('.dg-sum[data-src]').forEach((d) => {
+    for (const root of [el.doc, el.sideDoc]) root.querySelectorAll('.dg-sum[data-src]').forEach((d) => {
       try { d.classList.remove('dg-error'); d.innerHTML = MarkDiagram.render('summary', d.dataset.src); addDgExpand(d); }
       catch (err) { d.classList.add('dg-error'); d.textContent = L('다이어그램을 그리지 못했습니다\n', "Couldn't draw the diagram\n") + err.message; }
     });
@@ -943,6 +947,7 @@
     lineTops = null;
     if (keepScroll) el.preview.scrollTop = scroll;
     if (state.editing) { paintEditor(); cursorBlock = null; updateCursor(); }
+    svSync();
   }
 
   // 알림 상자 > [!NOTE] (본문과 링크 미리 보기에서 같이 씀)
@@ -977,9 +982,9 @@
     });
   }
 
-  function postProcess() {
-    const doc = el.doc;
-    const base = state.current.path;
+  // doc · cur · opts: 본문이 아닌 곳(옆 보기)에도 같은 모양으로 그리려고 받음. flows: 흐름도 읽기 기억 (옆 보기는 따로)
+  function postProcess(doc = el.doc, cur = state.current, opts = state.docOpts, flows = flowState) {
+    const base = cur.path;
 
     makeCallouts(doc);
     initTabs(doc);
@@ -1008,7 +1013,7 @@
     });
     const heads = [...doc.querySelectorAll('h1,h2,h3,h4,h5,h6')].filter((h) => !h.closest('.md-example'));
     if (settings.headNum) numberHeadings(heads);
-    fillInlineToc(heads);
+    fillInlineToc(heads, doc);
 
     // 체크리스트 [ ] [x] — 클릭하면 원본도 바뀜
     doc.querySelectorAll('li').forEach((li) => {
@@ -1065,7 +1070,7 @@
     }
 
     // 표 칸: 문서 정보 「배지:」의 말로 시작하면 색 배지, 코드 · 날짜 모양(MAIL-P01, 2026-09-18)은 줄을 바꾸지 않음
-    const badges = (state.docOpts && state.docOpts.badges) || [];
+    const badges = (opts && opts.badges) || [];
     doc.querySelectorAll('td, th').forEach((cell) => {
       if (cell.closest('.front-matter')) return;
       if (badges.length && cell.tagName === 'TD') {
@@ -1143,7 +1148,7 @@
       if (ASSET_EXT.test(file)) {
         // ![[그림.png|설명|300]]: 숫자 칸은 크기(300 · 300x200), 나머지는 설명
         const o = sizeFrom(sp.dataset.alias);
-        const node = mediaNode(file, o.text || file);
+        const node = mediaNode(file, o.text || file, cur);
         applySize(node, o);
         if (!o.text) node.dataset.nocap = '1'; // 설명이 없으면 파일 이름을 그림 밑에 쓰지 않음
         sp.replaceWith(node);
@@ -1153,7 +1158,7 @@
       // 문서 넣기 ![[문서#제목]]: 그 줄에 홀로 있으면 내용을 그 자리에 (읽은 뒤 채움)
       const p = sp.parentElement;
       if (entry && p && p.tagName === 'P' && p.childNodes.length === 1 && !p.closest('.md-example')) {
-        p.replaceWith(embedBox(entry, sp.dataset.heading, [state.current.path]));
+        p.replaceWith(embedBox(entry, sp.dataset.heading, [cur.path]));
         return;
       }
       if (entry) {
@@ -1197,20 +1202,19 @@
       const sz = (img.getAttribute('alt') || '').match(/^(.*?)\s*\|\s*(\d{1,5})(?:\s*[x×]\s*(\d{1,5}))?\s*$/);
       const size = sz ? { w: +sz[2], h: +(sz[3] || 0) } : null;
       if (sz) img.alt = sz[1];
-      if (VIDEO_EXT.test(src) || AUDIO_EXT.test(src)) { const m = mediaNode(src, img.alt); if (size) applySize(m, size); img.replaceWith(m); return; }
+      if (VIDEO_EXT.test(src) || AUDIO_EXT.test(src)) { const m = mediaNode(src, img.alt, cur); if (size) applySize(m, size); img.replaceWith(m); return; }
       if (size) applySize(img, size);
       img.loading = 'lazy';
       img.addEventListener('error', () => img.classList.add('broken'), { once: true });
       // 앱에 든 안내 문서의 그림은 앱 폴더 기준 (icons/… 처럼)
-      if (state.current.builtin) return;
+      if (cur.builtin) return;
       if (!hasScheme(src) && !src.startsWith('data:')) {
         const key = findAssetKey(base, src);
         if (key) { assetUrl(key).then((u) => (img.src = u)).catch(() => {}); return; }
         let rel = src;
         try { rel = decodeURIComponent(src); } catch {}
-        const cur = state.current;
         // PC 프로그램: 열어 둔 폴더 밖이어도 문서 위치를 기준으로 직접 읽음
-        if (cur && cur.tauriPath && isTauri()) {
+        if (cur.tauriPath && isTauri()) {
           const dir = cur.tauriPath.replace(/[\\/][^\\/]*$/, '');
           const parts = dir.split(/[\\/]/);
           for (const seg of rel.split('/')) { if (seg === '..') parts.pop(); else if (seg && seg !== '.') parts.push(seg); }
@@ -1329,7 +1333,7 @@
       body.append(pre);
       block.append(head, body);
     });
-    if (flowJobs.length) drawFlows(flowJobs, base);
+    if (flowJobs.length) drawFlows(flowJobs, base, flows);
     if (mermaidBlocks.length) {
       loadMermaid().then((m) => {
         m.initialize(mermaidConfig(document.documentElement.dataset.theme === 'dark'));
@@ -1363,14 +1367,14 @@
     sp.append(c);
     return sp;
   }
-  function mediaNode(src, alt) {
+  function mediaNode(src, alt, cur = state.current) {
     const kind = VIDEO_EXT.test(src) ? 'video' : AUDIO_EXT.test(src) ? 'audio' : 'img';
     const node = document.createElement(kind);
     if (kind === 'img') { node.alt = alt || ''; node.loading = 'lazy'; }
     else { node.controls = true; node.preload = 'metadata'; }
-    if (hasScheme(src) || src.startsWith('data:') || (state.current && state.current.builtin)) node.src = src;
+    if (hasScheme(src) || src.startsWith('data:') || (cur && cur.builtin)) node.src = src;
     else {
-      const key = findAssetKey(state.current.path, src);
+      const key = findAssetKey(cur.path, src);
       if (key) assetUrl(key).then((u) => (node.src = u)).catch(() => {});
       else if (kind === 'img') { node.classList.add('broken'); node.alt = alt || src; }
       else node.src = src;
@@ -1394,7 +1398,8 @@
   }
 
   /* ---------- 문서 안 클릭 처리 (링크, 복사, 접기, 체크박스) ---------- */
-  el.doc.addEventListener('click', async (e) => {
+  // inSide: 옆 보기 안에서 누른 것 (제목 · 각주는 옆 보기 안에서 찾고, 링크는 옆 보기 내용만 바꿈)
+  async function docClick(e, inSide) {
     const t = e.target;
     const copy = t.closest('.code-copy');
     if (copy) {
@@ -1416,42 +1421,62 @@
       return;
     }
     const fold = t.closest('.h-fold');
-    if (fold) { toggleFold(fold.closest('h1,h2,h3,h4,h5,h6').id); return; }
+    if (fold) { if (!inSide) toggleFold(fold.closest('h1,h2,h3,h4,h5,h6').id); return; }
     // 그림을 누르면 크게 보기 (링크로 감싼 그림은 링크로, 나란히 편집 중에는 원본으로 이동)
     const pic = t.closest('img');
-    if (pic && zoomable(pic)) { openImageViewer(pic); return; }
+    if (pic && zoomable(pic, inSide)) { openImageViewer(pic); return; }
 
     const a = t.closest('a');
     if (!a) return;
+    const goId = inSide ? svScrollTo : scrollToId;
     if (a.dataset.inDoc || (a.getAttribute('href') || '').startsWith('#') && !a.dataset.path && !a.dataset.builtin) {
-      if (a.classList.contains('footnote-backref') || a.closest('.footnote-ref')) {
-        e.preventDefault();
-        scrollToId(decodeURIComponent(a.getAttribute('href').slice(1)));
-        return;
-      }
       e.preventDefault();
-      scrollToId(decodeURIComponent((a.getAttribute('href') || '#').slice(1)));
+      goId(decodeURIComponent((a.getAttribute('href') || '#').slice(1)));
       return;
     }
     if ('path' in a.dataset) {
       e.preventDefault();
-      if (a.dataset.builtin) {
-        const ok = await openBuiltinDoc(a.dataset.builtin);
-        const h = a.dataset.hash || (a.dataset.heading ? slugify(a.dataset.heading) : '');
+      const mod = e.ctrlKey || e.metaKey || e.button === 1;
+      // 나란히 편집 중: 그냥 누르면 열지 않고 편집창 커서만 그 줄로 (아래 「미리보기를 누르면 원본으로」가 옮김). 열려면 Ctrl+클릭
+      if (!inSide && !mod && state.editing && viewMode === 'split') return;
+      const to = aTarget(a);
+      if (!to) return;
+      // 옆에서 열기: 옆 보기 안의 링크 · Ctrl(가운데)+클릭 · 넓은 화면의 그냥 클릭. 좁은 화면의 그냥 클릭은 본문을 바꿈 (옆 보기가 화면을 덮으므로)
+      if (inSide || mod || !svNarrow()) { svOpen(to, to.hash); return; }
+      if (to.builtin) {
+        const ok = await openBuiltinDoc(to.builtin);
+        const h = to.hash;
         // 큰 문서는 그리는 동안 부드러운 스크롤이 끊기므로 바로 이동 (다 그려진 뒤 한 번 더)
         const jump = () => { const t = document.getElementById(decodeURIComponent(h)) || document.getElementById(slugify(decodeURIComponent(h))); if (t) { unfoldTo(t); t.scrollIntoView({ block: 'start' }); } };
         if (ok && h) [80, 700, 1500].forEach((ms) => setTimeout(jump, ms));
         return;
       }
-      if (a.classList.contains('missing')) { toast(L('이 문서를 찾지 못했습니다. 폴더 열기로 열면 이동할 수 있어요.', "Couldn't find this document. Open its folder with Open folder to follow the link.")); return; }
-      const entry = state.files.find((f) => f.path === a.dataset.path);
-      if (!entry && a.dataset.outside) { toast(L('열어 둔 폴더 밖의 문서입니다. 그 문서가 들어 있는 위 폴더를 열면 링크로 이동할 수 있어요.', 'This document is outside the open folder. Open a parent folder that contains it to follow the link.'), 3600); return; }
-      if (!entry) { toast(L('이 파일은 열려 있지 않습니다. 폴더 열기로 폴더를 열면 링크로 이동할 수 있어요.', "This file isn't open. Open its folder with Open folder to follow the link."), 3200); return; }
-      const ok = await openEntry(entry);
-      const hash = a.dataset.hash || (a.dataset.heading ? slugify(a.dataset.heading) : '');
-      if (ok && hash) setTimeout(() => scrollToId(decodeURIComponent(hash)), 50);
+      const ok = await openEntry(to.entry);
+      if (ok && to.hash) setTimeout(() => scrollToId(decodeURIComponent(to.hash)), 50);
     }
-  });
+  }
+  // 링크가 가리키는 문서: { entry | builtin, hash }. 열 수 없으면 까닭을 알리고 null
+  function aTarget(a) {
+    const hash = a.dataset.hash || (a.dataset.heading ? slugify(a.dataset.heading) : '');
+    if (a.dataset.builtin) return { builtin: a.dataset.builtin, hash };
+    if (a.classList.contains('missing')) { toast(L('이 문서를 찾지 못했습니다. 폴더 열기로 열면 이동할 수 있어요.', "Couldn't find this document. Open its folder with Open folder to follow the link.")); return null; }
+    const entry = state.files.find((f) => f.path === a.dataset.path);
+    if (!entry && a.dataset.outside) { toast(L('열어 둔 폴더 밖의 문서입니다. 그 문서가 들어 있는 위 폴더를 열면 링크로 이동할 수 있어요.', 'This document is outside the open folder. Open a parent folder that contains it to follow the link.'), 3600); return null; }
+    if (!entry) { toast(L('이 파일은 열려 있지 않습니다. 폴더 열기로 폴더를 열면 링크로 이동할 수 있어요.', "This file isn't open. Open its folder with Open folder to follow the link."), 3200); return null; }
+    return { entry, hash };
+  }
+  const setModDown = (on) => document.body.classList.toggle('mod-down', !!on);
+  window.addEventListener('keydown', (e) => { if (e.key === 'Control' || e.key === 'Meta') setModDown(true); });
+  window.addEventListener('keyup', (e) => { if (e.key === 'Control' || e.key === 'Meta') setModDown(false); });
+  window.addEventListener('blur', () => setModDown(false));
+  el.preview.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse') setModDown(e.ctrlKey || e.metaKey); }, { passive: true }); // 다른 창에서 누른 채 들어온 경우도
+  const docLink = (e) => { const a = e.target.closest('a'); return a && 'path' in a.dataset ? a : null; };
+  for (const [root, inSide] of [[el.doc, false], [el.sideDoc, true]]) {
+    root.addEventListener('click', (e) => docClick(e, inSide));
+    // 가운데 클릭: 다른 문서 링크를 옆에서 열기 (브라우저의 새 탭 · 자동 스크롤은 막음)
+    root.addEventListener('auxclick', (e) => { if (e.button === 1 && docLink(e)) docClick(e, inSide); });
+    root.addEventListener('mousedown', (e) => { if (e.button === 1 && docLink(e)) e.preventDefault(); });
+  }
   el.doc.addEventListener('change', (e) => {
     const cb = e.target;
     if (!cb.matches('input.task')) return;
@@ -1474,9 +1499,9 @@
     if (state.current.handle && !state.editing) save({ quiet: true });
   }
 
-  function zoomable(img) {
+  function zoomable(img, inSide) {
     if (img.closest('a, .ex-src') || img.classList.contains('broken') || !img.complete || !img.naturalWidth) return false;
-    return !state.editing || viewMode === 'preview';
+    return inSide || !state.editing || viewMode === 'preview';
   }
 
   async function copyText(text) {
@@ -1520,12 +1545,12 @@
       },
     };
   }
-  async function drawFlows(jobs, base) {
-    const seq = ++flowState.seq;
+  async function drawFlows(jobs, base, fs = flowState) {
+    const seq = ++fs.seq;
     const draw = (data, ext) => {
       const dataOf = (src) => { const s = MarkDiagram.flowSource(src); return s ? (data.has(flowDataKey(base, s)) ? data.get(flowDataKey(base, s)) : undefined) : undefined; };
       const ctx = flowCtx(jobs.map((j) => MarkDiagram.flowInfo(j.src, { data: dataOf(j.src) })), ext);
-      flowState.ctx = ctx;
+      fs.ctx = ctx;
       for (const j of jobs) {
         if (!j.d.isConnected) continue;
         try {
@@ -1541,7 +1566,7 @@
     };
     const sources = jobs.map((j) => MarkDiagram.flowSource(j.src)).filter(Boolean);
     // 이미 읽어 둔 노드 자료로 먼저 그리고 (없으면 「읽는 중」), 다 읽으면 다시 그림
-    draw(flowState.data, flowState.ext);
+    draw(fs.data, fs.ext);
     if (!sources.length) return;
     const data = new Map(), folders = new Set();
     for (const s of sources) {
@@ -1561,8 +1586,8 @@
         for (const n of MarkDiagram.flowInfo(t).nodes) if (!ext.has(n.id)) ext.set(n.id, { text: n.text, file: f.name.replace(MD_EXT, '') });
       }
     }
-    if (seq !== flowState.seq) return; // 그 사이에 다시 그렸으면 버림
-    flowState.data = data; flowState.ext = ext;
+    if (seq !== fs.seq) return; // 그 사이에 다시 그렸으면 버림
+    fs.data = data; fs.ext = ext;
     draw(data, ext);
   }
   // 다른 뷰어용으로 저장: 노드 줄이 없는 흐름도 블록의 「@자료 …」 줄을 그 파일의 노드 표로 바꿈 (@보기 는 그대로)
@@ -1759,7 +1784,7 @@
   const builtinTexts = new Map();
   // 미리 볼 수 있는 링크: 각주 번호, 다른 문서(위키링크 · .md 링크 · 안내 문서), 이 문서 안의 제목
   function previewKind(a) {
-    if (!a || !el.doc.contains(a) || a.closest('nav.toc-inline, .h-tools')) return null;
+    if (!a || !(el.doc.contains(a) || el.sideDoc.contains(a)) || a.closest('nav.toc-inline, .h-tools')) return null;
     if (a.closest('.footnote-ref')) return 'fn';
     if (a.classList.contains('footnote-backref') || a.classList.contains('missing')) return null;
     if (a.dataset.builtin) return 'builtin';
@@ -1945,9 +1970,12 @@
   }
   async function previewContent(a, kind) {
     const box = document.createElement('div');
+    // 옆 보기 안의 링크는 옆 보기 안에서 찾음 (본문과 제목 id 가 겹칠 수 있음)
+    const root = el.sideDoc.contains(a) ? el.sideDoc : el.doc;
+    const byId = (id) => (root === el.doc ? document.getElementById(id) : svFind(id));
     if (kind === 'fn') {
-      const li = document.getElementById(decodeURIComponent((a.getAttribute('href') || '#').slice(1)));
-      if (!li || !el.doc.contains(li)) return null;
+      const li = byId(decodeURIComponent((a.getAttribute('href') || '#').slice(1)));
+      if (!li || !root.contains(li)) return null;
       const c = li.cloneNode(true);
       c.querySelectorAll('.footnote-backref').forEach((x) => x.remove());
       box.append(...c.childNodes);
@@ -1955,8 +1983,8 @@
     }
     if (kind === 'here') {
       const id = decodeURIComponent((a.getAttribute('href') || '#').slice(1));
-      const h = document.getElementById(id) || document.getElementById(slugify(id));
-      if (!h || !el.doc.contains(h) || !headingLevel(h)) return null;
+      const h = byId(id) || byId(slugify(id));
+      if (!h || !root.contains(h) || !headingLevel(h)) return null;
       const lvl = headingLevel(h);
       for (let n = h.nextElementSibling, k = 0; n && k < 12; n = n.nextElementSibling, k++) {
         const l = headingLevel(n);
@@ -1990,8 +2018,19 @@
     box.innerHTML = DOMPurify.sanitize(md.render(stripNotes(s.md), { nested: true, depth: 1, docId: 'pv' }), { ADD_ATTR: ['target'], FORBID_TAGS: ['style'] });
     previewProcess(box, base, builtin);
     if (!box.textContent.trim() && !box.querySelector('img')) box.innerHTML = `<p class="lp-more">${L('비어 있는 문서입니다', 'This document is empty')}</p>`;
-    if (s.cut) box.insertAdjacentHTML('beforeend', `<div class="lp-more">${L('… 이어지는 내용은 링크를 눌러 보세요', '… Click the link to read the rest')}</div>`);
-    return { title: name + (s.found ? ' › ' + s.found : ''), node: box };
+    if (s.cut) box.insertAdjacentHTML('beforeend', `<div class="lp-more">${L('… 이어지는 내용이 더 있습니다', '… There is more below')}</div>`);
+    return { title: name + (s.found ? ' › ' + s.found : ''), node: box, how: lpHow(a) };
+  }
+  // 다른 문서 링크를 눌렀을 때 일어나는 일: [누르는 방법, 결과] (docClick 의 규칙과 같게)
+  function lpHow(a) {
+    const ctrl = (/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl') + L('+클릭', '+click'), click = L('클릭', 'Click');
+    const beside = L('보던 문서는 그대로 두고 오른쪽 옆 보기에 엽니다', 'opens in the side view on the right, keeping this document');
+    const same = [ctrl, L('그냥 클릭과 같습니다 (옆 보기에 엽니다)', 'same as a plain click (opens in the side view)')];
+    // when: 지금 어떤 상태라서 이렇게 열리는지 (상태마다 달라지므로 먼저 밝힘)
+    if (el.sideDoc.contains(a)) return { when: L('옆 보기 안에서는', 'Inside the side view'), rows: [[click, L('옆 보기의 내용을 이 문서로 바꿉니다 (본문은 그대로)', 'shows this document in the side view (the main document stays)')]] };
+    if (state.editing && viewMode === 'split') return { when: L('나란히 편집 중에는', 'While editing side by side'), rows: [[click, L('열지 않고 편집창 커서를 이 링크 줄로 옮깁니다', "doesn't open it; moves the editor cursor to this link's line")], [ctrl, beside]] };
+    if (svNarrow()) return { when: L('좁은 화면에서는', 'On a narrow screen'), rows: [[click, L('본문을 이 문서로 바꿉니다', 'replaces the main document with this one')], [ctrl, L('본문 위를 덮는 옆 보기에 엽니다', 'opens in a side view over the main document')]] };
+    return { when: state.editing ? L('미리보기만 볼 때는', 'In preview-only mode') : L('보기만 할 때는', 'In view-only mode'), rows: [[click, beside], same] };
   }
   function previewBox() {
     if (lp.box) return lp.box;
@@ -1999,7 +2038,9 @@
     b.className = 'link-preview';
     b.hidden = true;
     b.setAttribute('role', 'tooltip');
-    b.innerHTML = '<div class="lp-head"></div><div class="lp-body markdown-body"></div>';
+    b.innerHTML = '<div class="lp-head"><span class="lp-title"></span><button type="button" class="lp-side" hidden></button></div><div class="lp-body markdown-body"></div><div class="lp-foot" hidden></div>';
+    b.querySelector('.lp-side').textContent = L('옆에서 열기', 'Open beside');
+    b.querySelector('.lp-side').onclick = () => { const a = lp.anchor, to = a && a.isConnected && aTarget(a); hidePreview(); if (to) svOpen(to, to.hash); };
     b.addEventListener('pointerenter', () => clearTimeout(lp.hideTimer));
     b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') hidePreviewSoon(); });
     document.body.append(b);
@@ -2013,13 +2054,25 @@
     try { r = await previewContent(a, kind); } catch {}
     if (seq !== lp.seq || !r || !a.isConnected) return;
     const b = previewBox();
-    b.querySelector('.lp-head').textContent = r.title;
+    b.querySelector('.lp-title').textContent = r.title;
+    // 그냥 눌러서는 옆에서 열리지 않는 곳(나란히 편집 중 · 좁은 화면)에서만 단추를 보임
+    b.querySelector('.lp-side').hidden = !((kind === 'doc' || kind === 'builtin') && el.doc.contains(a) && (svNarrow() || (state.editing && viewMode === 'split')));
     const body = b.querySelector('.lp-body');
     body.innerHTML = '';
     body.append(r.node);
+    // 창 아래에 늘 보이게: 이 링크를 누르면 어디에 열리는지 (지금 화면 · 보기 방식에 맞춰)
+    const foot = b.querySelector('.lp-foot');
+    foot.innerHTML = '';
+    foot.hidden = !r.how;
+    if (r.how) foot.append(Object.assign(document.createElement('div'), { className: 'lp-when', textContent: r.how.when }));
+    for (const [key, what] of r.how ? r.how.rows : []) {
+      const row = document.createElement('div');
+      row.append(Object.assign(document.createElement('b'), { textContent: key }), what);
+      foot.append(row);
+    }
     b.style.visibility = 'hidden';
     b.hidden = false;
-    b.scrollTop = 0;
+    body.scrollTop = 0;
     // 링크 바로 아래(자리가 없으면 위)에
     const rc = a.getClientRects()[0] || a.getBoundingClientRect();
     const w = b.offsetWidth, h = b.offsetHeight;
@@ -2039,43 +2092,252 @@
   }
   function hidePreviewSoon() { clearTimeout(lp.hideTimer); lp.hideTimer = setTimeout(hidePreview, 220); }
   const previewOpen = () => !!(lp.box && !lp.box.hidden);
-  el.doc.addEventListener('pointerover', (e) => {
-    if (e.pointerType !== 'mouse') return;
-    const a = e.target.closest('a');
-    if (!previewKind(a)) return;
-    clearTimeout(lp.hideTimer);
-    if (lp.anchor === a && previewOpen()) return;
-    clearTimeout(lp.timer);
-    lp.timer = setTimeout(() => showPreview(a), 350);
-  });
-  el.doc.addEventListener('pointerout', (e) => {
-    if (e.pointerType !== 'mouse') return;
-    const a = e.target.closest('a');
-    if (!a || (e.relatedTarget && a.contains(e.relatedTarget))) return;
-    clearTimeout(lp.timer);
-    if (previewOpen()) hidePreviewSoon(); else lp.seq++;
-  });
-  // 휴대폰 · 태블릿: 길게 누르면 미리 보기, 그때는 링크로 넘어가지 않음
-  el.doc.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse') return;
-    lp.suppress = false;
-    if (previewOpen()) hidePreview();
-    const a = e.target.closest('a');
-    if (!previewKind(a)) return;
-    const x = e.clientX, y = e.clientY;
-    lp.timer = setTimeout(() => { lp.suppress = true; showPreview(a); }, 450);
-    const stop = (ev) => {
-      if (ev.type === 'pointermove' && Math.hypot(ev.clientX - x, ev.clientY - y) < 10) return;
+  for (const root of [el.doc, el.sideDoc]) {
+    root.addEventListener('pointerover', (e) => {
+      if (e.pointerType !== 'mouse') return;
+      const a = e.target.closest('a');
+      if (!previewKind(a)) return;
+      clearTimeout(lp.hideTimer);
+      if (lp.anchor === a && previewOpen()) return;
       clearTimeout(lp.timer);
-      ['pointerup', 'pointercancel', 'pointermove'].forEach((t) => a.removeEventListener(t, stop));
-    };
-    ['pointerup', 'pointercancel', 'pointermove'].forEach((t) => a.addEventListener(t, stop));
-  });
-  el.doc.addEventListener('click', (e) => { if (lp.suppress) { lp.suppress = false; e.preventDefault(); e.stopImmediatePropagation(); } }, true);
-  el.doc.addEventListener('contextmenu', (e) => { if (lp.suppress) e.preventDefault(); });
+      lp.timer = setTimeout(() => showPreview(a), 350);
+    });
+    root.addEventListener('pointerout', (e) => {
+      if (e.pointerType !== 'mouse') return;
+      const a = e.target.closest('a');
+      if (!a || (e.relatedTarget && a.contains(e.relatedTarget))) return;
+      clearTimeout(lp.timer);
+      if (previewOpen()) hidePreviewSoon(); else lp.seq++;
+    });
+    // 휴대폰 · 태블릿: 길게 누르면 미리 보기, 그때는 링크로 넘어가지 않음
+    root.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse') return;
+      lp.suppress = false;
+      if (previewOpen()) hidePreview();
+      const a = e.target.closest('a');
+      if (!previewKind(a)) return;
+      const x = e.clientX, y = e.clientY;
+      lp.timer = setTimeout(() => { lp.suppress = true; showPreview(a); }, 450);
+      const stop = (ev) => {
+        if (ev.type === 'pointermove' && Math.hypot(ev.clientX - x, ev.clientY - y) < 10) return;
+        clearTimeout(lp.timer);
+        ['pointerup', 'pointercancel', 'pointermove'].forEach((t) => a.removeEventListener(t, stop));
+      };
+      ['pointerup', 'pointercancel', 'pointermove'].forEach((t) => a.addEventListener(t, stop));
+    });
+    root.addEventListener('click', (e) => { if (lp.suppress) { lp.suppress = false; e.preventDefault(); e.stopImmediatePropagation(); } }, true);
+    root.addEventListener('contextmenu', (e) => { if (lp.suppress) e.preventDefault(); });
+  }
   document.addEventListener('pointerdown', (e) => { if (previewOpen() && !lp.box.contains(e.target)) hidePreview(); });
-  el.preview.addEventListener('scroll', () => { if (previewOpen()) hidePreview(); }, { passive: true });
+  for (const pane of [el.preview, el.sideScroll]) pane.addEventListener('scroll', () => { if (previewOpen()) hidePreview(); }, { passive: true });
   window.addEventListener('blur', () => { if (previewOpen()) hidePreview(); });
+
+  /* ---------- 옆 보기: 본문은 그대로 두고 링크의 문서를 오른쪽에서 읽기 ----------
+     - 읽기 전용: 체크박스는 못 누르고, 목차 탭 · 접기 · 찾기는 본문 것만
+     - 본문과 같은 함수(postProcess)로 그림. 제목 id 가 본문과 겹칠 수 있어 옆 보기 안에서는 svFind 로 찾음
+     - 옆 보기 안의 링크는 옆 보기 내용만 바꿈. 본문으로 올리려면 머리줄의 「본문으로 열기」 */
+  const svOpenNow = () => !el.sideView.hidden;
+  const svCur = () => sv.hist[sv.pos] || null;
+  const svNarrow = () => matchMedia('(max-width: 900px)').matches;
+  const svSig = () => document.documentElement.dataset.theme + JSON.stringify(settings);
+  function svFind(id) { try { return el.sideDoc.querySelector('#' + CSS.escape(id)); } catch { return null; } }
+  function svScrollTo(id, smooth = true) {
+    const t = svFind(id) || svFind(slugify(id));
+    if (!t) return;
+    const top = el.sideScroll.scrollTop + t.getBoundingClientRect().top - el.sideScroll.getBoundingClientRect().top - 12;
+    el.sideScroll.scrollTo({ top, behavior: smooth && Math.abs(top - el.sideScroll.scrollTop) < 4000 ? 'smooth' : 'auto' }); // 먼 곳은 바로
+  }
+  // 안내 문서: 이미 목록에 있으면 그것을, 아니면 내용만 읽어 둔 것을 (목록 · 기록은 건드리지 않음)
+  async function svEntryOf(to) {
+    if (to.entry) return to.entry;
+    const key = to.builtin, path = builtinPath(key);
+    const opened = state.files.find((f) => f.builtin && f.path === path);
+    if (opened) return opened;
+    if (!sv.builtins.has(key)) sv.builtins.set(key, { name: BUILTIN[key].name, path, text: await builtinText(key), builtin: true, builtinKey: key });
+    return sv.builtins.get(key);
+  }
+  // 본문에서 열어 둔 문서는 편집창의 글을, 그 밖에는 파일을 새로 읽음 (밖에서 바뀐 내용도 보이게)
+  async function svRead(entry) {
+    if (entry === state.current) return source();
+    if (entry.builtin) return entry.text;
+    try {
+      if (entry.tauriPath && !entry.file && !entry.handle) return toLF((await tinvoke('read_file', { path: entry.tauriPath })).text);
+      const f = await entryFile(entry);
+      if (f) return toLF((await readDoc(f)).text);
+    } catch (err) { if (entry.text == null) throw err; }
+    return entry.text;
+  }
+  async function svOpen(to, hash = '') {
+    hidePreview();
+    let entry;
+    try { entry = await svEntryOf(to); } catch { toast(L('안내 문서를 열지 못했습니다.', "Couldn't open the built-in document."), 3000); return false; }
+    const now = svCur(), same = !!now && now.entry === entry;
+    if (!same) {
+      sv.hist = sv.hist.slice(0, sv.pos + 1);
+      sv.hist.push({ entry });
+      if (sv.hist.length > 50) sv.hist.shift();
+      sv.pos = sv.hist.length - 1;
+    }
+    return svShow(hash, same);
+  }
+  // keep: 읽던 자리 그대로, lazy: 내용 · 설정이 바뀌었을 때만 다시 그림
+  async function svShow(hash = '', keep = false, lazy = false) {
+    const it = svCur();
+    if (!it) return false;
+    const seq = ++sv.seq;
+    let text = null;
+    try { text = await svRead(it.entry); } catch {}
+    if (seq !== sv.seq || it !== svCur()) return false;
+    const wasOpen = svOpenNow();
+    el.sideView.hidden = false;
+    el.workspace.classList.add('has-side');
+    document.body.classList.add('sv-open');
+    if (!wasOpen) svLayout();
+    svHead();
+    if (text == null) {
+      sv.text = null;
+      el.sideDoc.innerHTML = '';
+      const p = document.createElement('p');
+      p.className = 'sv-note';
+      p.textContent = L('문서를 읽지 못했습니다', "Couldn't read the document");
+      el.sideDoc.append(p);
+      return false;
+    }
+    if (!(lazy && text === sv.text && svSig() === sv.sig)) svPaint(it.entry, text, keep);
+    if (hash) {
+      let id = hash;
+      try { id = decodeURIComponent(hash); } catch {}
+      // 큰 문서 · 그림은 그린 뒤에 자리가 밀리므로 몇 번 더 맞춤
+      [0, 120, 700].forEach((ms) => setTimeout(() => { if (seq === sv.seq) svScrollTo(id, false); }, ms));
+    }
+    return true;
+  }
+  function svPaint(entry, text, keep) {
+    const top = el.sideScroll.scrollTop;
+    sv.text = text;
+    sv.sig = svSig();
+    const { fm, body } = splitFrontMatter(text);
+    const opts = docOptions(fm);
+    const html = DOMPurify.sanitize(md.render(stripNotes(body), { docId: 'side' }), { ADD_ATTR: ['target'], FORBID_TAGS: ['style'] }); // docId: 각주 번호가 본문과 겹치지 않게
+    el.sideDoc.innerHTML = (opts.cover ? coverHtml(fm, body, entry) : '') + (fm ? frontMatterHtml(fm) : '') + html;
+    postProcess(el.sideDoc, entry, opts, sv.flows);
+    el.sideDoc.querySelectorAll('input.task').forEach((cb) => (cb.disabled = true)); // 읽기 전용
+    el.sideScroll.scrollTop = keep ? top : 0;
+    requestAnimationFrame(drawAllDataLinks);
+  }
+  const svName = (entry) => { const k = entry.builtin && Object.keys(BUILTIN).find((x) => builtinPath(x) === entry.path); return k ? BUILTIN[k].title : entry.name.replace(MD_EXT, ''); };
+  function svHead() {
+    const it = svCur(), head = $('#svHead');
+    if (!it) return;
+    if (!head.firstChild) {
+      const btn = (id, cls, tip, inner) => `<button type="button" class="btn ${cls}" id="${id}" title="${tip}" aria-label="${tip}">${inner}</button>`;
+      const svg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+      head.innerHTML = btn('svBack', 'icon ghost', L('옆 보기: 이전 문서', 'Side view: previous document'), svg('<path d="m15 6-6 6 6 6"/>')) +
+        btn('svFwd', 'icon ghost', L('옆 보기: 다음 문서', 'Side view: next document'), svg('<path d="m9 6 6 6-6 6"/>')) +
+        '<div class="sv-title"><small></small><span></span></div>' +
+        btn('svPromote', 'sv-promote', L('이 문서를 본문으로 열기', 'Open this document in the main view'), '') +
+        btn('svClose', 'icon ghost', L('옆 보기 닫기 (Esc)', 'Close side view (Esc)'), svg('<path d="M18 6 6 18M6 6l12 12"/>'));
+      head.querySelector('.sv-title small').textContent = L('옆 보기', 'Beside');
+      $('#svPromote').textContent = L('본문으로 열기', 'Open in main');
+      $('#svBack').onclick = () => svGo(-1);
+      $('#svFwd').onclick = () => svGo(1);
+      $('#svPromote').onclick = svPromote;
+      $('#svClose').onclick = svClose;
+    }
+    const t = head.querySelector('.sv-title');
+    t.lastChild.textContent = svName(it.entry);
+    t.title = it.entry.builtin ? svName(it.entry) : it.entry.path;
+    $('#svBack').disabled = sv.pos <= 0;
+    $('#svFwd').disabled = sv.pos >= sv.hist.length - 1;
+    $('#svPromote').disabled = it.entry === state.current;
+  }
+  function svGo(step) {
+    const to = sv.pos + step;
+    if (to < 0 || to >= sv.hist.length) return;
+    sv.pos = to;
+    svShow();
+  }
+  // 옆에서 보던 문서를 본문으로 (저장하지 않은 본문이 있으면 평소처럼 묻고, 열리면 옆 보기는 닫음)
+  async function svPromote() {
+    const it = svCur();
+    if (!it) return;
+    const e = it.entry;
+    const ok = e.builtinKey && !state.files.includes(e) ? await openBuiltinDoc(e.builtinKey) : await openEntry(e);
+    if (ok) svClose();
+  }
+  function svClose() {
+    if (!svOpenNow() && !sv.hist.length) return;
+    clearTimeout(sv.timer);
+    sv.seq++;
+    sv.hist = []; sv.pos = -1; sv.text = null;
+    el.sideView.hidden = true;
+    el.sideDoc.innerHTML = '';
+    el.workspace.classList.remove('has-side', 'side-over');
+    document.body.classList.remove('sv-open');
+    svLayout();
+  }
+  // 나란히 편집 중 세 칸이 안 되는 폭이면 옆 보기가 미리보기 자리를 대신함. 칸 폭이 바뀌므로 편집창 쪽도 다시 맞춤
+  const SV_3COL = 1280;
+  function svLayout() {
+    const over = svOpenNow() && state.editing && viewMode === 'split' && !svNarrow() && el.workspace.clientWidth < SV_3COL;
+    el.workspace.classList.toggle('side-over', over);
+    // 「맨 위로」 단추가 옆 보기를 가리지 않게 본문 쪽으로
+    document.body.style.setProperty('--sv-px', (svOpenNow() && !svNarrow() ? el.sideView.offsetWidth : 0) + 'px');
+    lineTops = null;
+    if (state.editing) requestAnimationFrame(() => { syncHlWidth(); syncHlScroll(); });
+  }
+  window.addEventListener('resize', () => { if (svOpenNow()) svLayout(); });
+  // 본문을 다시 그릴 때: 옆에 같은 문서를 띄웠으면 고친 내용을, 설정 · 테마가 바뀌었으면 모양을 따라 맞춤
+  function svSync() {
+    if (!svOpenNow()) return;
+    const it = svCur();
+    if (!it) return;
+    $('#svPromote') && ($('#svPromote').disabled = it.entry === state.current);
+    if ((it.entry === state.current && source() !== sv.text) || svSig() !== sv.sig) {
+      clearTimeout(sv.timer);
+      sv.timer = setTimeout(() => svShow('', true, true), 250);
+    }
+  }
+  // 파일 목록이 바뀔 때: 목록에서 빠진 문서는 옆 보기 기록에서도 빼고, 보던 문서가 없어졌으면 닫음
+  function svPrune() {
+    if (!sv.hist.length) return;
+    const keep = (it) => it.entry.builtin || it.entry === state.current || state.files.includes(it.entry);
+    const now = svCur();
+    if (!sv.hist.every(keep)) {
+      sv.hist = sv.hist.filter(keep);
+      if (!keep(now)) { svClose(); return; }
+      sv.pos = sv.hist.indexOf(now);
+    }
+    if (svOpenNow()) svHead(); // 이름을 바꿨을 때도
+  }
+  // 다른 창에서 고치고 돌아왔을 때: 옆에 띄운 파일이 바뀌었으면 다시 그림
+  window.addEventListener('focus', () => { const it = svCur(); if (svOpenNow() && it && it.entry !== state.current && !it.entry.builtin) svShow('', true, true); });
+  $('#svResizer').addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    const rz = e.currentTarget;
+    rz.setPointerCapture(e.pointerId);
+    rz.classList.add('drag');
+    document.body.classList.add('resizing');
+    const move = (ev) => {
+      const box = el.workspace.getBoundingClientRect();
+      const w = Math.max(260, Math.min(box.width - 320, box.right - ev.clientX));
+      el.workspace.style.setProperty('--sv-w', Math.round(w) + 'px');
+      store.set('mdv-sv-w', String(Math.round(w)));
+      lineTops = null;
+    };
+    const up = () => {
+      rz.classList.remove('drag');
+      document.body.classList.remove('resizing');
+      rz.removeEventListener('pointermove', move);
+      rz.removeEventListener('pointerup', up);
+      svLayout();
+      drawAllDataLinks();
+    };
+    rz.addEventListener('pointermove', move);
+    rz.addEventListener('pointerup', up);
+  });
+  $('#svResizer').addEventListener('dblclick', () => { el.workspace.style.removeProperty('--sv-w'); store.set('mdv-sv-w', ''); svLayout(); });
+  if (+store.get('mdv-sv-w') >= 260) el.workspace.style.setProperty('--sv-w', +store.get('mdv-sv-w') + 'px');
 
   /* ---------- 문서에서 찾기 ---------- */
   const find = { hits: [], now: -1 };
@@ -2160,13 +2422,13 @@
     const pref = tabPref();
     root.querySelectorAll('.mc-tabs').forEach((box) => { for (const t of pref) if (showTab(box, t)) break; });
   }
-  el.doc.addEventListener('click', (e) => {
+  for (const [root, pane] of [[el.doc, el.preview], [el.sideDoc, el.sideScroll]]) root.addEventListener('click', (e) => {
     const b = e.target.closest('.mc-tab');
     if (!b) return;
-    const title = b.dataset.tab, keep = el.preview.scrollTop, top = b.getBoundingClientRect().top;
-    el.doc.querySelectorAll('.mc-tabs').forEach((box) => showTab(box, title));
+    const title = b.dataset.tab, keep = pane.scrollTop, top = b.getBoundingClientRect().top;
+    root.querySelectorAll('.mc-tabs').forEach((box) => showTab(box, title));
     store.set('mdv-tab-pref', JSON.stringify([title, ...tabPref().filter((x) => x !== title)].slice(0, 20)));
-    el.preview.scrollTop = keep + (b.getBoundingClientRect().top - top); // 누른 탭이 화면에서 움직이지 않게
+    pane.scrollTop = keep + (b.getBoundingClientRect().top - top); // 누른 탭이 화면에서 움직이지 않게
   });
   function openFind() {
     if (!state.current) return;
@@ -2306,8 +2568,8 @@
   const headLabel = (h) => (h.dataset.num ? h.dataset.num + ' ' : '') + h.dataset.title;
 
   /* ---------- 문서 안 목차 [[_TOC_]] ---------- */
-  function fillInlineToc(all) {
-    const navs = el.doc.querySelectorAll('nav.toc-inline');
+  function fillInlineToc(all, doc = el.doc) {
+    const navs = doc.querySelectorAll('nav.toc-inline');
     if (!navs.length) return;
     // 사이드바 목차처럼 # ~ ###, 맨 위 제목이 하나뿐이면 그 제목은 빼고 ## ~ ####
     const one = titleOnly(all);
@@ -3869,6 +4131,7 @@
   }
 
   function renderFileList() {
+    svPrune();
     const box = el.fileList;
     box.innerHTML = '';
     const hasRoot = state.roots.length > 0;
@@ -4808,6 +5071,7 @@
     el.welcome.hidden = false;
     el.workspace.hidden = true;
     document.body.classList.remove('has-doc');
+    svClose();
     closeFind();
     renderRecent();
   }
@@ -5018,11 +5282,13 @@
     el.workspace.classList.toggle('mode-edit', viewMode === 'edit');
     el.workspace.classList.toggle('mode-preview', viewMode === 'preview');
     document.querySelectorAll('#viewSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === viewMode));
+    if (svOpenNow()) svLayout();
     lineTops = null;
   }
   $('#viewSeg').onclick = (e) => {
     const v = e.target.closest('button')?.dataset.v;
     if (!v) return;
+    if (el.workspace.classList.contains('side-over')) svClose(); // 옆 보기가 미리보기 자리를 쓰고 있었으면 닫고 돌려줌
     viewMode = v;
     store.set('mdv-view', v);
     applyViewMode();
@@ -5143,7 +5409,10 @@
   // 편집 중 미리보기를 누르면 그 부분의 원본으로 이동
   el.preview.addEventListener('click', (e) => {
     if (!state.editing || viewMode === 'preview') return;
-    if (e.target.closest('a, button, input, summary, .code-head, .h-tools')) return;
+    // 다른 문서로 가는 링크는 그냥 누르면 열지 않고 그 줄로 (Ctrl+클릭이면 옆에서 엶), 그 밖의 링크 · 단추는 제 할 일
+    const lk = e.target.closest('a');
+    if (lk && !('path' in lk.dataset && !e.ctrlKey && !e.metaKey)) return;
+    if (e.target.closest('button, input, summary, .code-head, .h-tools')) return;
     if (String(getSelection()).length) return;
     const blk = e.target.closest('[data-line]');
     if (!blk || !el.doc.contains(blk)) return;
@@ -7648,6 +7917,7 @@ ${clone.innerHTML}
       if (exp) { toggleExpand(exp, false); return; }
       if (!$('#findBar').hidden) { closeFind(); return; }
       if (rfOpen()) { closeReplace(); return; }
+      if (svOpenNow() && !document.querySelector('.menu:not([hidden])') && $('#ctxMenu').hidden) { svClose(); return; }
       if (!document.querySelectorAll('.menu:not([hidden])').length && document.body.classList.contains('zen')) setZen(false);
       if (!$('#ctxMenu').hidden) { closeCtxMenu(); return; }
       closeMenus(); closeSidebar();
@@ -7671,7 +7941,7 @@ ${clone.innerHTML}
 
   applySettings();
   // 버전 표시 (새 버전을 낼 때 package.json · tauri.conf.json 과 함께 올리세요)
-  const APP_VERSION = '1.12.0';
+  const APP_VERSION = '1.13.0';
   $('#appVersion').textContent = `markcont v${APP_VERSION} · ${window.__TAURI__ ? L('PC 프로그램', 'PC app') : L('웹 앱', 'web app')}`;
   setSideTab(side.tab);
   renderFileList();

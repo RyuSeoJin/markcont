@@ -1,6 +1,6 @@
 ---
 title: markcont User guide
-version: 1.12.0
+version: 1.13.0
 ---
 
 # markcont User guide
@@ -138,7 +138,8 @@ Shows the documents connected to the current one. Click a row to go to that docu
 | Light · Dark | ☾ / ☀ button at the top | Dark mode |
 | Fold a heading | ⌄ button next to a heading | Folds the content under that heading |
 | Copy link | **#** button next to a heading | Copies a `[heading](#heading)` link |
-| Link · footnote preview | Hover over a link or a footnote number (long-press on phones) | Shows the start of another document, the section under its heading, or the footnote text in a small window |
+| Link · footnote preview | Hover over a link or a footnote number (long-press on phones) | Shows the start of another document, the section under its heading, or the footnote text in a small window. For links to other documents, the bottom of the window also tells you **where a click or Ctrl+click will open it in the current state** |
+| Side view | Click a link to another document | Keeps the document you're reading and opens the linked one on the right (read-only). Links inside the side view change only the side view. Its header has back · forward, **Open in main**, and close (<kbd>Esc</kbd>). Drag the border to resize. While editing side by side, a plain click on a link moves the editor cursor to that line; use <kbd>Ctrl</kbd>+click (or middle click · **Open beside** in the preview pop-up) to open it; over such a link the mouse shows a text cursor and turns into a hand only while <kbd>Ctrl</kbd> is held. If there isn't room for three columns while editing, the side view takes the preview's place. On narrow screens such as phones, clicking a link replaces the main document as before |
 | Find in document | <kbd>Ctrl</kbd>+<kbd>F</kbd> | Highlights matches and steps through them |
 | Search all documents | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>, the sidebar **Search** tab | Searches every document in the open folders (2️⃣ Search tab) |
 | Focus mode | <kbd>Ctrl</kbd>+<kbd>.</kbd> | Leaves only the body text. Press <kbd>Esc</kbd> to exit |

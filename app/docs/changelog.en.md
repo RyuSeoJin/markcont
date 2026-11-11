@@ -3,6 +3,15 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.13.0 · 2026-11-11
+
+- Side view: clicking a link to another document keeps the one you're reading and opens the linked document on the right (read-only). Links inside the side view change only the side view; use Open in main in its header to move it to the main view. Close with Esc or ✕, and drag the border to resize
+- Changed behavior: clicking a link no longer replaces the main document. To switch the main document, use Open in main in the side view or the file list. On narrow screens such as phones, links still replace the main document
+- Editing side by side: a plain click on a link to another document no longer opens it; the editor cursor moves to that line. Use Ctrl+click, middle click, or Open beside in the preview pop-up to open it in the side view. If there isn't room for three columns, the side view takes the preview's place
+- Link preview: hovering a link to another document now shows, at the bottom of the small window, where a click or Ctrl+click will open it, along with the current state (for example, "While editing side by side")
+- Editing side by side: over a link to another document the mouse shows a text cursor, and turns into a hand only while Ctrl is held
+- If the side view shows the same document as the main view, your edits appear there right away. Files changed in another program are re-read when you come back to the window
+
 ## 1.12.0 · 2026-11-11
 
 - New block, the summary flow (```` ```summary ```` · `요약흐름`): a top-to-bottom overview of a whole feature, for the summary section of a spec. Stage names sit on the left, same-size boxes with only a title in the middle and notes on the right, so long notes never change the box size
