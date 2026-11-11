@@ -453,7 +453,10 @@ Under `# Data name`, write **one field per line**. Columns are `field | type | r
 - If a type names another data (`Reward` · `Reward list` · `→ Reward`), a **connector line** links the cards. The line leaves from the **→ button** at the far right of that field; click the button or the type to jump to that card.
 - Inside a card, each field reads **name · required/optional · type** on one line, with the types lined up in a column. The description goes on the line below, and the "Example" value on the next. Fields alternate background shading.
 - A `> note` line becomes a description under the card header; parentheses in `# Name (id)` show as the code name.
-- Save for other viewers turns each data into a normal table.
+- **Options**: when a description has two or more items that start with a circled number (①–⑳) or circled letter (ⓐ–ⓩ), such as `① Cards owned · ② Specific card`, they are drawn as a **vertical list** with their numbers. The ` · ` between items is removed, and other text before or after (`Open: …`) stays as a sentence above or below the list. A description with only one number stays on one line.
+- **Conditional fields**: a field that is filled in only for a certain option starts its name with that number (`③ Scope`). The number shows as a small **chip** in front of the name. Append a circled letter for a nested option (`③ⓑ Characters`), and write the numbers side by side when it applies to two options (`①② …`).
+- Hover an option to highlight the fields that carry its number; hover a chip to highlight the options it belongs to. Circled numbers in a chip link to the options of a field without a chip; a following circled letter links to the options of the field whose chip matches the characters before it (`③ Scope`).
+- Save for other viewers turns each data into a normal table. Options and numbers stay in one cell, exactly as written.
 
 ````markdown example
 ```data
