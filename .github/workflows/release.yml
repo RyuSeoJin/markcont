@@ -29,11 +29,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 패키지 서버(Azure 미러)가 응답하지 않아 이 단계가 몇십 분씩 멈춘 적이 있습니다.
+      # 그래서: 응답 대기 15초 · 재시도 3번, 4분 안에 못 받으면 우분투 공식 서버로 바꿔 다시, 그래도 10분을 넘으면 실패
       - name: Linux 빌드 준비
         if: matrix.platform == 'ubuntu-22.04'
+        timeout-minutes: 10
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libgtk-3-dev
+          OPTS="-o Acquire::Retries=3 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15"
+          PKGS="libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libgtk-3-dev"
+          install() { sudo timeout 240 apt-get $OPTS update && sudo timeout 240 apt-get $OPTS install -y $PKGS; }
+          if ! install; then
+            echo "::warning::패키지 서버가 느려 우분투 공식 서버(archive.ubuntu.com)로 바꿔 다시 받습니다"
+            # 러너의 미러 목록에서 Azure 미러를 빼고, 주소가 직접 적힌 곳은 공식 서버로 바꿈
+            if [ -f /etc/apt/apt-mirrors.txt ]; then sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt; fi
+            for f in /etc/apt/sources.list /etc/apt/sources.list.d/*; do
+              if [ -f "$f" ]; then sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' "$f"; fi
+            done
+            sudo dpkg --configure -a || true
+            sudo apt-get $OPTS update
+            sudo apt-get $OPTS install -y $PKGS
+          fi
 
       - uses: actions/setup-node@v4
         with:
