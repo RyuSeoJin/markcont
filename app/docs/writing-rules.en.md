@@ -942,7 +942,7 @@ Open the `.dmg` file and move the app.
 :::
 ```
 
-- **Tabs**: each `== name` line starts a tab. Tabs with the same name switch together across the document, and your choice is remembered. Print · PDF · Save as Word show every tab with its name, and collapsible content inside tabs (`<details>` · foldable callouts) is printed open too. A file saved as HTML keeps tabs you can pick in the browser, and printing that file opens everything the same way.
+- **Tabs**: each `== name` line starts a tab. Everything inside the border is the **tab box**, the row of names at the top is the **tab bar**, each name in it is a **tab**, and what shows under the selected tab is the **tab content**. Tabs with the same name switch together across the document, and your choice is remembered. Print · PDF print each tab as its own tab box, one after another, with that tab selected in the tab bar (the tab bar repeats on every page the tab content runs over). Save as Word shows every tab with its name, and collapsible content inside tabs (`<details>` · foldable callouts) is printed open too. A file saved as HTML keeps tabs you can pick in the browser, and printing that file opens everything the same way.
 - **Steps**: draws the numbered list inside as numbered circles joined by a line.
 - **File tree**: draws the list inside with folder · file icons. An item with a list inside, or a name ending in `/`, is a folder.
 - Save for other viewers turns tabs into bold titles + content, and steps · trees into plain lists.

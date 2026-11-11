@@ -241,11 +241,24 @@
 .markdown-body .mc-tree li p { display: inline; margin: 0; }
 .markdown-body .mc-tree li::before { content: '📄'; margin-right: .45em; }
 .markdown-body .mc-tree li.dir::before { content: '📁'; }
+/* 인쇄할 때만 탭 내용마다 위에 붙는 탭 막대 사본 (.mc-tab-head · printTabHeads) — 화면에서는 숨김 */
+.markdown-body .mc-tab-head { display: none; }
 @media print {
-  .markdown-body .mc-tab-bar { display: none; }
-  .markdown-body .mc-tab-panel[hidden] { display: block !important; } /* 앱 전체의 [hidden] { display: none !important } 를 이기려면 !important */
-  .markdown-body .mc-tab-panel::before { content: attr(data-tab); display: block; font-weight: 700; margin-bottom: .4em; }
-  .markdown-body .mc-tabs, .markdown-body .mc-tree { break-inside: avoid; }
+  /* 탭은 모두 펼쳐 탭마다 탭 상자 하나로: 탭 막대(그 탭이 켜진 모양) + 탭 내용 — 화면에서 그 탭을 고른 모양과 같게 */
+  .markdown-body .mc-tabs { border: 0; border-radius: 0; overflow: visible; margin-bottom: 0; }
+  .markdown-body .mc-tabs > .mc-tab-bar { display: none; }
+  .markdown-body .mc-tab-panel, .markdown-body .mc-tab-panel[hidden] { display: block !important; border: 1px solid var(--border); border-radius: 6px; margin: 0 0 1.1em; } /* 앱 전체의 [hidden] { display: none !important } 를 이기려면 !important */
+  /* 탭 막대가 붙지 않았을 때(스크립트가 돌지 않는 곳): 탭 이름만 */
+  .markdown-body .mc-tab-panel::before { content: attr(data-tab); display: block; font-weight: 700; color: var(--accent); margin-bottom: .5em; }
+  .markdown-body .mc-tab-panel.mc-tab-print { padding-top: 0; }
+  .markdown-body .mc-tab-panel.mc-tab-print::before { content: none; display: none; }
+  .markdown-body .mc-tab-head { display: block; break-inside: avoid; break-after: avoid; }
+  .markdown-body .mc-tab-head > .mc-tab-bar { display: flex; flex-wrap: wrap; overflow: visible; margin: 0 -1.1em .9em; border-radius: 5px 5px 0 0; }
+  .markdown-body .mc-tab-head .mc-tab { font-size: .8em; padding: 5px 9px; cursor: default; }
+  /* 여러 쪽에 걸친 탭 상자: 탭 내용을 표처럼 두면 탭 막대가 표 머리줄처럼 쪽마다 다시 나옴 (Chromium 에서만 켬 — printTabHeads) */
+  .markdown-body .mc-tab-panel.mc-tab-repeat, .markdown-body .mc-tab-panel.mc-tab-repeat[hidden] { display: table !important; table-layout: fixed; width: 100%; box-sizing: border-box; }
+  .markdown-body .mc-tab-repeat > .mc-tab-head { display: table-header-group; }
+  .markdown-body .mc-tree { break-inside: avoid; }
 }
 /* 교정 표기 (CriticMarkup) */
 .markdown-body .critic { border-radius: 3px; cursor: pointer; }

@@ -7080,10 +7080,36 @@
       });
     });
   }
-  // 저장한 HTML 의 탭 · 인쇄 동작 (그 파일 안에 그대로 들어가는 스크립트라 바깥 변수를 쓰지 않음)
+  // 이름: 탭 상자(.mc-tabs — 테두리 안 전체) · 탭 막대(.mc-tab-bar — 맨 위 이름 줄) · 탭(.mc-tab — 이름 하나하나) · 탭 내용(.mc-tab-panel — 고른 탭 아래 내용)
+  // 인쇄 · PDF: 탭 내용마다 위에 탭 막대 사본(.mc-tab-head)을 붙임 (그 탭이 켜진 모양) — printTabHeads(false) 로 다시 뺌
+  //  탭마다 탭 상자가 하나씩, 화면에서 그 탭을 고른 모양 그대로 차례로 찍혀 어디서 탭이 바뀌는지 · 탭이 몇 개인지 보임
+  //  Chromium 에서는 탭 내용을 표처럼 두어(mc-tab-repeat) 여러 쪽에 걸친 탭 상자의 탭 막대가 쪽마다 다시 나오게 함
+  //  (저장한 HTML 에도 그대로 들어가는 함수라 바깥 변수를 쓰지 않음)
+  function printTabHeads(on) {
+    document.querySelectorAll('.mc-tab-head').forEach((h) => h.remove());
+    document.querySelectorAll('.mc-tab-panel.mc-tab-print').forEach((p) => p.classList.remove('mc-tab-print', 'mc-tab-repeat'));
+    if (!on) return;
+    const repeat = /Chrome\//.test(navigator.userAgent);
+    document.querySelectorAll('.markdown-body .mc-tabs').forEach((box) => {
+      const names = [...box.querySelectorAll(':scope > .mc-tab-bar > .mc-tab')].map((b) => b.textContent);
+      if (!names.length) return;
+      box.querySelectorAll(':scope > .mc-tab-panel').forEach((p, i) => {
+        const head = document.createElement('div'), bar = document.createElement('div');
+        head.className = 'mc-tab-head';
+        head.setAttribute('aria-hidden', 'true');
+        bar.className = 'mc-tab-bar';
+        names.forEach((n, k) => { const s = document.createElement('span'); s.className = k === i ? 'mc-tab on' : 'mc-tab'; s.textContent = n; bar.append(s); });
+        head.append(bar);
+        p.prepend(head);
+        p.classList.add('mc-tab-print');
+        if (repeat) p.classList.add('mc-tab-repeat');
+      });
+    });
+  }
+  // 저장한 HTML 의 탭 · 인쇄 동작 (그 파일 안에 그대로 들어가는 스크립트라 바깥 변수를 쓰지 않음 — 탭 막대를 붙이는 함수는 인자로 받음)
   //  - 탭: 누르면 그 패널만, 같은 이름의 탭은 문서 전체에서 같이 바뀜 (앱과 같게)
-  //  - 인쇄: 탭은 인쇄 CSS 로 모두 펼치고, 접는 상자도 펴서 찍은 뒤 닫혀 있던 것만 다시 닫음
-  function savedTabsScript() {
+  //  - 인쇄: 탭은 모두 펼쳐 탭마다 탭 막대를 붙이고, 접는 상자도 펴서 찍은 뒤 닫혀 있던 것만 다시 닫음
+  function savedTabsScript(tabHeads) {
     document.documentElement.classList.add('mc-js');
     const show = (box, title) => {
       const tabs = [...box.querySelectorAll(':scope > .mc-tab-bar > .mc-tab')];
@@ -7105,8 +7131,8 @@
       window.scrollBy(0, b.getBoundingClientRect().top - top); // 누른 탭이 화면에서 움직이지 않게
     });
     let opened = [];
-    window.addEventListener('beforeprint', () => { opened = [...document.querySelectorAll('details:not([open])')]; opened.forEach((d) => (d.open = true)); });
-    window.addEventListener('afterprint', () => { opened.forEach((d) => (d.open = false)); opened = []; });
+    window.addEventListener('beforeprint', () => { opened = [...document.querySelectorAll('details:not([open])')]; opened.forEach((d) => (d.open = true)); tabHeads(true); });
+    window.addEventListener('afterprint', () => { opened.forEach((d) => (d.open = false)); opened = []; tabHeads(false); });
   }
   // 저장본에 함께 넣는 CSS: 스크립트가 돌기 전에는 고르지 않은 탭을 숨겨 깜빡이지 않게,
   // 스크립트가 꺼진 곳에서는 인쇄처럼 탭 막대 없이 모든 패널을 이름과 함께
@@ -7120,7 +7146,7 @@ html:not(.mc-js) .markdown-body .mc-tab-panel::before { content: attr(data-tab);
   //  keepTabs: HTML 저장처럼 탭을 펼치지 않고 살려 둠 (Word 저장 · 서식 복사는 펼친 모양)
   function cleanClone(node, { keepTabs: keep = false } = {}) {
     const clone = node.cloneNode(true);
-    clone.querySelectorAll('.copy, .h-tools, .code-head button, .dg-expand, .dt-go').forEach((b) => b.remove());
+    clone.querySelectorAll('.copy, .h-tools, .code-head button, .dg-expand, .dt-go, .mc-tab-head').forEach((b) => b.remove());
     clone.querySelectorAll('.code-block.expanded').forEach((b) => b.classList.remove('expanded'));
     clone.querySelectorAll('mark.find-hit').forEach((m) => m.replaceWith(document.createTextNode(m.textContent)));
     clone.querySelectorAll('.fold-hidden, .folded').forEach((n) => n.classList.remove('fold-hidden', 'folded'));
@@ -7216,7 +7242,7 @@ body { margin: 0; background: var(--bg); padding: 48px 16px 96px; }
 @media print { body { background: #fff; padding: 0; } }
 ${SAVED_TABS_CSS}
 </style>
-<script>(${savedTabsScript.toString()})();</script>
+<script>(${savedTabsScript.toString()})(${printTabHeads.toString()});</script>
 </head>
 <body>
 <article class="markdown-body">
@@ -7576,16 +7602,18 @@ ${clone.innerHTML}
       (cover ? '@page :first { @top-right { content: none; } @bottom-center { content: none; } }' : ''); // 표지 쪽에는 머리글 · 쪽 번호 없이
   });
   // 인쇄 · PDF: 접는 상자(<details> · 접는 알림 상자 > [!NOTE]-)도 펴서 찍고, 끝나면 닫혀 있던 것만 다시 닫음
-  //  (탭은 인쇄 CSS 로 펼쳐지고 화면의 탭 선택은 그대로. 슬라이드 인쇄는 따로라 건드리지 않음)
+  //  탭은 인쇄 CSS 로 모두 펼쳐지고, 탭 내용마다 위에 탭 막대를 붙였다가 끝나면 뺌 (화면의 탭 선택은 그대로. 슬라이드 인쇄는 따로라 건드리지 않음)
   let printOpened = [];
   window.addEventListener('beforeprint', () => {
     if (document.body.classList.contains('printing-slides')) return;
     printOpened = [...el.doc.querySelectorAll('details:not([open])')];
     printOpened.forEach((d) => (d.open = true));
+    printTabHeads(true);
   });
   window.addEventListener('afterprint', () => {
     printOpened.forEach((d) => (d.open = false));
     printOpened = [];
+    printTabHeads(false);
   });
   $('#mPortable').onclick = exportPortable;
   $('#mPrint').onclick = () => { closeMenus(); window.print(); };

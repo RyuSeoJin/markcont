@@ -9,6 +9,7 @@ When a new version comes out, the PC app shows these notes and can update with o
 - Summary flow: a `[role]` before the title sets the color (ops = purple · user = green · system = gray) and only the roles you used appear in the legend. A title ending with `?` is a decision (diamond): `yes →` continues down and `no →` ends in a small box on the right. `- fork` puts the last boxes side by side
 - Summary flow: when the block is narrow, notes move below the boxes. It looks the same in print · PDF · saved HTML · Word · copy with formatting, and Save for other viewers turns it into Mermaid
 - Summary flow: mistakes (unknown role · `yes →` without a decision · empty stage) are shown with the line number in place of the diagram and in the document check. Document styles can change role colors and the box width (`--sf-box-width`)
+- Print · PDF: tab boxes print more clearly. Each tab is printed as its own tab box, one after another, with that tab selected in the tab bar, so it looks the way the tab does on screen. When the tab content runs over several pages the tab bar repeats on each page, and no blank space is left before a tab box. Printing a file saved as HTML works the same way
 
 ## 1.11.7 · 2026-11-10
 
