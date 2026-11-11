@@ -3,6 +3,13 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.15.0 · 2026-11-12
+
+- Data definition: two or more options in a description that start with a circled number (① ② ③) or circled letter (ⓐ ⓑ ⓒ) are shown as a vertical list with their numbers. Other text before or after stays as a sentence above or below the list
+- Data definition: a field name that starts with a number, such as `③ Scope` or `③ⓑ Characters`, shows the number as a small chip in front of the name
+- Data definition: hover an option to highlight the fields that carry its number; hover a chip to highlight the options it belongs to
+- Save for other viewers keeps options and numbers in one table cell, exactly as written
+
 ## 1.14.0 · 2026-11-12
 
 - Exposure (`ui`) block: a first line `# Title` shows a title above the block

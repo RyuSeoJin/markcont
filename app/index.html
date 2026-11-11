@@ -435,6 +435,15 @@
 .markdown-body .dt-st.tint-green { --t: var(--c-green); } .markdown-body .dt-st.tint-amber { --t: var(--c-amber); } .markdown-body .dt-st.tint-red { --t: var(--c-red); } .markdown-body .dt-st.tint-gray { --t: var(--muted); }
 /* 설명은 문장(본문 글씨), 예시는 다음 줄에 「예시」 라벨 + 값(고정폭) */
 .markdown-body .dt-sub { grid-column: 2 / -1; font-size: .86em; line-height: 1.55; color: var(--text); }
+/* 설명 속 선택지(① ② ③ · ⓐ ⓑ) 세로 목록 · 조건부 필드 이름 앞의 번호 칩 · 서로 이어 강조 */
+.markdown-body .dt-opts { list-style: none; margin: 2px 0; padding: 0; }
+.markdown-body .dt-opts li { display: flex; align-items: baseline; gap: 6px; margin: 0; padding: 1px 5px; border-radius: 5px; }
+.markdown-body .dt-opts li::before { content: none; }
+.markdown-body .dt-optn { flex: none; font-weight: 700; color: var(--accent); }
+.markdown-body .dt-cond { flex: none; font-size: .86em; font-weight: 700; line-height: 1.5; color: var(--accent); background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); border-radius: 999px; padding: 0 6px; letter-spacing: .02em; }
+.markdown-body .dt-opts li.dt-hl { background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+.markdown-body .dt-row.dt-hl { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.markdown-body .dt-row.dt-hl .dt-cond { background: var(--accent); color: var(--surface); }
 .markdown-body .dt-exrow { grid-column: 2 / -1; display: flex; align-items: baseline; gap: 6px; font-size: .84em; line-height: 1.55; min-width: 0; }
 .markdown-body .dt-exl { flex: none; font-size: .92em; color: var(--muted); }
 .markdown-body .dt-ex { min-width: 0; padding: 0 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); font-family: var(--mono); font-size: .95em; color: var(--text); overflow-wrap: anywhere; }

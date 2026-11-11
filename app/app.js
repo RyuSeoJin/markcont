@@ -2092,7 +2092,25 @@
   }
   function hidePreviewSoon() { clearTimeout(lp.hideTimer); lp.hideTimer = setTimeout(hidePreview, 220); }
   const previewOpen = () => !!(lp.box && !lp.box.hidden);
+  // 데이터 카드: 선택지 번호에 올리면 그 번호로 이어진 필드를, 필드의 번호 칩에 올리면 이어진 선택지를 강조
+  function dtHover(e) {
+    const hit = e.target.closest ? e.target.closest('.dt-opts li[data-opt], .dt-cond') : null;
+    const card = hit && hit.closest('.dt-card');
+    const root = e.currentTarget;
+    if (root._dtHit === hit) return;
+    root._dtHit = hit;
+    root.querySelectorAll('.dt-hl').forEach((n) => n.classList.remove('dt-hl'));
+    if (!card) return;
+    if (hit.matches('.dt-cond')) {
+      const keys = hit.dataset.cond.split(' ');
+      card.querySelectorAll('.dt-opts li[data-opt]').forEach((li) => { if (keys.includes(li.dataset.opt)) li.classList.add('dt-hl'); });
+    } else {
+      card.querySelectorAll('.dt-cond').forEach((c) => { if (c.dataset.cond.split(' ').includes(hit.dataset.opt)) c.closest('.dt-row').classList.add('dt-hl'); });
+    }
+  }
   for (const root of [el.doc, el.sideDoc]) {
+    root.addEventListener('pointerover', dtHover);
+    root.addEventListener('pointerleave', dtHover);
     root.addEventListener('pointerover', (e) => {
       if (e.pointerType !== 'mouse') return;
       const a = e.target.closest('a');
@@ -7941,7 +7959,7 @@ ${clone.innerHTML}
 
   applySettings();
   // 버전 표시 (새 버전을 낼 때 package.json · tauri.conf.json 과 함께 올리세요)
-  const APP_VERSION = '1.14.0';
+  const APP_VERSION = '1.15.0';
   $('#appVersion').textContent = `markcont v${APP_VERSION} · ${window.__TAURI__ ? L('PC 프로그램', 'PC app') : L('웹 앱', 'web app')}`;
   setSideTab(side.tab);
   renderFileList();

@@ -1483,6 +1483,44 @@
     return ents;
   }
   const STATUS_TINT = [[/^확정|done|confirmed/i, 'green'], [/^승인\s*전|pending/i, 'amber'], [/^미결|open|undecided/i, 'red']];
+  // 선택지 번호: 원 숫자 ①~⑳ · 원 영문자 ⓐ~ⓩ
+  const DT_MARK = '\u2460-\u2473\u24d0-\u24e9';
+  const DT_OPT_SPLIT = new RegExp(`(?:^|\\s+·\\s+|\\s+)(?=[${DT_MARK}]\\s)`);
+  const DT_OPT_ITEM = new RegExp(`^([${DT_MARK}])\\s+([\\s\\S]*)$`);
+  const DT_COND = new RegExp(`^([${DT_MARK}]+)\\s+(\\S[\\s\\S]*)$`);
+  const dtIsNum = (c) => c >= '\u2460' && c <= '\u2473';
+  // 설명 속 선택지: 번호로 시작하는 항목이 둘 이상이면 { before, items: [{ mark, text }], after }, 아니면 null
+  //  항목 사이의 「 · 」는 구분자로 지우고, 마지막 항목 뒤의 「 · 다른 글」은 after 로 뺌
+  function dtOptions(desc) {
+    const parts = String(desc || '').trim().split(DT_OPT_SPLIT);
+    let before = '';
+    const items = [];
+    for (const p of parts) {
+      const m = p.match(DT_OPT_ITEM);
+      if (m) items.push({ mark: m[1], text: m[2].trim() });
+      else if (!items.length) before = p.trim();
+      else items[items.length - 1].text += ' ' + p.trim();
+    }
+    if (items.length < 2) return null;
+    let after = '';
+    const last = items[items.length - 1], cut = last.text.search(/\s+·\s+/);
+    if (cut >= 0) { after = last.text.slice(cut).replace(/^\s+·\s+/, '').trim(); last.text = last.text.slice(0, cut).trim(); }
+    return { before: before.replace(/\s*·\s*$/, '').trim(), items, after };
+  }
+  // 조건부 필드 이름 「③ⓑ 캐릭터 목록」 → { chip: '③ⓑ', name: '캐릭터 목록', keys: ['③', '③ⓑ'] }
+  //  keys = 이 필드가 이어지는 선택지들: 앞쪽 원 숫자는 번호 칩이 없는 필드의 선택지(①②면 둘 다),
+  //  그 뒤 글자는 칩이 앞 글자까지와 같은 필드(③ 대상 범위)의 선택지
+  function dtCond(name) {
+    const m = String(name || '').match(DT_COND);
+    if (!m) return null;
+    const cs = [...m[1]], keys = [];
+    let lead = true;
+    cs.forEach((c, k) => {
+      if (lead && dtIsNum(c)) keys.push(c);
+      else { lead = false; keys.push(cs.slice(0, k + 1).join('')); }
+    });
+    return { chip: m[1], name: m[2].trim(), keys };
+  }
   function renderData(src, uid) {
     const errs = [];
     const ents = parseData(src, errs);
@@ -1499,8 +1537,16 @@
         const to = f.ref ? `${uid}-e${ents.indexOf(f.ref)}` : '', goTip = f.ref ? esc(L(`「${f.ref.name}」 카드로 가기`, `Go to ${f.ref.name}`)) : '';
         const go = f.ref ? `<a class="dt-go" href="#${to}" data-ref="${to}" title="${goTip}" aria-label="${goTip}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>` : '';
         // 한 줄: [이름](필수 · 선택) | 형식 (상태) | → 단추 — 그 아래 설명(문장), 그 아래 「예시」 값(고정폭)
-        return `<div class="dt-row"${f.ref ? ` data-to="${to}"` : ''}><div class="dt-main"><span class="dt-key"><span class="dt-name">${esc(f.name)}</span>${req}</span><span class="dt-kind">${type}${st}</span>${go}</div>` +
-          (f.desc ? `<div class="dt-sub">${esc(f.desc)}</div>` : '') +
+        // 조건부 필드: 이름 앞의 번호를 칩으로 뗌. 설명 속 선택지가 둘 이상이면 세로 목록으로 (선택지 ↔ 칩은 data-opt · data-cond 로 이어 강조)
+        const cond = dtCond(f.name), opts = dtOptions(f.desc);
+        const chip = cond ? `<span class="dt-cond" data-cond="${esc(cond.keys.join(' '))}">${esc(cond.chip)}</span>` : '';
+        const own = cond ? cond.chip : '';
+        const sub = !f.desc ? '' : !opts ? `<div class="dt-sub">${esc(f.desc)}</div>`
+          : '<div class="dt-sub">' + (opts.before ? `<div>${esc(opts.before)}</div>` : '') +
+            `<ul class="dt-opts">${opts.items.map((o) => `<li data-opt="${esc(own + o.mark)}"><span class="dt-optn">${esc(o.mark)}</span><span>${esc(o.text)}</span></li>`).join('')}</ul>` +
+            (opts.after ? `<div>${esc(opts.after)}</div>` : '') + '</div>';
+        return `<div class="dt-row"${f.ref ? ` data-to="${to}"` : ''}><div class="dt-main"><span class="dt-key">${chip}<span class="dt-name">${esc(cond ? cond.name : f.name)}</span>${req}</span><span class="dt-kind">${type}${st}</span>${go}</div>` +
+          sub +
           (f.ex ? `<div class="dt-exrow"><span class="dt-exl">${esc(L('예시', 'Example'))}</span><span class="dt-ex">${esc(f.ex)}</span></div>` : '') + '</div>';
       }).join('');
       return `<section class="dt-card" id="${uid}-e${i}"><header><span class="dt-ico">🗃</span><b>${esc(e.name)}</b>${e.id ? `<code>${esc(e.id)}</code>` : ''}<span class="dt-count">${esc(L(`필드 ${e.fields.length}개`, `${e.fields.length} field${e.fields.length === 1 ? '' : 's'}`))}</span></header>` +
