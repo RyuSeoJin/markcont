@@ -1970,13 +1970,14 @@
       if (!tag) {
         const x = outer + 12, c3 = heights((c) => free(box(x, c)));
         tag = { x, y: c3 === null ? c0 : c3, w };
-        lead += `<path class="sf-edge normal lead" stroke-dasharray="2 3" d="${pathD([{ x: e.x, y: tag.y }, { x: x - 4, y: tag.y }])}"/>`;
+        lead += `<path class="sf-edge ${kindOfLabel(e.j.label)} lead" stroke-dasharray="2 3" d="${pathD([{ x: e.x, y: tag.y }, { x: x - 4, y: tag.y }])}"/>`;
       }
       tags.push(tag);
       svg += text('sf-elabel', tag.x, tag.y, e.j.label);
       maxX = Math.max(maxX, tag.x + w + 6);
     }
-    for (const e of order) svg += `<path class="sf-edge normal jump" d="${pathD([...e.head, ...e.tail])}" marker-end="url(#${uid}-normal)"/>`;
+    // 선 글자가 예 · 아니오면 갈래 선과 같은 색 (그 밖에는 회색)
+    for (const e of order) { const k = kindOfLabel(e.j.label); svg += `<path class="sf-edge ${k} jump" d="${pathD([...e.head, ...e.tail])}" marker-end="url(#${uid}-${k})"/>`; }
     svg += lead;
     // 단계: 왼쪽에 이름, 그 단계 칸들 높이만큼 세로 점선
     let stageSvg = '';
@@ -2054,7 +2055,12 @@
       prev = it;
     }
     // 합류 · 되돌아가기: 점선 화살표
-    for (const j of jumps) links.push(`  ${id(j.from)} -.->${j.label ? '|' + mq(j.label) + '|' : ''} ${id(j.to)}`);
+    for (const j of jumps) {
+      const kind = kindOfLabel(j.label); // 예 · 아니오 글자면 갈래 선과 같은 색
+      if (kind === 'yes') styles.push(`  linkStyle ${links.length} stroke:#2563eb,color:#2563eb`);
+      if (kind === 'no') styles.push(`  linkStyle ${links.length} stroke:#dc2626,color:#dc2626`);
+      links.push(`  ${id(j.from)} -.->${j.label ? '|' + mq(j.label) + '|' : ''} ${id(j.to)}`);
+    }
     out.push(...links, ...styles, ...tintLines(all.map((b) => ({ tint: b.role.tint, mid: b.mid })), (b) => b.mid));
     return out.join('\n');
   }
