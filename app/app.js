@@ -8306,7 +8306,7 @@ ${docsHtml}
 
   applySettings();
   // 버전 표시 (새 버전을 낼 때 package.json · tauri.conf.json 과 함께 올리세요)
-  const APP_VERSION = '1.16.0';
+  const APP_VERSION = '1.16.1';
   $('#appVersion').textContent = `markcont v${APP_VERSION} · ${window.__TAURI__ ? L('PC 프로그램', 'PC app') : L('웹 앱', 'web app')}`;
   setSideTab(side.tab);
   renderFileList();

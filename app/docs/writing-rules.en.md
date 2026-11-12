@@ -494,6 +494,8 @@ Use it to show **a whole feature at a glance**, such as in the overview of a spe
 - The built-in roles are `ops` (purple) · `user` (green) · `system` (gray), and only the roles you used appear in the legend under the diagram.
 - All boxes share one width (fitted to the longest title) and one height. Long notes never change the box size.
 - When the block is narrow (side-by-side view · phones), notes move right below the boxes.
+- If it still doesn't fit, it switches to a **compact shape**. The main boxes get narrower and titles wrap to two lines at most (if any title wraps, every box gets the two-line height), and the gaps to the `no` branch boxes and the `↪` channels shrink, so the branch boxes and lines stay on one screen. Narrower still, the whole diagram scales down to 75%, and only below that do you scroll sideways (the ⤢ "Expand" button at the top right shows it large). Print · PDF · saved HTML follow the same rule for the paper or window width.
+- If the document style sets the box width (`--sf-box-width`), that value is the widest, and the compact shape shrinks within it (from about two thirds).
 - Write the box title after `↪` as it is, without the leading `[role]` (keep the `?`). If several boxes share the title, the line goes to the first one. It works under a main box, a `no` branch box, or a box in a fork.
 - `↪` lines run through a channel on the right of the diagram. Rows the line passes get their notes below the box, and each extra line adds one more channel outward.
 - Save for other viewers turns it into a Mermaid flowchart (stages become groups, notes go inside the boxes, `↪` lines become dotted arrows).

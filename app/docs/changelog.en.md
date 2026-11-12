@@ -3,6 +3,11 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.16.1 · 2026-11-12
+
+- Summary flow: fixed the `no` branch boxes and `↪` lines being cut off outside the page at narrow widths (narrow windows · side view · phones). When the narrow shape still doesn't fit, it switches to a compact shape with narrower main boxes, titles wrapped to two lines at most, and smaller gaps to the branch boxes and channels
+- Summary flow: if the compact shape doesn't fit either, the whole diagram scales down to 75%, and only below that do you scroll sideways. Wide layouts look the same as before, and print · PDF · saved HTML follow the same rule
+
 ## 1.16.0 · 2026-11-12
 
 - Summary flow: an indented `↪ Box title` under a box draws a gray arrow line from that box to the box with the same title. It is a join when the target is below and going back when it is above, and `↪ Box title | Line label` puts a label next to the line

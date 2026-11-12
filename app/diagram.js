@@ -1766,18 +1766,36 @@
       return v > 0 ? v : 0;
     } catch { return 0; }
   }
-  function drawSummary(model, uid, narrow, boxMin) {
+  // tiny: 좁은 폭용 축소 모양 — 칸 너비를 줄이고 제목을 두 줄까지 접음, 갈래 칸 · ↪ 통로 간격도 줄임 (설명은 칸 아래)
+  function drawSummary(model, uid, narrow, boxMin, tiny = false) {
     const { stages, chain, roles, anyRole } = model;
-    const H = 40, DH = 56, GAP = 16, DGAP = 20, FGAP = 24, LH = 18, COLGAP = 20, TOP = 14, X0 = 6;
+    const GAP = 16, DGAP = 20, FGAP = 24, LH = 18, COLGAP = tiny ? 10 : 20, TOP = 14, X0 = tiny ? 2 : 6;
     const tW = (t) => textW(t, 14, 600), dW = (t) => textW(t, 12);
     const boxes = chain.flatMap((it) => (it.fork ? it.boxes : [it])), sides = chain.flatMap((it) => it.sides || []);
     // 칸 너비: 가장 긴 제목에 맞춰 모두 같게 (마름모는 가운데 줄 폭이 좁아 더 넓게)
-    const boxW = Math.ceil(Math.max(boxMin, ...boxes.map((b) => (b.decision ? tW(b.title) / 0.66 + 16 : tW(b.title) + 36))) / 2) * 2;
-    const sideW = Math.ceil(Math.max(Math.round(boxMin * 2 / 3), ...sides.map((b) => tW(b.title) + 32)) / 2) * 2;
+    let boxW = Math.ceil(Math.max(boxMin, ...boxes.map((b) => (b.decision ? tW(b.title) / 0.66 + 16 : tW(b.title) + 36))) / 2) * 2;
+    let sideW = Math.ceil(Math.max(Math.round(boxMin * 2 / 3), ...sides.map((b) => tW(b.title) + 32)) / 2) * 2;
+    let H = 40;
+    // 제목 줄: 축소 모양에서만 칸 폭에 맞춰 접음 (마름모는 가운데 쪽만 넓어 62% 폭)
+    const inW = (w, dia) => (dia ? w * 0.62 : w - 20);
+    const tl = (b, w, dia) => (tiny ? wrap(b.title, inW(w, dia), 14, 600) : [b.title]);
+    if (tiny) {
+      // 정한 칸 너비(--sf-box-width)를 최대로 보고 그 안에서 줄임: 제목이 두 줄에 들어갈 때까지만 넓힘
+      const fit = (bs, from, cap, dia) => {
+        let w = Math.min(from, cap);
+        const bad = () => bs.some((b) => { const ls = tl(b, w, dia && b.decision); return ls.length > 2 || ls.some((l) => tW(l) > inW(w, dia && b.decision)); });
+        while (w < cap && bad()) w += 8;
+        return Math.min(w, cap);
+      };
+      boxW = fit(boxes, Math.max(96, Math.round(boxMin / 3) * 2), boxW, true);
+      sideW = fit(sides, Math.max(80, Math.round(boxMin / 4) * 2), sideW, false);
+      if (boxes.some((b) => tl(b, boxW, b.decision).length > 1) || sides.some((b) => tl(b, sideW, false).length > 1)) H = 54; // 한 칸이라도 접히면 모든 칸을 두 줄 높이로
+    }
+    const DH = H + 16;
     const named = stages.filter((s) => s.name);
-    for (const s of named) s.lines = wrap(s.name, 96, 14, 600);
-    const area = named.length ? Math.max(84, Math.ceil(Math.max(...named.flatMap((s) => s.lines.map(tW)))) + 28) : 0;
-    const lineX = X0 + area, boxX = named.length ? lineX + 20 : 10, cx = boxX + boxW / 2;
+    for (const s of named) s.lines = wrap(s.name, tiny ? 52 : 96, 14, 600);
+    const area = named.length ? Math.max(tiny ? 48 : 84, Math.ceil(Math.max(...named.flatMap((s) => s.lines.map(tW)))) + (tiny ? 16 : 28)) : 0;
+    const lineX = X0 + area, boxX = named.length ? lineX + (tiny ? 12 : 20) : 10, cx = boxX + boxW / 2;
     // 설명: 넓은 모양은 쓴 줄 그대로 칸 오른쪽 (아주 길 때만 나눔), 칸 아래에 둘 때는 칸 폭에 맞춰 나눔
     const lines = (b, maxW) => b.desc.flatMap((d) => wrap(d, maxW, 12));
     const under = (n) => (n ? 6 + n * LH : 0); // 칸 아래 설명이 차지하는 높이
@@ -1802,11 +1820,11 @@
     const descRight = (ls, x, cy) => { ls.forEach((l, i) => { svg += text('sf-desc', x, cy + (i - (ls.length - 1) / 2) * LH, l); maxX = Math.max(maxX, x + dW(l)); }); };
     const descUnder = (ls, x, bottom) => { ls.forEach((l, i) => { svg += text('sf-desc mid', x, bottom + 16 + i * LH, l); maxX = Math.max(maxX, x + dW(l) / 2); }); };
     const node = (b, x, top, w, h, cls) => {
-      const mx = x + w / 2, my = top + h / 2;
+      const mx = x + w / 2, my = top + h / 2, ts = tl(b, w, b.decision && cls !== 'side');
       const shape = b.decision && cls !== 'side'
         ? `<polygon class="sf-shape" points="${r1(mx)},${r1(top)} ${r1(x + w)},${r1(my)} ${r1(mx)},${r1(top + h)} ${r1(x)},${r1(my)}"/>`
         : `<rect class="sf-shape" x="${r1(x)}" y="${r1(top)}" width="${r1(w)}" height="${r1(h)}" rx="8"/>`;
-      svg += `<g class="sf-node ${cls} tint-${b.role.tint}" data-role="${esc(b.role.name)}"><title>${esc([b.title, ...b.desc].join('\n'))}</title>${shape}${text('sf-title', mx, my, b.title)}</g>`;
+      svg += `<g class="sf-node ${cls} tint-${b.role.tint}" data-role="${esc(b.role.name)}"><title>${esc([b.title, ...b.desc].join('\n'))}</title>${shape}${ts.map((l, i) => text('sf-title', mx, my + (i - (ts.length - 1) / 2) * 17, l)).join('')}</g>`;
       maxX = Math.max(maxX, x + w);
       b.g = { x, top, w, h, dia: b.decision && cls !== 'side' };
     };
@@ -1852,7 +1870,7 @@
       if (below) descUnder(own, cx, shapeBottom); else descRight(own, boxX + boxW + COLGAP, cy);
       if (sd.length) {
         const x1 = boxX + boxW, many = sd.length > 1;
-        const gap = Math.max(40, ...sd.map((s) => Math.ceil(dW(s.b.label)) + 6)) + (many ? 14 : 0), sx = x1 + gap; // 선 글자가 판정과 갈래 칸 사이에 들어가게
+        const gap = Math.max(tiny ? 30 : 40, ...sd.map((s) => Math.ceil(dW(s.b.label)) + (tiny ? 8 : 6))) + (many ? 14 : 0), sx = x1 + gap; // 선 글자가 판정과 갈래 칸 사이에 들어가게
         let st = cy - sd[0].off;
         sd.forEach((s, k) => {
           const my = st + s.off, xm = x1 + 14;
@@ -1883,8 +1901,8 @@
     const lanes = [];
     for (const e of jumps.slice().sort((p, q) => (p.z - p.a) - (q.z - q.a))) {
       const S = at(e.s), T = at(e.t), y0 = Math.min(S.y, T.y), y1 = Math.max(S.y, T.y);
-      let x = Math.max(S.pts[0].x, T.pts[0].x, ...chain.filter((it, i) => i >= e.a && i <= e.z).map((it) => it.right)) + 16;
-      for (const u of lanes) if (u.y0 <= y1 + 6 && y0 - 6 <= u.y1) x = Math.max(x, u.x1 + 12);
+      let x = Math.max(S.pts[0].x, T.pts[0].x, ...chain.filter((it, i) => i >= e.a && i <= e.z).map((it) => it.right)) + (tiny ? 10 : 16);
+      for (const u of lanes) if (u.y0 <= y1 + 6 && y0 - 6 <= u.y1) x = Math.max(x, u.x1 + (tiny ? 9 : 12));
       const x1 = x + (e.j.label ? 10 + dW(e.j.label) : 0);
       lanes.push({ y0, y1, x1 });
       const last = T.pts[0], tip = e.t.top ? { x: last.x, y: last.y - 2 } : { x: last.x + 2, y: last.y };
@@ -1899,7 +1917,7 @@
       stageSvg += `<line class="sf-stage-line" x1="${r1(lineX)}" x2="${r1(lineX)}" y1="${r1(y0)}" y2="${r1(y1)}"/>` +
         s.lines.map((l, i) => text('sf-stage', X0 + area / 2, (y0 + y1) / 2 + (i - (s.lines.length - 1) / 2) * 17, l)).join('');
     }
-    let bottom = prev.bottom, W = Math.ceil(maxX) + 12;
+    let bottom = prev.bottom, W = Math.ceil(maxX) + (tiny ? 6 : 12);
     // 범례: 쓴 역할만, 그림 아래 가운데
     let legend = '';
     if (anyRole && roles.length) {
@@ -1921,12 +1939,18 @@
     const model = parseSummary(src, errs);
     if (errs.length) fail(errs);
     const boxMin = Math.min(400, Math.max(80, opt.boxWidth || cssLen('--sf-box-width') || 180));
-    const wide = drawSummary(model, uid + 'w', false, boxMin), slim = drawSummary(model, uid + 'n', true, boxMin);
-    // 설명이 없어 두 모양이 같으면 하나만
-    if (slim.w >= wide.w) return `<div class="dg-scroll">${wide.svg}</div>`;
+    const wide = drawSummary(model, uid + 'w', false, boxMin), slim = drawSummary(model, uid + 'n', true, boxMin), tiny = drawSummary(model, uid + 't', true, boxMin, true);
+    const v = (cls, d) => `<div class="sf-var ${cls} dg-scroll">${d.svg}</div>`;
+    // 설명이 없어 넓은 · 좁은 모양이 같으면 하나만. 축소 모양은 눈에 띄게 좁아질 때만
+    const hasSlim = slim.w < wide.w, hasTiny = tiny.w < (hasSlim ? slim.w : wide.w) * 0.92;
+    if (!hasSlim && !hasTiny) return `<div class="dg-scroll">${wide.svg}</div>`;
     // 블록 폭이 넓은 모양보다 좁으면 좁은 모양 (CSS 컨테이너 쿼리 — 인쇄 · HTML 저장본에서도 같은 규칙)
-    return `<div class="sf" style="--sf-w:${wide.w + 1};--sf-n:${slim.w}px"><div class="sf-probe"><div class="sf-in">` +
-      `<div class="sf-var sf-wide dg-scroll">${wide.svg}</div><div class="sf-var sf-narrow dg-scroll">${slim.svg}</div></div></div></div>`;
+    if (!hasTiny) return `<div class="sf" style="--sf-w:${wide.w + 1};--sf-n:${slim.w}px"><div class="sf-probe"><div class="sf-in">${v('sf-wide', wide)}${v('sf-narrow', slim)}</div></div></div>`;
+    // 넓은 모양뿐이면: 90% 까지는 그대로 줄이고, 더 좁으면 축소 모양
+    if (!hasSlim) return `<div class="sf" style="--sf-w:${Math.ceil(wide.w * 0.9)};--sf-c:${tiny.w}px"><div class="sf-probe"><div class="sf-in">${v('sf-wide', wide)}${v('sf-tiny', tiny)}</div></div></div>`;
+    // 셋 다: 넓은 모양 → 좁은 모양(90% 까지 줄임) → 축소 모양. 안쪽 probe 가 좁은 · 축소를 고름
+    return `<div class="sf" style="--sf-w:${wide.w + 1};--sf-n:${slim.w}px;--sf-m:${Math.ceil(slim.w * 0.9)};--sf-c:${tiny.w}px"><div class="sf-probe"><div class="sf-in">${v('sf-wide', wide)}` +
+      `<div class="sf-probe2"><div class="sf-in2">${v('sf-narrow', slim)}${v('sf-tiny', tiny)}</div></div></div></div></div>`;
   }
   // 다른 뷰어용: 단계 = subgraph, 설명은 칸 안 둘째 줄부터
   function summaryMermaid(src) {
