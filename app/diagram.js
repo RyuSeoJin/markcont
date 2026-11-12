@@ -1808,7 +1808,7 @@
     const jumps = (model.jumps || []).map((j) => {
       const end = (b) => {
         const e = { b, top: !b.free, pos: b.row - (b.free ? 0 : 0.5) };
-        if (e.top) { e.lane = chain[b.row].lanes++; b.tops.push(e); } else b.ends.push(e);
+        if (e.top) { chain[b.row].lanes++; b.tops.push(e); } else b.ends.push(e);
         return e;
       };
       const s = end(j.from), t = end(j.to), a = Math.min(s.pos, t.pos), z = Math.max(s.pos, t.pos);
@@ -1886,7 +1886,36 @@
       it.right = maxX; maxX = Math.max(maxX, keepX);
       prev = { bottom, out: below && own.length ? shapeBottom + under(own.length) + 2 : shapeBottom, decision: it.decision };
     }
-    // ↪ 선: 칸 → 오른쪽 통로(세로) → 대상 칸. 짧은 선부터 안쪽 통로, 겹치는 선은 바깥쪽으로 한 칸씩
+    // ↪ 선: 칸 → 오른쪽 통로(세로) → 대상 칸
+    // 통로는 선이 지나는 줄의 오른쪽 끝 바로 바깥에서 일정 간격으로 나란히: 세로 구간이 짧은 선이 안쪽, 긴 선이 바깥
+    const STEP = tiny ? 12 : 18, OUT = tiny ? 10 : 16;
+    const rough = (e) => (e.top ? chain[e.b.row].top - 8 : e.b.g.top + e.b.g.h / 2); // 끝점 높이 (출발 높이를 나누기 전)
+    const placed = [];
+    for (const e of jumps) {
+      const ys = rough(e.s), yt = rough(e.t);
+      e.s.j = e.t.j = e; e.s.up = yt < ys; e.t.up = !e.s.up; // up: 이 끝에서 볼 때 선이 위로 감
+      e.y0 = Math.min(ys, yt); e.y1 = Math.max(ys, yt);
+    }
+    // 쓴 순서와 상관없이 같은 그림이 되게: 길이 → 지나는 줄 → 출발 칸 순
+    const order = jumps.slice().sort((p, q) => (p.y1 - p.y0) - (q.y1 - q.y0) || p.a - q.a || p.z - q.z || p.s.b.g.x - q.s.b.g.x);
+    for (const e of order) {
+      let x = Math.max(e.s.b.g.x + e.s.b.g.w, e.t.b.g.x + e.t.b.g.w, ...chain.filter((it, i) => i >= e.a && i <= e.z).map((it) => it.right)) + OUT;
+      for (const u of placed) if (u.y0 <= e.y1 + 12 && e.y0 - 12 <= u.y1) x = Math.max(x, u.x + STEP); // 높이가 겹치는 선은 그 바깥으로
+      for (let moved = true; moved;) { // 높이가 달라도 같은 x 에 놓지 않음 (한 선처럼 이어져 보이지 않게)
+        moved = false;
+        for (const u of placed) if (Math.abs(u.x - x) < STEP) { x = u.x + STEP; moved = true; }
+      }
+      e.x = x; placed.push(e);
+    }
+    // 한 칸 · 한 줄에서 드나드는 선이 여럿이면 방향으로 자리를 정함 (서로 가로지르지 않게):
+    // 위에서부터 위로 가는 선(안쪽 통로 → 바깥), 아래로 가는 선(바깥 → 안쪽)
+    const byDir = (p, q) => (p.up === q.up ? (p.up ? p.j.x - q.j.x : q.j.x - p.j.x) : p.up ? -1 : 1);
+    chain.forEach((it) => {
+      const bs = it.fork ? it.boxes : [it, ...it.sides];
+      for (const b of bs) { b.ends.sort(byDir); b.tops.sort((p, q) => byDir(q, p)); }
+      const tops = bs.flatMap((b) => b.tops).sort(byDir); // 위 틈: 칸에서 먼 자리부터
+      tops.forEach((t, k) => { t.lane = tops.length - 1 - k; });
+    });
     const at = (e) => {
       const b = e.b, g = b.g, it = chain[b.row], mx = g.x + g.w / 2, my = g.top + g.h / 2;
       if (e.top) {
@@ -1898,17 +1927,44 @@
       const yy = my + (b.ends.indexOf(e) - (b.ends.length - 1) / 2) * 10;
       return { y: yy, pts: [{ x: g.dia ? mx + g.w / 2 * (1 - Math.abs(yy - my) / (g.h / 2)) : g.x + g.w, y: yy }] };
     };
-    const lanes = [];
-    for (const e of jumps.slice().sort((p, q) => (p.z - p.a) - (q.z - q.a))) {
-      const S = at(e.s), T = at(e.t), y0 = Math.min(S.y, T.y), y1 = Math.max(S.y, T.y);
-      let x = Math.max(S.pts[0].x, T.pts[0].x, ...chain.filter((it, i) => i >= e.a && i <= e.z).map((it) => it.right)) + (tiny ? 10 : 16);
-      for (const u of lanes) if (u.y0 <= y1 + 6 && y0 - 6 <= u.y1) x = Math.max(x, u.x1 + (tiny ? 9 : 12));
-      const x1 = x + (e.j.label ? 10 + dW(e.j.label) : 0);
-      lanes.push({ y0, y1, x1 });
-      const last = T.pts[0], tip = e.t.top ? { x: last.x, y: last.y - 2 } : { x: last.x + 2, y: last.y };
-      edge([...S.pts, { x, y: S.y }, { x, y: T.y }, ...T.pts.slice(1).reverse(), tip], 'normal', ' jump');
-      if (e.j.label) svg += text('sf-elabel', x + 6, (S.y + T.y) / 2, e.j.label);
-      maxX = Math.max(maxX, x1 + 2);
+    for (const e of order) {
+      const S = at(e.s), T = at(e.t), last = T.pts[0], tip = e.t.top ? { x: last.x, y: last.y - 2 } : { x: last.x + 2, y: last.y };
+      e.S = S; e.T = T; e.y0 = Math.min(S.y, T.y); e.y1 = Math.max(S.y, T.y);
+      e.head = [...S.pts, { x: e.x, y: S.y }]; e.tail = [{ x: e.x, y: T.y }, ...T.pts.slice(1).reverse(), tip];
+      // 가로 구간 (선 글자가 남의 가로 구간에 얹히지 않게)
+      e.hs = [[S.pts[S.pts.length - 1].x, e.x, S.y], [T.pts[T.pts.length - 1].x, e.x, T.y]].map(([p, q, yy]) => ({ a: Math.min(p, q), b: Math.max(p, q), y: yy }));
+      maxX = Math.max(maxX, e.x + 2);
+    }
+    // 선 글자: 제 세로 구간 바로 옆. 가운데 높이가 다른 선의 가로 구간 · 다른 글자와 겹치면 위나 아래로, 자리가 없으면 출발 칸 쪽 가로 구간 위
+    const tags = [];
+    for (const e of order) {
+      if (!e.j.label) continue;
+      const w = dW(e.j.label), lx = e.x + 6, c0 = (e.S.y + e.T.y) / 2, room = Math.max(0, (e.y1 - e.y0) / 2 - 4);
+      const hit = (c) => order.some((u) => u !== e && u.hs.some((h) => Math.abs(h.y - c) < 14 && h.a < lx + w + 3 && h.b > lx - 3)) ||
+        tags.some((t) => Math.abs(t.y - c) < 18 && t.x < lx + w + 4 && t.x + t.w > lx - 4);
+      const cross = (c) => order.filter((u) => u !== e && u.x > lx - 3 && u.x < lx + w + 3 && u.y0 < c + 9 && u.y1 > c - 9).length;
+      let best = null;
+      for (let d = 0; d <= room; d += 4) {
+        for (const c of d ? [c0 - d, c0 + d] : [c0]) {
+          if (hit(c)) continue;
+          const score = cross(c) * 40 + d;
+          if (!best || score < best.score) best = { y: c, score };
+        }
+      }
+      const tag = best ? { x: lx, y: best.y, w } : { x: e.hs[0].a + 6, y: e.S.y - 9, w };
+      tags.push(tag);
+      svg += text('sf-elabel', tag.x, tag.y, e.j.label);
+      maxX = Math.max(maxX, tag.x + w + 6);
+    }
+    for (const e of order) {
+      // 세로 구간이 다른 선의 글자를 지나면 그 자리는 비움 (글자 위로 선이 지나가지 않게)
+      const dir = e.T.y < e.S.y ? -1 : 1;
+      const cuts = tags.filter((t) => t.x - 3 < e.x && e.x < t.x + t.w + 3 && t.y + 9 > e.y0 + 2 && t.y - 9 < e.y1 - 2)
+        .map((t) => (dir < 0 ? [t.y + 9, t.y - 9] : [t.y - 9, t.y + 9])).sort((p, q) => (p[0] - q[0]) * dir);
+      const parts = [e.head];
+      for (const [from, to] of cuts) { parts[parts.length - 1].push({ x: e.x, y: from }); parts.push([{ x: e.x, y: to }]); }
+      parts[parts.length - 1].push(...e.tail);
+      svg += `<path class="sf-edge normal jump" d="${parts.map(pathD).join(' ')}" marker-end="url(#${uid}-normal)"/>`;
     }
     // 단계: 왼쪽에 이름, 그 단계 칸들 높이만큼 세로 점선
     let stageSvg = '';
