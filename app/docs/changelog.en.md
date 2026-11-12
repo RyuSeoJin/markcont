@@ -3,6 +3,11 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.17.2 · 2026-11-12
+
+- Summary flow: a `↪` line's text no longer sits on top of other lines' vertical runs. Other lines are no longer broken to make room; the text goes to the spot nearest its own line that doesn't overlap other lines, boxes or notes
+- Summary flow: the spot is searched in this order: right next to the line's own vertical run, above or below its own horizontal run, then outside the outermost channel (with a short dotted leader to the line). Blocks with a single line and blocks without `↪` look the same as before
+
 ## 1.17.1 · 2026-11-12
 
 - Summary flow: with several `↪` lines, the vertical runs no longer scatter far from the boxes. They sit just outside the right end of the rows they pass, side by side at an even gap (18px), shorter runs inside and longer ones outside. The diagram gets narrower, so lines that were cut off at the edge of the page now fit
