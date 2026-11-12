@@ -3,6 +3,12 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.17.0 · 2026-11-12
+
+- Save as HTML: the window shown when saving has a new check, "Also include the markdown source" (off by default). When checked, the saved file gets an "Open in markcont" button, so readers can reopen and edit the source in the markcont web app. The source is handed over inside the browser only
+- markcont web: an `.html` saved with its source can be opened with Open file or drag and drop. An HTML file without a source says it can't be opened
+- Changed behavior: saving as HTML now shows the confirmation window once even when there are no linked documents (it is where you choose to include the source)
+
 ## 1.16.1 · 2026-11-12
 
 - Summary flow: fixed the `no` branch boxes and `↪` lines being cut off outside the page at narrow widths (narrow windows · side view · phones). When the narrow shape still doesn't fit, it switches to a compact shape with narrower main boxes, titles wrapped to two lines at most, and smaller gaps to the branch boxes and channels
