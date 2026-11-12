@@ -487,7 +487,7 @@ Use it to show **a whole feature at a glance**, such as in the overview of a spe
 | `- yes → [role] Title` | The branch that continues after a decision (downward · blue line) |
 | `- no → [role] Title`, indented under a decision | The branch that ends (a small box on the right · red line) |
 | `↪ Box title`, indented under a box | Join · go back. Draws a gray arrow line from that box to the box with the same title in this block (a join when the target is below, going back when it is above). It is not drawn as a note |
-| `↪ Box title \| Line label` | The same, with a small label next to the line (`Retry`, for example) |
+| `↪ Box title \| Line label` | The same, with a small label next to the line (`Retry`, for example). If the label starts with `yes` or `no`, the line is drawn in the same blue or red as branch lines |
 | `- fork` + indented boxes | The parallel end. It splits from the box above into one row, with notes under each box (only at the end of the block) |
 | `role name: color` (top of the block) | Change a role's color or add a role (`blue` `green` `orange` `red` `purple` `gray`) |
 
@@ -499,7 +499,8 @@ Use it to show **a whole feature at a glance**, such as in the overview of a spe
 - Write the box title after `↪` as it is, without the leading `[role]` (keep the `?`). If several boxes share the title, the line goes to the first one. It works under a main box, a `no` branch box, or a box in a fork.
 - `↪` lines run through a channel on the right of the diagram. Rows the line passes get their notes below the box, and the channel sits just outside the right end of those rows. Several lines run side by side at an even gap (18px), with shorter vertical runs inside and longer ones outside.
 - When several `↪` lines leave one box, lines going up leave from the upper part of the box's right side and lines going down from the lower part, whatever order you wrote them in. A line's text goes to the spot nearest its own line that doesn't overlap other lines, boxes or notes: first right next to its own vertical run (trying higher and lower), then above or below its own horizontal run if other lines pass there, and if there is still no room, outside the outermost channel with a short dotted leader to its line.
-- Save for other viewers turns it into a Mermaid flowchart (stages become groups, notes go inside the boxes, `↪` lines become dotted arrows).
+- The color of a `↪` line comes from its label, by the same rule as branch labels (`- yes →` · `- no →`): blue if the label starts with `yes` (y · true · 예 · 네 · 참), red if it starts with `no` (n · false · 아니오 · 아니요 · 아니 · 거짓), and gray for any other label or none. Write `↪ Box title | yes` to connect a decision straight to another box without a box in between.
+- Save for other viewers turns it into a Mermaid flowchart (stages become groups, notes go inside the boxes, `↪` lines become dotted arrows, and yes · no lines keep their color).
 - Mistakes (unknown role · `yes →` without a decision · empty stage · `↪` pointing to a box that doesn't exist) are shown with the line number in place of the diagram and in the document check.
 
 ````markdown example

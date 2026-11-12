@@ -3,6 +3,11 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.17.3 · 2026-11-12
+
+- Summary flow: when a `↪` line's label starts with `yes` or `no` (`↪ Box title | yes`), the line and its arrowhead are drawn in the same blue or red as branch lines. Other `↪` lines stay gray, and channel positions and label spots are unchanged
+- Summary flow: the Mermaid export for other viewers also gives yes · no `↪` lines the same color as branch lines
+
 ## 1.17.2 · 2026-11-12
 
 - Summary flow: a `↪` line's text no longer sits on top of other lines' vertical runs. Other lines are no longer broken to make room; the text goes to the spot nearest its own line that doesn't overlap other lines, boxes or notes
