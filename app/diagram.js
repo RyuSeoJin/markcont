@@ -1816,7 +1816,11 @@
       return { j, s, t, a, z };
     });
     // data-w: 그릴 때 잰 글 너비 — Word 저장 · 서식 복사에서 글꼴이 달라져도 그 너비에 맞춤 (설명이 그림 밖으로 잘리지 않게)
-    const text = (cls, x, yy, s) => `<text class="${cls}" x="${r1(x)}" y="${r1(yy)}" data-w="${r1(/sf-(title|stage)/.test(cls) ? tW(s) : dW(s))}">${esc(s)}</text>`;
+    const obs = []; // 칸 · 설명 · 선 글자 · 선이 차지한 자리 (↪ 선 글자가 비켜 갈 것)
+    const text = (cls, x, yy, s) => {
+      if (/sf-(desc|elabel)/.test(cls)) { const w = dW(s), x0 = / mid/.test(cls) ? x - w / 2 : x; obs.push({ x0: x0 - 6, y0: yy - 13, x1: x0 + w + 6, y1: yy + 13 }); }
+      return `<text class="${cls}" x="${r1(x)}" y="${r1(yy)}" data-w="${r1(/sf-(title|stage)/.test(cls) ? tW(s) : dW(s))}">${esc(s)}</text>`;
+    };
     const descRight = (ls, x, cy) => { ls.forEach((l, i) => { svg += text('sf-desc', x, cy + (i - (ls.length - 1) / 2) * LH, l); maxX = Math.max(maxX, x + dW(l)); }); };
     const descUnder = (ls, x, bottom) => { ls.forEach((l, i) => { svg += text('sf-desc mid', x, bottom + 16 + i * LH, l); maxX = Math.max(maxX, x + dW(l) / 2); }); };
     const node = (b, x, top, w, h, cls) => {
@@ -1827,8 +1831,10 @@
       svg += `<g class="sf-node ${cls} tint-${b.role.tint}" data-role="${esc(b.role.name)}"><title>${esc([b.title, ...b.desc].join('\n'))}</title>${shape}${ts.map((l, i) => text('sf-title', mx, my + (i - (ts.length - 1) / 2) * 17, l)).join('')}</g>`;
       maxX = Math.max(maxX, x + w);
       b.g = { x, top, w, h, dia: b.decision && cls !== 'side' };
+      obs.push({ x0: x - 4, y0: top - 4, x1: x + w + 4, y1: top + h + 4 });
     };
-    const edge = (pts, kind, more = '') => { svg += `<path class="sf-edge ${kind}${more}" d="${pathD(pts)}" marker-end="url(#${uid}-${kind})"/>`; };
+    const segBox = (p, q, pad) => ({ x0: Math.min(p.x, q.x) - pad, y0: Math.min(p.y, q.y) - pad, x1: Math.max(p.x, q.x) + pad, y1: Math.max(p.y, q.y) + pad });
+    const edge = (pts, kind, more = '') => { pts.slice(1).forEach((p, i) => obs.push(segBox(pts[i], p, 3))); svg += `<path class="sf-edge ${kind}${more}" d="${pathD(pts)}" marker-end="url(#${uid}-${kind})"/>`; };
     for (const it of chain) {
       if (prev) y = prev.bottom + (it.fork ? FGAP : prev.decision ? DGAP : GAP);
       y += it.lanes * 10; // 위 틈으로 드나드는 선의 자리
@@ -1935,37 +1941,43 @@
       e.hs = [[S.pts[S.pts.length - 1].x, e.x, S.y], [T.pts[T.pts.length - 1].x, e.x, T.y]].map(([p, q, yy]) => ({ a: Math.min(p, q), b: Math.max(p, q), y: yy }));
       maxX = Math.max(maxX, e.x + 2);
     }
-    // 선 글자: 제 세로 구간 바로 옆. 가운데 높이가 다른 선의 가로 구간 · 다른 글자와 겹치면 위나 아래로, 자리가 없으면 출발 칸 쪽 가로 구간 위
+    // 선 글자: 다른 선(세로 · 가로) · 칸 · 설명 · 다른 글자와 겹치지 않는 자리 가운데 제 선에 가장 가까운 곳
+    //  ① 제 세로 구간 바로 옆 (가운데부터 위아래로)  ② 제 가로 구간 위 · 아래 (도착 칸 쪽 먼저, 통로에 가까운 자리부터)
+    //  ③ 가장 바깥 통로 바깥 + 제 선까지 점선 지시선
+    for (const e of order) { const all = [...e.head, ...e.tail]; e.segs = all.slice(1).map((p, i) => segBox(all[i], p, 3)); }
+    const cut = (r, q) => r.x0 < q.x1 && q.x0 < r.x1 && r.y0 < q.y1 && q.y0 < r.y1;
+    const outer = Math.max(0, ...order.map((u) => u.x));
     const tags = [];
+    let lead = '';
     for (const e of order) {
       if (!e.j.label) continue;
       const w = dW(e.j.label), lx = e.x + 6, c0 = (e.S.y + e.T.y) / 2, room = Math.max(0, (e.y1 - e.y0) / 2 - 4);
-      const hit = (c) => order.some((u) => u !== e && u.hs.some((h) => Math.abs(h.y - c) < 14 && h.a < lx + w + 3 && h.b > lx - 3)) ||
-        tags.some((t) => Math.abs(t.y - c) < 18 && t.x < lx + w + 4 && t.x + t.w > lx - 4);
-      const cross = (c) => order.filter((u) => u !== e && u.x > lx - 3 && u.x < lx + w + 3 && u.y0 < c + 9 && u.y1 > c - 9).length;
-      let best = null;
-      for (let d = 0; d <= room; d += 4) {
-        for (const c of d ? [c0 - d, c0 + d] : [c0]) {
-          if (hit(c)) continue;
-          const score = cross(c) * 40 + d;
-          if (!best || score < best.score) best = { y: c, score };
-        }
+      const box = (x, c) => ({ x0: x - 2, y0: c - 8, x1: x + w + 2, y1: c + 8 });
+      const lines = (r) => order.some((u) => u !== e && u.segs.some((q) => cut(r, q))) || tags.some((t) => cut(r, { x0: t.x - 4, y0: t.y - 10, x1: t.x + t.w + 4, y1: t.y + 10 }));
+      const free = (r) => !lines(r) && !obs.some((q) => cut(r, q));
+      const hit = (c) => order.some((u) => u !== e && u.hs.some((h) => Math.abs(h.y - c) < 14 && h.a < lx + w + 3 && h.b > lx - 3)) || lines(box(lx, c));
+      const heights = (ok) => { // 가운데에서 가까운 높이부터
+        for (let d = 0; d <= room; d += 4) for (const c of d ? [c0 - d, c0 + d] : [c0]) if (ok(c)) return c;
+        return null;
+      };
+      const along = (h) => { // 가로 구간 위 → 아래, 통로 쪽부터 칸 쪽으로
+        if (h.b - h.a < w + 12) return null;
+        for (const c of [h.y - 10, h.y + 11]) for (let x = h.b - 6 - w; x >= h.a + 6; x -= 6) if (free(box(x, c))) return { x, y: c, w };
+        return null;
+      };
+      const c1 = heights((c) => !hit(c));
+      let tag = c1 === null ? along(e.hs[1]) || along(e.hs[0]) : { x: lx, y: c1, w };
+      if (!tag) {
+        const x = outer + 12, c3 = heights((c) => free(box(x, c)));
+        tag = { x, y: c3 === null ? c0 : c3, w };
+        lead += `<path class="sf-edge normal lead" stroke-dasharray="2 3" d="${pathD([{ x: e.x, y: tag.y }, { x: x - 4, y: tag.y }])}"/>`;
       }
-      const tag = best ? { x: lx, y: best.y, w } : { x: e.hs[0].a + 6, y: e.S.y - 9, w };
       tags.push(tag);
       svg += text('sf-elabel', tag.x, tag.y, e.j.label);
       maxX = Math.max(maxX, tag.x + w + 6);
     }
-    for (const e of order) {
-      // 세로 구간이 다른 선의 글자를 지나면 그 자리는 비움 (글자 위로 선이 지나가지 않게)
-      const dir = e.T.y < e.S.y ? -1 : 1;
-      const cuts = tags.filter((t) => t.x - 3 < e.x && e.x < t.x + t.w + 3 && t.y + 9 > e.y0 + 2 && t.y - 9 < e.y1 - 2)
-        .map((t) => (dir < 0 ? [t.y + 9, t.y - 9] : [t.y - 9, t.y + 9])).sort((p, q) => (p[0] - q[0]) * dir);
-      const parts = [e.head];
-      for (const [from, to] of cuts) { parts[parts.length - 1].push({ x: e.x, y: from }); parts.push([{ x: e.x, y: to }]); }
-      parts[parts.length - 1].push(...e.tail);
-      svg += `<path class="sf-edge normal jump" d="${parts.map(pathD).join(' ')}" marker-end="url(#${uid}-normal)"/>`;
-    }
+    for (const e of order) svg += `<path class="sf-edge normal jump" d="${pathD([...e.head, ...e.tail])}" marker-end="url(#${uid}-normal)"/>`;
+    svg += lead;
     // 단계: 왼쪽에 이름, 그 단계 칸들 높이만큼 세로 점선
     let stageSvg = '';
     for (const s of named) {
