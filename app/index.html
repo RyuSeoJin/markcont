@@ -929,6 +929,13 @@ body.resizing { cursor: col-resize; user-select: none; }
 .toc a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); border-radius: 0 6px 6px 0; }
 .toc a.l2 { padding-left: 22px; }
 .toc a.l3 { padding-left: 34px; font-size: 13px; }
+.toc a.l4 { padding-left: 46px; font-size: 13px; }
+.toc a.l5 { padding-left: 58px; font-size: 13px; }
+.toc a.l6 { padding-left: 70px; font-size: 13px; }
+/* 탭 상자의 탭: 앞에 작은 탭 모양, 지금 켜진 탭은 진하게 */
+.toc a.tab::before { content: ''; display: inline-block; width: 9px; height: 7px; margin-right: 6px; border: 1.5px solid currentColor; border-bottom: 0; border-radius: 3px 3px 0 0; opacity: .6; }
+.toc a.tab.on { color: var(--text); font-weight: 600; }
+.toc a.tab.on::before { background: currentColor; opacity: .85; }
 
 /* overflow-x: clip — 안쪽 무엇이 옆으로 넘쳐도 페이지 폭이 늘지 않게. 휴대폰 브라우저는 넘친 만큼 화면을 넓혀서 전체가 밀려 보임 */
 .main { flex: 1; min-width: 0; position: relative; overflow-x: clip; }
@@ -1619,6 +1626,7 @@ body.zen .zen-exit:hover { opacity: 1; }
         <div class="set-group">
           <label class="set-check"><input type="checkbox" id="optHeadNum"><span>제목에 번호 붙여 보기<small>1 · 1.1 · 1.1.1 처럼 보여 줍니다. 원본 글은 바뀌지 않고, 이미 번호가 있는 제목은 건너뜁니다</small></span></label>
           <label class="set-check"><input type="checkbox" id="optConfirmSave"><span>저장하기 전에 바뀐 내용 확인<small>저장할 때 무엇이 바뀌는지 먼저 보여주고 한 번 더 묻습니다</small></span></label>
+          <label class="set-check"><input type="checkbox" id="optHtmlToc"><span>HTML로 저장할 때 왼쪽에 목차 넣기<small>저장한 파일을 열면 왼쪽에 목차가 붙습니다. 제목이나 탭이 두 개 이상 있는 문서에만 들어갑니다</small></span></label>
           <label class="set-check"><input type="checkbox" id="optSync"><span>편집할 때 스크롤 맞추기<small>원본과 미리보기가 같은 위치를 보여줍니다</small></span></label>
           <label class="set-check"><input type="checkbox" id="optCompat"><span>문서 점검 안내 보기<small>깨진 링크 · 제목 단계 · 표 · 긴 문장, 다른 뷰어에서 다르게 보이는 곳을 문서 위에 알려 줍니다 (문서 정보 「뷰어: markcont」 면 그 문서는 다른 뷰어 안내만 끔)</small></span></label>
           <label class="set-check" id="optUpdateRow" hidden><input type="checkbox" id="optUpdate"><span>시작할 때 새 버전 확인<small>PC 프로그램을 켤 때마다 GitHub에서 새 버전이 있는지 봅니다. 문서 내용은 보내지 않습니다</small></span></label>

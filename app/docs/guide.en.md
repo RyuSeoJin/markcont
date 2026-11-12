@@ -1,6 +1,6 @@
 ---
 title: markcont User guide
-version: 1.15.0
+version: 1.16.0
 ---
 
 # markcont User guide
@@ -92,6 +92,8 @@ Open and close the sidebar with the <kbd>☰</kbd> button in the top left. Drag 
 ### Contents tab
 
 Builds a table of contents from the document's headings (`#`). The part you're reading is highlighted, and clicking a heading jumps to it.
+
+If the document has a tab box (`::: tabs`), the tab names are listed too, under the heading above the box. Clicking one opens that tab and jumps to the box, and the tab that is open now is shown in bold. Headings inside a tab sit under that tab.
 
 Write `[[_TOC_]]` on a line of its own in the document, and a table of contents appears there too. It's included when you print or save as PDF.
 
@@ -330,6 +332,8 @@ Open the window with the **History** button in the editing toolbar (<kbd>Ctrl</k
 - Every tab is printed in order. Each tab is printed as its own tab box with that tab selected in the tab bar, so it looks like the tab does on screen. When the tab content runs over several pages, the tab bar repeats on each page so you can tell which tab you're in.
 - Collapsed content (`<details>` · foldable callouts) is printed open too. When you close the print window, the tabs you picked and what was collapsed on screen stay as they were.
 - A file saved as HTML lets you pick tabs in the browser just like the app (tabs with the same name switch together). Printing that file also opens every tab and all collapsed content, and opening it where scripts are off shows all the content without tabs.
+- A file saved as HTML has a **contents list on the left** (for documents with two or more headings or tabs). The part you're reading is highlighted; clicking a heading jumps to it, and clicking a tab name opens that tab and jumps to it. The ☰ button at the top left hides the list, and on a narrow screen it opens and closes it. The list is left out when printing. Turn off **View settings → "Add a contents sidebar when saving as HTML"** to save without it.
+- When the document has **links to other documents**, Save as HTML first asks which ones to include. Checked documents are put inside the file, so readers can open them in a panel on the right from their links (‹ goes back, ✕ or Esc closes). Only documents linked directly from this one are offered; documents they link to in turn are not added. Links to documents that were left out or not found are shown dimmed with a dotted underline, and clicking one says "This document is not included in this file". The saved file does not keep the documents' paths.
 - Saving as HTML **puts the images inside the file**, so sending just that one file is enough for others to see them. Images from web addresses are included too when the site allows it. If some images can't be included (for example, ones that weren't found), you get a list before saving. In the web app, open the parent folder that contains the images with Open folder so they can be read.
 - Write `cover: yes` in the document info at the top, and the first page becomes a **cover** (title · summary · the rest of the info, like the author). The cover has no page number.
 - Word files keep heading levels · lists · tables · code · callouts · images, and diagrams become images. Math goes in as TeX text (`E=mc^2`). The paper size follows your region (Letter for the US · Canada, A4 elsewhere).

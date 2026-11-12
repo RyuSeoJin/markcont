@@ -3,6 +3,19 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.16.0 · 2026-11-12
+
+- Summary flow: an indented `↪ Box title` under a box draws a gray arrow line from that box to the box with the same title. It is a join when the target is below and going back when it is above, and `↪ Box title | Line label` puts a label next to the line
+- Summary flow: `↪` lines run through a channel on the right of the diagram, so they don't overlap boxes or notes. Rows the line passes get their notes below the box, and more lines add channels outward. It looks the same in print · PDF · saved HTML · Word · copy with formatting, and Save for other viewers adds them to the Mermaid as dotted arrows
+- Summary flow: when `↪` points to a box that doesn't exist (a typo), the line number is shown in place of the diagram and in the document check. Blocks without `↪` lines are drawn exactly as before
+- Contents tab: the tab names of a tab box (`::: tabs`) are listed in the contents. Clicking one opens that tab and jumps to the box, and the tab that is open now is shown in bold
+- Contents tab: headings inside a tab sit under that tab, and clicking one opens the tab and jumps to it
+- The in-document `[[_TOC_]]` contents and the print · PDF contents list headings only, as before
+- Save as HTML: the saved file has a contents list on the left (for documents with two or more headings or tabs). The part you're reading is highlighted, and clicking a tab name opens that tab. The ☰ button hides it, on a narrow screen the button opens and closes it, and it is left out when printing
+- View settings has a new option, "Add a contents sidebar when saving as HTML" (on by default). Turn it off to save the body only, as before
+- Save as HTML: when the document links to other documents, it first asks which ones to include. Included documents open in a panel on the right when their link is clicked in the saved file. Only documents linked directly from this one are added
+- Changed behavior: in a saved HTML file, links to documents that were not included become dimmed, dotted links that cannot be opened and say so when clicked. Until now the `.md` address was kept and did not open
+
 ## 1.15.0 · 2026-11-12
 
 - Data definition: two or more options in a description that start with a circled number (① ② ③) or circled letter (ⓐ ⓑ ⓒ) are shown as a vertical list with their numbers. Other text before or after stays as a sentence above or below the list

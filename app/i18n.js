@@ -71,6 +71,8 @@
     'CSS 파일을 불러오고, 어떤 폴더 · 문서에 쓸지 고릅니다': 'Load CSS files and choose which folders · documents use them',
     'ⓘ 참고': 'ⓘ Note',
     '제목에 번호 붙여 보기': 'Number the headings',
+    'HTML로 저장할 때 왼쪽에 목차 넣기': 'Add a contents sidebar when saving as HTML',
+    '저장한 파일을 열면 왼쪽에 목차가 붙습니다. 제목이나 탭이 두 개 이상 있는 문서에만 들어갑니다': 'The saved file opens with a contents list on the left. Added only when the document has two or more headings or tabs',
     '1 · 1.1 · 1.1.1 처럼 보여 줍니다. 원본 글은 바뀌지 않고, 이미 번호가 있는 제목은 건너뜁니다': 'Shows them as 1 · 1.1 · 1.1.1. The source text stays as it is, and headings that already have a number are skipped',
     '저장하기 전에 바뀐 내용 확인': 'Review changes before saving',
     '저장할 때 무엇이 바뀌는지 먼저 보여주고 한 번 더 묻습니다': 'Shows what will change and asks once more before saving',
