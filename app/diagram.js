@@ -1630,6 +1630,7 @@
        - [역할] 제목                가운데 칸 (모두 같은 너비 · 제목 한 줄 높이). 제목이 ? 로 끝나면 마름모(판정)
          설명 줄                    칸 오른쪽의 작은 회색 글 (칸 크기는 그대로)
          - 아니오 → [역할] 제목     판정의 끝나는 갈래 (오른쪽 작은 칸)
+         ↪ 칸 제목 | 선 글자        합류 · 되돌아가기: 이 칸에서 제목이 같은 칸으로 가는 회색 선 (오른쪽 통로로)
        - 예 → [역할] 제목           판정 다음의 이어지는 갈래 (아래로)
        - 갈래 + 들여 쓴 칸들        나란한 끝 (한 줄에 나란히, 설명은 각 칸 아래)
        역할 이름: 색                역할 색 (기본 운영 = 보라 · 유저 = 초록 · 시스템 = 회색)
@@ -1641,13 +1642,14 @@
   const SUM_FORK = /^(갈래|나란히|병렬|fork|split|parallel)$/i;
   const SUM_ARROW = /^(.*?)\s*(?:→|->|=>)\s*(.*)$/;
   const sumClean = (s) => String(s || '').replace(/\*\*|`/g, '').trim();
+  const sumKey = (s) => sumClean(s).replace(/^\[[^\]]*\]\s*/, '').replace(/\s+/g, ' ').trim(); // ↪ 제목 비교: 앞의 [역할] · 끝 공백 빼고
   function parseSummary(src, errs) {
     const roles = new Map();
     for (const [id, ko, en, tint, names] of SUM_ROLES) {
       const r = { id, name: L(ko, en), tint, typed: false };
       names.split(' ').forEach((n) => roles.set(normKey(n), r));
     }
-    const stages = [], chain = [], stack = [], used = [];
+    const stages = [], chain = [], stack = [], used = [], jumps = [];
     let stage = null, anyRole = false;
     const rows = src.split('\n').map((raw, i) => ({ raw: raw.replace(/\t/g, '    '), ln: i + 1 })).filter((r) => r.raw.trim() && !/^\s*(%%|\/\/)/.test(r.raw));
     const base = Math.min(...rows.map((r) => r.raw.match(/^ */)[0].length), Infinity);
@@ -1717,8 +1719,23 @@
         } else errs.push({ ln, msg: L('알 수 없는 줄입니다 (칸은 「- [역할] 제목」, 설명은 칸 아래에 들여 씁니다)', 'Unknown line (write boxes as "- [role] title" and indent descriptions under a box)') });
         continue;
       }
+      // 합류 · 되돌아가기: 「↪ 칸 제목」 · 「↪ 칸 제목 | 선 글자」 (설명으로 그리지 않음)
+      if ((m = line.match(/^↪\s*(.*)$/))) {
+        const cut = m[1].indexOf('|'), to = sumKey(cut < 0 ? m[1] : m[1].slice(0, cut));
+        if (parent.kind === 'fork') errs.push({ ln, msg: L('갈래에는 ↪ 를 달 수 없습니다 (갈래 안의 칸 아래에 씁니다)', "A fork can't have ↪ (put it under a box in the fork)") });
+        else if (!to) errs.push({ ln, msg: L('↪ 뒤에 이을 칸 제목이 없습니다 (「↪ 칸 제목」)', 'No box title after ↪ (write "↪ box title")') });
+        else jumps.push({ from: parent.node, name: to, label: cut < 0 ? '' : sumClean(m[1].slice(cut + 1)), ln });
+        continue;
+      }
       if (parent.kind === 'fork') errs.push({ ln, msg: L('갈래에는 설명을 달 수 없습니다 (갈래 안의 칸 아래에 씁니다)', "A fork can't have a description (put it under a box in the fork)") });
       else parent.node.desc.push(sumClean(line));
+    }
+    // ↪ 의 대상: 같은 블록에서 제목이 같은 첫 칸
+    const every = chain.flatMap((it) => (it.fork ? it.boxes : [it, ...it.sides]));
+    for (const j of jumps) {
+      j.to = every.find((b) => sumKey(b.title) === j.name);
+      if (!j.to) errs.push({ ln: j.ln, msg: L(`↪ 가 가리키는 칸이 없습니다: ${j.name} (같은 블록 안의 칸 제목을 그대로 씁니다)`, `↪ points to a box that doesn't exist: ${j.name} (use the exact title of a box in this block)`) });
+      else if (j.to === j.from) errs.push({ ln: j.ln, msg: L(`↪ 가 자기 칸을 가리킵니다: ${j.name}`, `↪ points to its own box: ${j.name}`) });
     }
     // 역할: 그린 순서대로 (범례 순서). [역할] 이 없으면 시스템
     const system = roles.get('시스템');
@@ -1738,7 +1755,7 @@
     for (const s of stages) if (!s.items.length) errs.push({ ln: s.ln, msg: L(`빈 단계입니다: ${s.name} (아래에 칸이 없음)`, `Empty stage: ${s.name} (no boxes under it)`) });
     if (!chain.length && !errs.length) errs.push({ msg: L('칸이 하나도 없습니다 (「- [역할] 제목」)', 'No boxes (write "- [role] title")') });
     errs.sort((p, q) => (p.ln || 0) - (q.ln || 0)); // 줄 순서대로 알려 줌
-    return { stages, chain, roles: used, anyRole };
+    return { stages, chain, roles: used, anyRole, jumps: errs.length ? [] : jumps };
   }
 
   // 문서 스타일(CSS)에서 정한 길이 (--sf-box-width 등). 없으면 0
@@ -1765,6 +1782,21 @@
     const lines = (b, maxW) => b.desc.flatMap((d) => wrap(d, maxW, 12));
     const under = (n) => (n ? 6 + n * LH : 0); // 칸 아래 설명이 차지하는 높이
     let svg = '', maxX = boxX + boxW, y = TOP, prev = null;
+    // 합류 · 되돌아가기(↪): 칸 오른쪽이 비어 있으면 옆으로, 막혀 있으면(갈래 칸이 있는 판정 등) 그 줄 위 틈으로 드나듦
+    chain.forEach((it, i) => {
+      it.tight = false; it.lanes = 0;
+      for (const b of it.fork ? it.boxes : [it, ...it.sides]) { b.row = i; b.ends = []; b.tops = []; b.free = it.fork ? b === it.boxes[it.boxes.length - 1] : b !== it || !it.sides.length; }
+    });
+    const jumps = (model.jumps || []).map((j) => {
+      const end = (b) => {
+        const e = { b, top: !b.free, pos: b.row - (b.free ? 0 : 0.5) };
+        if (e.top) { e.lane = chain[b.row].lanes++; b.tops.push(e); } else b.ends.push(e);
+        return e;
+      };
+      const s = end(j.from), t = end(j.to), a = Math.min(s.pos, t.pos), z = Math.max(s.pos, t.pos);
+      chain.forEach((it, i) => { if (i >= a && i <= z) it.tight = true; }); // 선이 지나는 줄은 설명을 칸 아래로
+      return { j, s, t, a, z };
+    });
     // data-w: 그릴 때 잰 글 너비 — Word 저장 · 서식 복사에서 글꼴이 달라져도 그 너비에 맞춤 (설명이 그림 밖으로 잘리지 않게)
     const text = (cls, x, yy, s) => `<text class="${cls}" x="${r1(x)}" y="${r1(yy)}" data-w="${r1(/sf-(title|stage)/.test(cls) ? tW(s) : dW(s))}">${esc(s)}</text>`;
     const descRight = (ls, x, cy) => { ls.forEach((l, i) => { svg += text('sf-desc', x, cy + (i - (ls.length - 1) / 2) * LH, l); maxX = Math.max(maxX, x + dW(l)); }); };
@@ -1776,10 +1808,14 @@
         : `<rect class="sf-shape" x="${r1(x)}" y="${r1(top)}" width="${r1(w)}" height="${r1(h)}" rx="8"/>`;
       svg += `<g class="sf-node ${cls} tint-${b.role.tint}" data-role="${esc(b.role.name)}"><title>${esc([b.title, ...b.desc].join('\n'))}</title>${shape}${text('sf-title', mx, my, b.title)}</g>`;
       maxX = Math.max(maxX, x + w);
+      b.g = { x, top, w, h, dia: b.decision && cls !== 'side' };
     };
-    const edge = (pts, kind) => { svg += `<path class="sf-edge ${kind}" d="${pathD(pts)}" marker-end="url(#${uid}-${kind})"/>`; };
+    const edge = (pts, kind, more = '') => { svg += `<path class="sf-edge ${kind}${more}" d="${pathD(pts)}" marker-end="url(#${uid}-${kind})"/>`; };
     for (const it of chain) {
       if (prev) y = prev.bottom + (it.fork ? FGAP : prev.decision ? DGAP : GAP);
+      y += it.lanes * 10; // 위 틈으로 드나드는 선의 자리
+      const keepX = maxX;
+      maxX = 0; // 이 줄의 오른쪽 끝 (it.right) 을 따로 잼
       if (it.fork) {
         // 나란한 끝: 위 칸에서 갈라져 한 줄에, 설명은 각 칸 아래
         const top = y;
@@ -1792,16 +1828,18 @@
           bottom = Math.max(bottom, top + H + under(ls.length));
         });
         it.top = top; it.bottom = bottom;
+        it.right = maxX; maxX = Math.max(maxX, keepX);
         prev = { bottom, out: bottom, decision: false };
         continue;
       }
       const h = it.decision ? DH : H;
-      const below = narrow || it.sides.length > 0; // 설명을 칸 아래에: 좁은 모양이거나 오른쪽에 갈래 칸이 있을 때
+      const slim = narrow || it.tight; // ↪ 선이 지나는 줄은 좁은 모양처럼 (설명을 칸 아래로)
+      const below = slim || it.sides.length > 0; // 설명을 칸 아래에: 좁은 모양이거나 오른쪽에 갈래 칸이 있을 때
       const own = lines(it, below ? boxW + 16 : 340);
       // 끝나는 갈래: 오른쪽 작은 칸 (첫 칸은 판정과 같은 높이, 더 있으면 그 아래로)
       const sd = it.sides.map((b) => {
-        const ls = lines(b, narrow ? sideW + 16 : 300);
-        return { b, ls, h: narrow ? H + under(ls.length) : Math.max(H, ls.length * LH + 4), off: narrow ? H / 2 : Math.max(H, ls.length * LH + 4) / 2 };
+        const ls = lines(b, slim ? sideW + 16 : 300);
+        return { b, ls, h: slim ? H + under(ls.length) : Math.max(H, ls.length * LH + 4), off: slim ? H / 2 : Math.max(H, ls.length * LH + 4) / 2 };
       });
       const rowH = below ? h : Math.max(h, own.length * LH + 4);
       const top = y, cy = top + Math.max(rowH / 2, sd.length ? sd[0].off : 0), shapeTop = cy - h / 2, shapeBottom = cy + h / 2;
@@ -1821,13 +1859,38 @@
           edge(k ? [{ x: x1, y: cy }, { x: xm, y: cy }, { x: xm, y: my }, { x: sx - 2, y: my }] : [{ x: x1, y: cy }, { x: sx - 2, y: my }], s.b.kind);
           svg += text('sf-elabel mid', ((many ? xm : x1) + sx - 2) / 2, my - 14, s.b.label);
           node(s.b, sx, my - H / 2, sideW, H, 'side');
-          if (narrow) descUnder(s.ls, sx + sideW / 2, my + H / 2); else descRight(s.ls, sx + sideW + 12, my);
+          if (slim) descUnder(s.ls, sx + sideW / 2, my + H / 2); else descRight(s.ls, sx + sideW + 12, my);
           st += s.h + 12;
         });
         bottom = Math.max(bottom, st - 12);
       }
       it.top = Math.min(top, shapeTop); it.bottom = bottom;
+      it.right = maxX; maxX = Math.max(maxX, keepX);
       prev = { bottom, out: below && own.length ? shapeBottom + under(own.length) + 2 : shapeBottom, decision: it.decision };
+    }
+    // ↪ 선: 칸 → 오른쪽 통로(세로) → 대상 칸. 짧은 선부터 안쪽 통로, 겹치는 선은 바깥쪽으로 한 칸씩
+    const at = (e) => {
+      const b = e.b, g = b.g, it = chain[b.row], mx = g.x + g.w / 2, my = g.top + g.h / 2;
+      if (e.top) {
+        const clear = b === it && it.label ? 20 + dW(it.label) : 0; // 들어오는 선의 예 · 아니오 글자를 피해서
+        const x = Math.min(mx + g.w / 2 - 4, mx + Math.min(g.w / 2 - 10, Math.max(g.w / 4, clear)) + (b.tops.length - 1 - b.tops.indexOf(e)) * 12);
+        const ly = it.top - (it.fork ? 22 : 8) - e.lane * 10;
+        return { y: ly, pts: [{ x, y: g.dia ? g.top + g.h * (x - mx) / g.w : g.top }, { x, y: ly }] };
+      }
+      const yy = my + (b.ends.indexOf(e) - (b.ends.length - 1) / 2) * 10;
+      return { y: yy, pts: [{ x: g.dia ? mx + g.w / 2 * (1 - Math.abs(yy - my) / (g.h / 2)) : g.x + g.w, y: yy }] };
+    };
+    const lanes = [];
+    for (const e of jumps.slice().sort((p, q) => (p.z - p.a) - (q.z - q.a))) {
+      const S = at(e.s), T = at(e.t), y0 = Math.min(S.y, T.y), y1 = Math.max(S.y, T.y);
+      let x = Math.max(S.pts[0].x, T.pts[0].x, ...chain.filter((it, i) => i >= e.a && i <= e.z).map((it) => it.right)) + 16;
+      for (const u of lanes) if (u.y0 <= y1 + 6 && y0 - 6 <= u.y1) x = Math.max(x, u.x1 + 12);
+      const x1 = x + (e.j.label ? 10 + dW(e.j.label) : 0);
+      lanes.push({ y0, y1, x1 });
+      const last = T.pts[0], tip = e.t.top ? { x: last.x, y: last.y - 2 } : { x: last.x + 2, y: last.y };
+      edge([...S.pts, { x, y: S.y }, { x, y: T.y }, ...T.pts.slice(1).reverse(), tip], 'normal', ' jump');
+      if (e.j.label) svg += text('sf-elabel', x + 6, (S.y + T.y) / 2, e.j.label);
+      maxX = Math.max(maxX, x1 + 2);
     }
     // 단계: 왼쪽에 이름, 그 단계 칸들 높이만큼 세로 점선
     let stageSvg = '';
@@ -1868,7 +1931,7 @@
   // 다른 뷰어용: 단계 = subgraph, 설명은 칸 안 둘째 줄부터
   function summaryMermaid(src) {
     const errs = [];
-    const { stages, chain } = parseSummary(src, errs);
+    const { stages, chain, jumps } = parseSummary(src, errs);
     if (errs.length) fail(errs);
     const out = ['flowchart TD'], links = [], styles = [], all = [];
     let n = 0;
@@ -1898,6 +1961,8 @@
       for (const s of it.sides) link(it, s, s.label, s.kind);
       prev = it;
     }
+    // 합류 · 되돌아가기: 점선 화살표
+    for (const j of jumps) links.push(`  ${id(j.from)} -.->${j.label ? '|' + mq(j.label) + '|' : ''} ${id(j.to)}`);
     out.push(...links, ...styles, ...tintLines(all.map((b) => ({ tint: b.role.tint, mid: b.mid })), (b) => b.mid));
     return out.join('\n');
   }

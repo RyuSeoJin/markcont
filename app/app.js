@@ -68,7 +68,7 @@
   /* =========================================================
      설정 (글자 크기, 글꼴, 폭, 줄바꿈, 스크롤 맞춤)
      ========================================================= */
-  const settings = Object.assign({ size: 16.5, font: 'sans', width: 'normal', lh: 'normal', para: 'normal', tint: 'plain', sync: true, compatHint: true, callout: 'soft', headNum: false, confirmSave: true, mcpSuggest: false, updateCheck: true }, store.json('mdv-settings', {}));
+  const settings = Object.assign({ size: 16.5, font: 'sans', width: 'normal', lh: 'normal', para: 'normal', tint: 'plain', sync: true, compatHint: true, callout: 'soft', headNum: false, confirmSave: true, mcpSuggest: false, updateCheck: true, htmlToc: true }, store.json('mdv-settings', {}));
   delete settings.breaks; // 없앤 설정 (엔터 한 번도 줄바꿈으로 보기)
   delete settings.lines; // 없앤 설정 (코드 줄 번호 보기)
   const WIDTHS = { narrow: '680px', normal: '820px', wide: '1060px' };
@@ -192,6 +192,7 @@
     document.querySelectorAll('#langSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === LANG));
     $('#optHeadNum').checked = settings.headNum;
     $('#optConfirmSave').checked = settings.confirmSave;
+    $('#optHtmlToc').checked = settings.htmlToc !== false;
     $('#optCompat').checked = settings.compatHint !== false;
     $('#optSync').checked = settings.sync;
     $('#optUpdate').checked = settings.updateCheck !== false;
@@ -220,6 +221,7 @@
   $('#calloutSeg').onclick = (e) => { const v = e.target.closest('button')?.dataset.v; if (v) { settings.callout = v; applySettings(true); } };
   $('#optHeadNum').onchange = (e) => { settings.headNum = e.target.checked; applySettings(true); };
   $('#optConfirmSave').onchange = (e) => { settings.confirmSave = e.target.checked; applySettings(); };
+  $('#optHtmlToc').onchange = (e) => { settings.htmlToc = e.target.checked; applySettings(); };
   $('#optSync').onchange = (e) => { settings.sync = e.target.checked; applySettings(); };
   $('#optUpdate').onchange = (e) => { settings.updateCheck = e.target.checked; applySettings(); };
   $('#optCompat').onchange = (e) => { settings.compatHint = e.target.checked; applySettings(); if (state.current) updateMeta(source()); };
@@ -2434,7 +2436,21 @@
     if (!has) return false;
     box.querySelectorAll(':scope > .mc-tab-bar > .mc-tab').forEach((b) => { b.classList.toggle('on', b.dataset.tab === title); b.setAttribute('aria-selected', String(b.dataset.tab === title)); });
     box.querySelectorAll(':scope > .mc-tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== title; });
+    if (el.doc.contains(box)) syncTocTabs();
     return true;
+  }
+  // 사이드바 목차의 탭 항목: 지금 켜진 탭을 표시
+  function syncTocTabs() {
+    el.toc.querySelectorAll('a.tab').forEach((a) => a.classList.toggle('on', !!a._panel && !a._panel.hidden));
+  }
+  // 숨은 탭 안에 있으면 그 탭(바깥 탭부터)을 열고, 접힌 제목 아래면 폄
+  function revealNode(node) {
+    const chain = [];
+    for (let p = node.closest('.mc-tab-panel'); p; p = p.parentElement.closest('.mc-tab-panel')) chain.unshift(p);
+    for (const p of chain) if (p.hidden) showTab(p.closest('.mc-tabs'), p.dataset.tab);
+    let top = node;
+    while (top.parentElement && top.parentElement !== el.doc) top = top.parentElement;
+    if (top.parentElement === el.doc) unfoldTo(top);
   }
   function initTabs(root) {
     const pref = tabPref();
@@ -2632,22 +2648,54 @@
      목차 + 현재 위치 표시
      ========================================================= */
   let observer;
-  function buildToc() {
-    const heads = [...el.doc.querySelectorAll('h1,h2,h3')].filter((h) => !h.closest('.md-example'));
-    el.toc.innerHTML = '';
-    el.tocSection.hidden = heads.length < 2;
-    const minLevel = Math.min(...heads.map(headingLevel));
-    const links = new Map();
-    heads.forEach((h) => {
-      const a = document.createElement('a');
-      a.href = '#' + h.id;
-      a.dataset.id = h.id;
-      a.textContent = headLabel(h);
-      a.className = 'l' + (headingLevel(h) - minLevel + 1);
-      a.onclick = (e) => { e.preventDefault(); scrollToId(h.id); closeSidebar(); };
-      el.toc.append(a);
-      links.set(h, a);
+  // 목차 항목: 제목(h1~h3)과 탭 상자의 탭을 문서 순서대로. 탭은 바로 앞 항목의 한 단계 아래, 탭 안의 제목은 그 탭의 한 단계 아래
+  //  → [{ n: 제목 또는 탭 내용, isTab, box: 그 탭 상자(탭 밖의 제목이면 null), lvl: 1~6 }]
+  function tocItems(root) {
+    const nodes = [...root.querySelectorAll('h1,h2,h3,.mc-tab-panel')].filter((n) => !n.closest('.md-example'));
+    const minLevel = Math.min(...nodes.map(headingLevel).filter(Boolean));
+    const boxLevel = new Map();
+    let last = 0;
+    return nodes.map((n) => {
+      const isTab = !headingLevel(n), panel = isTab ? n : n.closest('.mc-tab-panel'), box = panel && panel.closest('.mc-tabs');
+      if (isTab && !boxLevel.has(box)) boxLevel.set(box, Math.min(last + 1, 6));
+      const lvl = isTab ? boxLevel.get(box) : box ? Math.min(boxLevel.get(box) + 1, 6) : headingLevel(n) - minLevel + 1;
+      last = lvl;
+      return { n, isTab, box, lvl };
     });
+  }
+  function buildToc() {
+    const items = tocItems(el.doc), nodes = items.map((x) => x.n);
+    const heads = nodes.filter((n) => headingLevel(n));
+    el.toc.innerHTML = '';
+    el.tocSection.hidden = nodes.length < 2;
+    const links = new Map();
+    items.forEach(({ n, isTab, box, lvl }) => {
+      const a = document.createElement('a');
+      if (isTab) {
+        a.href = '#';
+        a.textContent = n.dataset.tab;
+        a.title = L('탭: ', 'Tab: ') + n.dataset.tab;
+        a._panel = n;
+        a.onclick = (e) => {
+          e.preventDefault();
+          const title = n.dataset.tab;
+          revealNode(box);
+          el.doc.querySelectorAll('.mc-tabs').forEach((b) => showTab(b, title)); // 문서에서 탭을 누를 때와 같이: 같은 이름의 탭은 함께 바뀌고 고른 탭을 기억
+          store.set('mdv-tab-pref', JSON.stringify([title, ...tabPref().filter((x) => x !== title)].slice(0, 20)));
+          box.scrollIntoView({ block: 'start', behavior: 'smooth' });
+          closeSidebar();
+        };
+      } else {
+        a.href = '#' + n.id;
+        a.dataset.id = n.id;
+        a.textContent = headLabel(n);
+        a.onclick = (e) => { e.preventDefault(); revealNode(n); scrollToId(n.id); closeSidebar(); };
+        links.set(n, a);
+      }
+      a.className = 'l' + lvl + (isTab ? ' tab' : '');
+      el.toc.append(a);
+    });
+    syncTocTabs();
     if (observer) observer.disconnect();
     updateSidebar();
     if (!heads.length) return;
@@ -7427,6 +7475,280 @@
 html:not(.mc-js) .markdown-body .mc-tab-bar { display: none; }
 html:not(.mc-js) .markdown-body .mc-tab-panel::before { content: attr(data-tab); display: block; font-weight: 700; margin-bottom: .4em; }`;
 
+  // 저장한 HTML 의 왼쪽 목차 (그 파일 안에 그대로 들어가는 스크립트라 바깥 변수를 쓰지 않음)
+  //  - 제목을 누르면 그 제목으로, 탭 이름을 누르면 그 탭을 열고 탭 상자로 (숨은 탭 안이면 바깥 탭부터 엶)
+  //  - 읽는 위치의 제목 · 지금 켜진 탭을 표시, ☰ 단추로 목차를 여닫음 (좁은 화면에서는 덮개로)
+  function savedTocScript() {
+    document.addEventListener('DOMContentLoaded', () => {
+      const nav = document.querySelector('.st-nav'), btn = document.querySelector('.st-btn');
+      if (!nav) return;
+      const narrow = () => matchMedia('(max-width: 1000px)').matches;
+      const off = (p) => p.hidden || p.hasAttribute('data-tab-off');
+      const tabOf = (p) => [...p.parentElement.querySelectorAll(':scope > .mc-tab-bar > .mc-tab')].find((b) => b.dataset.tab === p.dataset.tab);
+      const panelOf = (a) => {
+        const box = document.querySelector('.mc-tabs[data-toc-box="' + a.dataset.box + '"]');
+        return box && [...box.querySelectorAll(':scope > .mc-tab-panel')].find((p) => p.dataset.tab === a.dataset.tab);
+      };
+      const reveal = (node) => {
+        const chain = [];
+        for (let p = node.closest('.mc-tab-panel'); p; p = p.parentElement.closest('.mc-tab-panel')) chain.unshift(p);
+        for (const p of chain) if (off(p)) { const b = tabOf(p); if (b) b.click(); }
+        for (let d = node.closest('details'); d; d = d.parentElement.closest('details')) d.open = true;
+      };
+      const sync = () => nav.querySelectorAll('a.tab').forEach((a) => { const p = panelOf(a); a.classList.toggle('on', !!p && !off(p)); });
+      nav.addEventListener('click', (e) => {
+        const a = e.target.closest('a');
+        if (!a) return;
+        e.preventDefault();
+        let to;
+        if (a.classList.contains('tab')) { const p = panelOf(a); if (!p) return; reveal(p); to = p.parentElement; }
+        else { to = document.getElementById(a.dataset.id); if (!to) return; reveal(to); try { history.replaceState(null, '', '#' + encodeURIComponent(a.dataset.id)); } catch (err) { /* file: 주소에서 막히면 그냥 둠 */ } }
+        to.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        if (narrow()) document.body.classList.remove('st-open');
+        sync();
+      });
+      document.addEventListener('click', (e) => {
+        if (e.target.closest && e.target.closest('.mc-tab')) setTimeout(sync, 0);
+        else if (narrow() && document.body.classList.contains('st-open') && !e.target.closest('.st-nav, .st-btn')) document.body.classList.remove('st-open');
+      });
+      btn.addEventListener('click', () => {
+        const key = narrow() ? 'st-open' : 'st-hide';
+        document.body.classList.toggle(key);
+        btn.setAttribute('aria-expanded', String(narrow() ? document.body.classList.contains('st-open') : !document.body.classList.contains('st-hide')));
+      });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.body.classList.remove('st-open'); });
+      sync();
+      if (!('IntersectionObserver' in window)) return;
+      const links = new Map();
+      nav.querySelectorAll('a[data-id]').forEach((a) => { const h = document.getElementById(a.dataset.id); if (h) links.set(h, a); });
+      const io = new IntersectionObserver((entries) => entries.forEach((en) => {
+        if (!en.isIntersecting) return;
+        nav.querySelectorAll('a.active').forEach((x) => x.classList.remove('active'));
+        const a = links.get(en.target);
+        if (a) { a.classList.add('active'); if (a.scrollIntoViewIfNeeded) a.scrollIntoViewIfNeeded(false); }
+      }), { rootMargin: '0px 0px -75% 0px' });
+      links.forEach((a, h) => io.observe(h));
+    });
+  }
+  const SAVED_TOC_CSS = `body.has-toc { padding-left: 296px; }
+.st-nav { position: fixed; left: 0; top: 0; bottom: 0; width: 280px; box-sizing: border-box; overflow-y: auto; padding: 56px 10px 24px; background: var(--surface); border-right: 1px solid var(--border); font-family: var(--font); z-index: 20; }
+.st-nav a { display: block; padding: 5px 10px; border-radius: 6px; font-size: 13.5px; line-height: 1.45; color: var(--muted); text-decoration: none; border-left: 2px solid transparent; overflow-wrap: anywhere; }
+.st-nav a:hover { color: var(--text); background: var(--surface-2); }
+.st-nav a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); border-radius: 0 6px 6px 0; }
+.st-nav a.l2 { padding-left: 22px; } .st-nav a.l3 { padding-left: 34px; font-size: 13px; } .st-nav a.l4 { padding-left: 46px; font-size: 13px; } .st-nav a.l5 { padding-left: 58px; font-size: 13px; } .st-nav a.l6 { padding-left: 70px; font-size: 13px; }
+.st-nav a.tab::before { content: ''; display: inline-block; width: 9px; height: 7px; margin-right: 6px; border: 1.5px solid currentColor; border-bottom: 0; border-radius: 3px 3px 0 0; opacity: .6; }
+.st-nav a.tab.on { color: var(--text); font-weight: 600; }
+.st-nav a.tab.on::before { background: currentColor; opacity: .85; }
+.st-btn { position: fixed; left: 12px; top: 12px; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); cursor: pointer; z-index: 21; }
+.st-btn:hover { background: var(--surface-2); }
+.st-btn svg { width: 18px; height: 18px; }
+body.has-toc.st-hide { padding-left: 16px; }
+body.st-hide .st-nav { display: none; }
+html:not(.mc-js) .st-btn { display: none; }
+@media (max-width: 1000px) {
+  body.has-toc, body.has-toc.st-hide { padding-left: 16px; padding-top: 60px; }
+  .st-nav, body.st-hide .st-nav { display: none; }
+  body.st-open .st-nav { display: block; width: min(300px, 86vw); box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .28), 4px 0 18px rgba(0, 0, 0, .18); }
+  html:not(.mc-js) .st-nav { display: block; position: static; width: auto; padding: 0 0 20px; border: 0; background: none; }
+}
+@media print { .st-nav, .st-btn { display: none !important; } body.has-toc, body.has-toc.st-hide { padding-left: 0; padding-top: 0; } }`;
+  // 저장본의 목차 HTML (제목 · 탭이 두 개 미만이면 빈 글). clone 의 탭 상자에는 목차가 찾을 번호(data-toc-box)를 붙임
+  function savedTocHtml(clone) {
+    const items = tocItems(el.doc);
+    if (items.length < 2) return '';
+    const boxes = [...el.doc.querySelectorAll('.mc-tabs')];
+    clone.querySelectorAll('.mc-tabs').forEach((b, i) => b.setAttribute('data-toc-box', i));
+    const links = items.map(({ n, isTab, box, lvl }) => isTab
+      ? `<a class="l${lvl} tab" href="#" data-box="${boxes.indexOf(box)}" data-tab="${escapeHtml(n.dataset.tab)}">${escapeHtml(n.dataset.tab)}</a>`
+      : `<a class="l${lvl}" href="#${encodeURIComponent(n.id)}" data-id="${escapeHtml(n.id)}">${escapeHtml(headLabel(n))}</a>`).join('\n');
+    const label = escapeHtml(L('목차', 'Contents'));
+    return `<button type="button" class="st-btn" aria-label="${label}" title="${label}" aria-expanded="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+<nav class="st-nav" aria-label="${label}">
+${links}
+</nav>
+`;
+  }
+
+  /* ---------- HTML 저장: 링크된 문서를 파일 안에 함께 넣기 ---------- */
+  // 링크 하나가 가리키는 문서: { key, to, name, path } · 지금 문서 자신이면 { key: 'main' } · 찾지 못하면 null
+  function savedDocOf(a) {
+    if (!('path' in a.dataset)) return null;
+    if (a.dataset.builtin) {
+      const b = a.dataset.builtin;
+      if (!BUILTIN[b]) return null;
+      if (state.current.builtin && state.current.path === builtinPath(b)) return { key: 'main' };
+      return { key: 'b:' + b, to: { builtin: b }, name: BUILTIN[b].title, path: '' };
+    }
+    if (a.classList.contains('missing') || !a.dataset.path) return null;
+    const entry = state.files.find((f) => f.path === a.dataset.path);
+    if (!entry) return null;
+    if (entry === state.current) return { key: 'main' };
+    return { key: 'f:' + entry.path, to: { entry }, name: entry.name.replace(MD_EXT, ''), path: entry.path };
+  }
+  // 본문이 직접 링크한 문서들 (한 단계만 — 그 문서들이 다시 링크한 문서는 따라가지 않음)
+  function savedLinkedDocs(root) {
+    const out = new Map();
+    root.querySelectorAll('a').forEach((a) => { const k = savedDocOf(a); if (k && k.key !== 'main' && !out.has(k.key)) out.set(k.key, k); });
+    return [...out.values()];
+  }
+  // 저장본의 문서 링크: 함께 넣은 문서는 data-doc(저장본 스크립트가 옆 칸에 엶), 넣지 않은 문서는 누를 수 없는 표시로. 경로는 남기지 않음
+  function savedMarkLinks(root, keys) {
+    root.querySelectorAll('a').forEach((a) => {
+      if (!('path' in a.dataset)) return;
+      const k = savedDocOf(a);
+      let hash = a.dataset.hash || (a.dataset.heading ? slugify(a.dataset.heading) : '');
+      try { hash = decodeURIComponent(hash); } catch { /* % 가 그냥 글자인 제목 */ }
+      for (const n of ['data-path', 'data-builtin', 'data-outside', 'data-heading', 'data-hash', 'title']) a.removeAttribute(n);
+      if (k && (k.key === 'main' || keys.has(k.key))) {
+        a.setAttribute('href', '#');
+        a.dataset.doc = k.key;
+        if (hash) a.dataset.docHash = hash;
+      } else {
+        a.removeAttribute('href');
+        a.classList.add('st-missing');
+        a.setAttribute('role', 'link');
+        a.setAttribute('aria-disabled', 'true');
+        a.tabIndex = 0;
+        a.title = L('이 파일에는 들어 있지 않은 문서입니다', 'This document is not included in this file');
+      }
+    });
+  }
+  // 문서 하나를 화면 밖에서 그려 저장용 사본으로 (그림 · 다이어그램이 다 그려질 때까지 기다림)
+  async function savedRenderDoc(entry, n) {
+    const text = await svRead(entry);
+    const { fm, body } = splitFrontMatter(text);
+    const opts = docOptions(fm);
+    const host = document.createElement('div'), art = document.createElement('article');
+    host.style.cssText = 'position:fixed;left:-99999px;top:0;width:760px;visibility:hidden;pointer-events:none';
+    host.setAttribute('aria-hidden', 'true');
+    art.className = 'markdown-body';
+    host.append(art);
+    document.body.append(host);
+    try {
+      art.innerHTML = (opts.cover ? coverHtml(fm, body, entry) : '') + (fm ? frontMatterHtml(fm) : '') +
+        DOMPurify.sanitize(md.render(stripNotes(body), { docId: 'sd' + n }), { ADD_ATTR: ['target'], FORBID_TAGS: ['style'] });
+      postProcess(art, entry, opts, { data: new Map(), ctx: null, seq: 0 });
+      let prev = -1;
+      for (let i = 0; i < 30; i++) { // 내용이 더 바뀌지 않을 때까지 (Mermaid · 흐름도 자료 · 그림 읽기), 길어도 6초
+        await settleMedia();
+        await new Promise((r) => setTimeout(r, 200));
+        const len = art.innerHTML.length;
+        if (len === prev && !mediaLoads.size) break;
+        prev = len;
+      }
+      const clone = cleanClone(art, { keepTabs: true });
+      return { clone, media: await inlineMedia(clone) };
+    } finally { host.remove(); }
+  }
+  // 저장 전에 묻기: 함께 넣을 문서 고르기 → 고른 key 의 Set (취소하면 null)
+  function askSavedDocs(list) {
+    return new Promise((resolve) => {
+      const m = document.createElement('div');
+      m.className = 'modal';
+      m.innerHTML = `<div class="modal-card" role="dialog" aria-modal="true" aria-label="${escapeHtml(L('함께 넣을 문서', 'Documents to include'))}">
+<div class="modal-head"><div class="modal-title">${escapeHtml(L(`링크된 문서 ${list.length}개를 함께 넣을까요?`, `Include ${list.length} linked document${list.length === 1 ? '' : 's'}?`))}</div></div>
+<div class="modal-body"><p class="side-note" style="margin:0 0 12px">${escapeHtml(L('체크한 문서는 내용이 HTML 파일 안에 들어가서, 받는 사람이 링크를 누르면 옆에서 볼 수 있습니다. 빼면 그 링크는 누를 수 없는 표시로 남습니다. 넣은 문서가 다시 링크한 문서는 넣지 않습니다.', 'Checked documents are put inside the HTML file, so readers can open them beside the page from their links. Unchecked ones stay as links that cannot be opened. Documents linked from the included ones are not added.'))}</p>
+<div class="sd-pick" style="display:grid;gap:10px;max-height:46vh;overflow:auto">${list.map((d, i) => `<label class="check-row"><input type="checkbox" data-i="${i}" checked><span>${escapeHtml(d.name)}${d.path ? `<small>${escapeHtml(d.path)}</small>` : ''}</span></label>`).join('')}</div></div>
+<div class="modal-foot"><button class="btn" data-r="none" style="margin-right:auto">${escapeHtml(L('모두 빼기', 'Uncheck all'))}</button><button class="btn" data-r="cancel">${escapeHtml(L('취소', 'Cancel'))}</button><button class="btn primary" data-r="save">${escapeHtml(L('저장', 'Save'))}</button></div></div>`;
+      const boxes = () => [...m.querySelectorAll('input[type=checkbox]')];
+      const done = (r) => { m.remove(); resolve(r); };
+      m.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-r]');
+        if (!b) return;
+        if (b.dataset.r === 'none') { const any = boxes().some((c) => c.checked); boxes().forEach((c) => (c.checked = !any)); b.textContent = any ? L('모두 넣기', 'Check all') : L('모두 빼기', 'Uncheck all'); }
+        else done(b.dataset.r === 'save' ? new Set(boxes().filter((c) => c.checked).map((c) => list[+c.dataset.i].key)) : null);
+      });
+      m.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(null); } });
+      document.body.append(m);
+      m.querySelector('[data-r="save"]').focus();
+    });
+  }
+  // 저장한 HTML 에서 문서 링크를 누를 때 (그 파일 안에 그대로 들어가는 스크립트라 바깥 변수를 쓰지 않음 — 화면 글은 인자로 받음)
+  //  - 함께 넣은 문서(<template class="sd-doc">): 오른쪽 칸에 엶. 칸 안의 링크는 칸 내용만 바꾸고 ‹ 로 돌아감, Esc · ✕ 로 닫음
+  //  - 이 문서 자신으로 가는 링크: 본문의 그 제목으로
+  //  - 넣지 않은 문서: 안내만 잠깐 보여 줌
+  function savedDocsScript(T) {
+    document.addEventListener('DOMContentLoaded', () => {
+      const tpl = (key) => [...document.querySelectorAll('template.sd-doc')].find((t) => t.dataset.doc === key);
+      let panel, body, scroller, title, backBtn, hist = [], tip, tipTimer;
+      const jump = (root, hash) => {
+        let t = null;
+        try { t = hash ? root.querySelector('#' + CSS.escape(hash)) : null; } catch (err) { t = null; }
+        if (!t) return false;
+        const chain = [];
+        for (let p = t.closest('.mc-tab-panel'); p; p = p.parentElement.closest('.mc-tab-panel')) chain.unshift(p);
+        for (const p of chain) if (p.hidden || p.hasAttribute('data-tab-off')) { const b = [...p.parentElement.querySelectorAll(':scope > .mc-tab-bar > .mc-tab')].find((x) => x.dataset.tab === p.dataset.tab); if (b) b.click(); }
+        for (let d = t.closest('details'); d; d = d.parentElement.closest('details')) d.open = true;
+        t.scrollIntoView({ block: 'start' });
+        return true;
+      };
+      const close = () => { if (panel) panel.hidden = true; document.body.classList.remove('sd-open'); hist = []; };
+      const show = (key, hash, push) => {
+        const t = tpl(key);
+        if (!t) return;
+        if (!panel) {
+          panel = document.createElement('aside');
+          panel.className = 'sd-panel';
+          panel.innerHTML = '<div class="sd-head"><button type="button" class="sd-back">\u2039</button><div class="sd-title"><small></small><span></span></div><button type="button" class="sd-close">\u2715</button></div><div class="sd-scroll"><article class="markdown-body"></article></div>';
+          backBtn = panel.querySelector('.sd-back'); title = panel.querySelector('.sd-title span'); scroller = panel.querySelector('.sd-scroll'); body = panel.querySelector('article');
+          panel.querySelector('.sd-title small').textContent = T.side;
+          backBtn.title = T.back; backBtn.setAttribute('aria-label', T.back);
+          panel.querySelector('.sd-close').title = T.close; panel.querySelector('.sd-close').setAttribute('aria-label', T.close);
+          panel.setAttribute('aria-label', T.side);
+          backBtn.onclick = () => { if (hist.length < 2) return; hist.pop(); const p = hist[hist.length - 1]; show(p.key, p.hash, false); };
+          panel.querySelector('.sd-close').onclick = close;
+          document.body.append(panel);
+        }
+        if (push !== false) hist.push({ key, hash });
+        body.textContent = '';
+        body.append(t.content.cloneNode(true));
+        title.textContent = t.dataset.name;
+        backBtn.disabled = hist.length < 2;
+        panel.hidden = false;
+        document.body.classList.add('sd-open');
+        if (!jump(body, hash)) scroller.scrollTop = 0;
+      };
+      const note = () => {
+        if (!tip) { tip = document.createElement('div'); tip.className = 'sd-toast'; tip.setAttribute('role', 'status'); document.body.append(tip); }
+        tip.textContent = T.missing;
+        tip.hidden = false;
+        clearTimeout(tipTimer);
+        tipTimer = setTimeout(() => (tip.hidden = true), 2600);
+      };
+      const act = (a) => {
+        if (a.classList.contains('st-missing')) return note();
+        if (a.dataset.doc !== 'main') return show(a.dataset.doc, a.dataset.docHash);
+        if (matchMedia('(max-width: 1000px)').matches) close();
+        if (!jump(document.querySelector('body > article.markdown-body'), a.dataset.docHash)) window.scrollTo(0, 0);
+      };
+      document.addEventListener('click', (e) => {
+        const a = e.target.closest && e.target.closest('a[data-doc], a.st-missing');
+        if (a) { e.preventDefault(); act(a); }
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && panel && !panel.hidden) close();
+        else if (e.key === 'Enter' && e.target.matches && e.target.matches('a.st-missing')) note();
+      });
+    });
+  }
+  const SAVED_DOCS_CSS = `.markdown-body a.st-missing { color: var(--muted); text-decoration: underline dotted; cursor: help; }
+.sd-panel { position: fixed; right: 0; top: 0; bottom: 0; width: min(46vw, 680px); box-sizing: border-box; display: flex; flex-direction: column; background: var(--bg); border-left: 1px solid var(--border); box-shadow: -6px 0 24px rgba(0, 0, 0, .08); z-index: 30; }
+.sd-panel[hidden], .sd-toast[hidden] { display: none; }
+.sd-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--surface); font-family: var(--font); }
+.sd-head button { flex: none; width: 30px; height: 30px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text); cursor: pointer; font-size: 15px; line-height: 1; }
+.sd-head button:hover:not(:disabled) { background: var(--surface-2); }
+.sd-head button:disabled { opacity: .4; cursor: default; }
+.sd-title { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; color: var(--text); }
+.sd-title small { display: block; font-size: 11px; font-weight: 400; color: var(--muted); }
+.sd-title span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-scroll { flex: 1; overflow: auto; padding: 24px 20px 64px; }
+.sd-panel .markdown-body { max-width: none; margin: 0; }
+.sd-panel .dt-links { display: none; }
+body.sd-open { padding-right: calc(min(46vw, 680px) + 16px); }
+.sd-toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); max-width: 86vw; padding: 9px 14px; border-radius: 8px; background: var(--text); color: var(--bg); font: 13.5px/1.45 var(--font); z-index: 40; }
+@media (max-width: 1000px) { body.sd-open { padding-right: 16px; } .sd-panel { width: 100vw; border-left: 0; } }
+@media print { .sd-panel, .sd-toast { display: none !important; } body.sd-open { padding-right: 16px; } }`;
+
   // 보기 설정을 HTML 저장 · 숨은 틀에 옮길 CSS 변수
   const docVars = () => `:root{--doc-size:${settings.size}px;--doc-width:${WIDTHS[settings.width]};--doc-font:${settings.font === 'serif' ? 'var(--serif)' : 'var(--font)'};--doc-lh:${LINE_H[settings.lh] || LINE_H.normal};--doc-para:${PARA_GAP[settings.para] || PARA_GAP.normal};}`;
   // 내보내기 · 서식 복사 · Word 저장 전에 그린 문서를 정리한 사본: 단추 빼기, 접힌 곳 · 탭 펴기, 찾기 표시 지우기
@@ -7506,8 +7828,31 @@ html:not(.mc-js) .markdown-body .mc-tab-panel::before { content: attr(data-tab);
     closeMenus();
     await settleMedia(); // 아직 읽는 중인 그림까지
     const clone = cleanClone(el.doc, { keepTabs: true });
+    // 링크된 문서: 무엇을 함께 넣을지 먼저 묻고, 고른 문서를 그려서 파일 안에 넣음
+    const cands = savedLinkedDocs(el.doc);
+    const picked = cands.length ? await askSavedDocs(cands) : new Set();
+    if (!picked) return;
     const media = await inlineMedia(clone);
+    const docs = [], failed = [];
+    if (picked.size) toast(L('링크된 문서를 넣는 중…', 'Adding linked documents…'), 20000);
+    for (const c of cands) {
+      if (!picked.has(c.key)) continue;
+      try {
+        const r = await savedRenderDoc(await svEntryOf(c.to), docs.length);
+        docs.push({ key: c.key, name: c.name, clone: r.clone });
+        media.added += r.media.added;
+        media.skipped.push(...r.media.skipped);
+      } catch { failed.push(c.name); }
+    }
+    const keys = new Set(docs.map((d) => d.key));
+    savedMarkLinks(clone, keys);
+    docs.forEach((d) => savedMarkLinks(d.clone, keys));
+    if (failed.length && !confirm(L(`읽지 못해 넣지 못한 문서: ${failed.join(', ')}\n\n그래도 저장할까요?`, `Couldn't read and include: ${failed.join(', ')}\n\nSave anyway?`))) return;
     if (media.skipped.length && !confirmSkippedMedia(media.skipped)) return;
+    const toc = settings.htmlToc !== false ? savedTocHtml(clone) : '';
+    const hasDocLinks = !!clone.querySelector('a[data-doc], a.st-missing');
+    const docsT = JSON.stringify({ side: L('옆 보기', 'Beside'), back: L('이전 문서', 'Previous document'), close: L('닫기 (Esc)', 'Close (Esc)'), missing: L('이 파일에는 들어 있지 않은 문서입니다', 'This document is not included in this file') }).replace(/</g, '\\u003c');
+    const docsHtml = docs.map((d) => `<template class="sd-doc" data-doc="${escapeHtml(d.key)}" data-name="${escapeHtml(d.name)}">\n${d.clone.innerHTML}\n</template>`).join('\n');
     const theme = document.documentElement.dataset.theme;
     const hl = theme === 'dark' ? 'github-dark' : 'github';
     const title = escapeHtml(state.current.name.replace(MD_EXT, ''));
@@ -7527,18 +7872,20 @@ ${vars}
 ${userCssText()}
 body { margin: 0; background: var(--bg); padding: 48px 16px 96px; }
 @media print { body { background: #fff; padding: 0; } }
-${SAVED_TABS_CSS}
+${SAVED_TABS_CSS}${toc ? '\n' + SAVED_TOC_CSS : ''}${hasDocLinks ? '\n' + SAVED_DOCS_CSS : ''}
 </style>
-<script>(${savedTabsScript.toString()})(${printTabHeads.toString()});</script>
+<script>(${savedTabsScript.toString()})(${printTabHeads.toString()});${toc ? `(${savedTocScript.toString()})();` : ''}${hasDocLinks ? `(${savedDocsScript.toString()})(${docsT});` : ''}</script>
 </head>
-<body>
-<article class="markdown-body">
+<body${toc ? ' class="has-toc"' : ''}>
+${toc}<article class="markdown-body">
 ${clone.innerHTML}
 </article>
+${docsHtml}
 </body>
 </html>`;
     download(state.current.name.replace(MD_EXT, '') + '.html', out, 'text/html;charset=utf-8');
-    toast(media.added
+    if (docs.length) toast(L(`HTML 파일을 다운로드 폴더에 저장했습니다 (링크된 문서 ${docs.length}개${media.added ? ` · 그림 ${media.added}개` : ''}를 파일 안에 넣음)`, `Saved the HTML file to Downloads (${docs.length} linked document${docs.length === 1 ? '' : 's'}${media.added ? ` · ${media.added} image${media.added === 1 ? '' : 's'}` : ''} included in the file)`), 3600);
+    else toast(media.added
       ? L(`HTML 파일을 다운로드 폴더에 저장했습니다 (그림 ${media.added}개를 파일 안에 넣음)`, `Saved the HTML file to Downloads (${media.added} image${media.added === 1 ? '' : 's'} included in the file)`)
       : L('HTML 파일을 다운로드 폴더에 저장했습니다', 'Saved the HTML file to Downloads'));
   }
@@ -7959,7 +8306,7 @@ ${clone.innerHTML}
 
   applySettings();
   // 버전 표시 (새 버전을 낼 때 package.json · tauri.conf.json 과 함께 올리세요)
-  const APP_VERSION = '1.15.0';
+  const APP_VERSION = '1.16.0';
   $('#appVersion').textContent = `markcont v${APP_VERSION} · ${window.__TAURI__ ? L('PC 프로그램', 'PC app') : L('웹 앱', 'web app')}`;
   setSideTab(side.tab);
   renderFileList();

@@ -486,14 +486,18 @@ Use it to show **a whole feature at a glance**, such as in the overview of a spe
 | A box whose title ends with `?` | A decision (diamond) |
 | `- yes → [role] Title` | The branch that continues after a decision (downward · blue line) |
 | `- no → [role] Title`, indented under a decision | The branch that ends (a small box on the right · red line) |
+| `↪ Box title`, indented under a box | Join · go back. Draws a gray arrow line from that box to the box with the same title in this block (a join when the target is below, going back when it is above). It is not drawn as a note |
+| `↪ Box title \| Line label` | The same, with a small label next to the line (`Retry`, for example) |
 | `- fork` + indented boxes | The parallel end. It splits from the box above into one row, with notes under each box (only at the end of the block) |
 | `role name: color` (top of the block) | Change a role's color or add a role (`blue` `green` `orange` `red` `purple` `gray`) |
 
 - The built-in roles are `ops` (purple) · `user` (green) · `system` (gray), and only the roles you used appear in the legend under the diagram.
 - All boxes share one width (fitted to the longest title) and one height. Long notes never change the box size.
 - When the block is narrow (side-by-side view · phones), notes move right below the boxes.
-- Save for other viewers turns it into a Mermaid flowchart (stages become groups, notes go inside the boxes).
-- Mistakes (unknown role · `yes →` without a decision · empty stage) are shown with the line number in place of the diagram and in the document check.
+- Write the box title after `↪` as it is, without the leading `[role]` (keep the `?`). If several boxes share the title, the line goes to the first one. It works under a main box, a `no` branch box, or a box in a fork.
+- `↪` lines run through a channel on the right of the diagram. Rows the line passes get their notes below the box, and each extra line adds one more channel outward.
+- Save for other viewers turns it into a Mermaid flowchart (stages become groups, notes go inside the boxes, `↪` lines become dotted arrows).
+- Mistakes (unknown role · `yes →` without a decision · empty stage · `↪` pointing to a box that doesn't exist) are shown with the line number in place of the diagram and in the document check.
 
 ````markdown example
 ```summary
@@ -506,6 +510,7 @@ Use it to show **a whole feature at a glance**, such as in the overview of a spe
 - [system] Eligible?
   - no → [system] Can't apply
     Show what's missing
+    ↪ Apply | Apply again
 - yes → [system] Applied
 # Rewards
 - fork
