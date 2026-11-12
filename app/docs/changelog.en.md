@@ -3,6 +3,12 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.17.1 · 2026-11-12
+
+- Summary flow: with several `↪` lines, the vertical runs no longer scatter far from the boxes. They sit just outside the right end of the rows they pass, side by side at an even gap (18px), shorter runs inside and longer ones outside. The diagram gets narrower, so lines that were cut off at the edge of the page now fit
+- Summary flow: a line's text sits right next to its own vertical run. It moves up or down if it would land on another line's horizontal run or another text, and other vertical lines passing behind a text leave a gap there
+- Summary flow: when several `↪` lines leave one box, lines going up leave from the upper part of the box's right side and lines going down from the lower part, whatever order you wrote them in, so they don't cross. Blocks without `↪` and blocks with a single line look the same as before, and Mermaid export is unchanged
+
 ## 1.17.0 · 2026-11-12
 
 - Save as HTML: the window shown when saving has a new check, "Also include the markdown source" (off by default). When checked, the saved file gets an "Open in markcont" button, so readers can reopen and edit the source in the markcont web app. The source is handed over inside the browser only
