@@ -5150,9 +5150,11 @@
       try {
         const handles = await showOpenFilePicker({
           multiple: true,
-          types: [{ description: L('마크다운', 'Markdown'), accept: { 'text/plain': ['.md', '.markdown', '.mdown', '.mkd', '.txt'] } }],
+          types: [{ description: L('마크다운 · markcont로 저장한 HTML', 'Markdown · HTML saved from markcont'), accept: { 'text/plain': ['.md', '.markdown', '.mdown', '.mkd', '.txt'], 'text/html': ['.html', '.htm'] } }],
         });
-        addFiles(handles.map((h) => ({ name: h.name, path: h.name, handle: h, text: null })), false);
+        const mds = handles.filter((h) => !HTML_EXT.test(h.name));
+        if (mds.length) addFiles(mds.map((h) => ({ name: h.name, path: h.name, handle: h, text: null })), false);
+        else if (handles.length) openSavedHtml(await Promise.all(handles.map((h) => h.getFile())));
         return;
       } catch (e) {
         if (e.name === 'AbortError') return;
@@ -5161,8 +5163,10 @@
     el.fileInput.click();
   }
   el.fileInput.onchange = () => {
-    const entries = [...el.fileInput.files].filter((f) => MD_EXT.test(f.name)).map((f) => ({ name: f.name, path: f.name, file: f, text: null }));
+    const all = [...el.fileInput.files], htmls = all.filter((f) => HTML_EXT.test(f.name));
+    const entries = all.filter((f) => MD_EXT.test(f.name)).map((f) => ({ name: f.name, path: f.name, file: f, text: null }));
     el.fileInput.value = '';
+    if (!entries.length && htmls.length) { openSavedHtml(htmls); return; }
     addFiles(entries, false);
   };
 
@@ -5318,6 +5322,7 @@
       else if (ASSET_EXT.test(f.name)) state.assets.set(f.name, { file: f });
     });
     if (entries.length) addFiles(entries, false);
+    else if (files.some((f) => HTML_EXT.test(f.name))) openSavedHtml(files.filter((f) => HTML_EXT.test(f.name)));
     else if (files.length && state.current) { toast(L('그림 파일을 받았습니다. 문서에서 이 이름으로 쓰면 보입니다', 'Image received. Use its file name in the document to show it')); render(true); }
     else if (files.length) toast(L('마크다운 파일(.md)만 열 수 있습니다', 'Only markdown (.md) files can be opened'));
   });
@@ -7640,23 +7645,24 @@ ${links}
       return { clone, media: await inlineMedia(clone) };
     } finally { host.remove(); }
   }
-  // 저장 전에 묻기: 함께 넣을 문서 고르기 → 고른 key 의 Set (취소하면 null)
+  // 저장 전에 묻기: 함께 넣을 문서 고르기 · 원문도 넣을지 → { keys: 고른 key 의 Set, src: 원문 넣기 } (취소하면 null)
   function askSavedDocs(list) {
     return new Promise((resolve) => {
       const m = document.createElement('div');
       m.className = 'modal';
       m.innerHTML = `<div class="modal-card" role="dialog" aria-modal="true" aria-label="${escapeHtml(L('함께 넣을 문서', 'Documents to include'))}">
-<div class="modal-head"><div class="modal-title">${escapeHtml(L(`링크된 문서 ${list.length}개를 함께 넣을까요?`, `Include ${list.length} linked document${list.length === 1 ? '' : 's'}?`))}</div></div>
-<div class="modal-body"><p class="side-note" style="margin:0 0 12px">${escapeHtml(L('체크한 문서는 내용이 HTML 파일 안에 들어가서, 받는 사람이 링크를 누르면 옆에서 볼 수 있습니다. 빼면 그 링크는 누를 수 없는 표시로 남습니다. 넣은 문서가 다시 링크한 문서는 넣지 않습니다.', 'Checked documents are put inside the HTML file, so readers can open them beside the page from their links. Unchecked ones stay as links that cannot be opened. Documents linked from the included ones are not added.'))}</p>
-<div class="sd-pick" style="display:grid;gap:10px;max-height:46vh;overflow:auto">${list.map((d, i) => `<label class="check-row"><input type="checkbox" data-i="${i}" checked><span>${escapeHtml(d.name)}${d.path ? `<small>${escapeHtml(d.path)}</small>` : ''}</span></label>`).join('')}</div></div>
-<div class="modal-foot"><button class="btn" data-r="none" style="margin-right:auto">${escapeHtml(L('모두 빼기', 'Uncheck all'))}</button><button class="btn" data-r="cancel">${escapeHtml(L('취소', 'Cancel'))}</button><button class="btn primary" data-r="save">${escapeHtml(L('저장', 'Save'))}</button></div></div>`;
-      const boxes = () => [...m.querySelectorAll('input[type=checkbox]')];
+<div class="modal-head"><div class="modal-title">${escapeHtml(list.length ? L(`링크된 문서 ${list.length}개를 함께 넣을까요?`, `Include ${list.length} linked document${list.length === 1 ? '' : 's'}?`) : L('HTML로 저장', 'Save as HTML'))}</div></div>
+<div class="modal-body">${list.length ? '' : '<!--'}<p class="side-note" style="margin:0 0 12px">${escapeHtml(L('체크한 문서는 내용이 HTML 파일 안에 들어가서, 받는 사람이 링크를 누르면 옆에서 볼 수 있습니다. 빼면 그 링크는 누를 수 없는 표시로 남습니다. 넣은 문서가 다시 링크한 문서는 넣지 않습니다.', 'Checked documents are put inside the HTML file, so readers can open them beside the page from their links. Unchecked ones stay as links that cannot be opened. Documents linked from the included ones are not added.'))}</p>
+<div class="sd-pick" style="display:grid;gap:10px;max-height:46vh;overflow:auto">${list.map((d, i) => `<label class="check-row"><input type="checkbox" data-i="${i}" checked><span>${escapeHtml(d.name)}${d.path ? `<small>${escapeHtml(d.path)}</small>` : ''}</span></label>`).join('')}</div>${list.length ? '<hr style="border:0;border-top:1px solid var(--border);margin:14px 0">' : '-->'}
+<label class="check-row"><input type="checkbox" id="sdSrc"><span>${escapeHtml(L('마크다운 원문도 함께 넣기', 'Also include the markdown source'))}<small>${escapeHtml(L('저장한 파일에 「markcont에서 열기」 단추가 생겨서, 받는 사람이 markcont에서 다시 열어 편집할 수 있습니다. 주석처럼 화면에 보이지 않는 내용도 원문에는 들어 있으니, 밖으로 보내는 파일이면 꺼 두세요.', 'The saved file gets an "Open in markcont" button, so readers can reopen and edit it in markcont. The source also holds things not shown on screen, such as comments, so leave this off for files you send outside.'))}</small></span></label></div>
+<div class="modal-foot"><button class="btn" data-r="none" style="margin-right:auto"${list.length ? '' : ' hidden'}>${escapeHtml(L('모두 빼기', 'Uncheck all'))}</button><button class="btn" data-r="cancel">${escapeHtml(L('취소', 'Cancel'))}</button><button class="btn primary" data-r="save">${escapeHtml(L('저장', 'Save'))}</button></div></div>`;
+      const boxes = () => [...m.querySelectorAll('.sd-pick input[type=checkbox]')];
       const done = (r) => { m.remove(); resolve(r); };
       m.addEventListener('click', (e) => {
         const b = e.target.closest('[data-r]');
         if (!b) return;
         if (b.dataset.r === 'none') { const any = boxes().some((c) => c.checked); boxes().forEach((c) => (c.checked = !any)); b.textContent = any ? L('모두 넣기', 'Check all') : L('모두 빼기', 'Uncheck all'); }
-        else done(b.dataset.r === 'save' ? new Set(boxes().filter((c) => c.checked).map((c) => list[+c.dataset.i].key)) : null);
+        else done(b.dataset.r === 'save' ? { keys: new Set(boxes().filter((c) => c.checked).map((c) => list[+c.dataset.i].key)), src: m.querySelector('#sdSrc').checked } : null);
       });
       m.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(null); } });
       document.body.append(m);
@@ -7749,6 +7755,83 @@ body.sd-open { padding-right: calc(min(46vw, 680px) + 16px); }
 @media (max-width: 1000px) { body.sd-open { padding-right: 16px; } .sd-panel { width: 100vw; border-left: 0; } }
 @media print { .sd-panel, .sd-toast { display: none !important; } body.sd-open { padding-right: 16px; } }`;
 
+  /* ---------- 원문 넣기: 저장한 HTML ↔ markcont ----------
+     저장본에는 <script type="application/json" id="mc-source"> 로 마크다운 원문이 들어감 (저장할 때 체크한 경우만)
+     - 저장본의 「markcont에서 열기」: markcont 웹을 새 탭으로 열고, 그 탭이 준비됐다고 알리면 원문을 그 탭에만 건넴 (서버로 가지 않음)
+     - markcont 의 파일 열기 · 끌어다 놓기: 저장한 .html 에서 원문을 꺼내 엶
+     받은 원문은 보통의 .md 와 똑같이 그려짐 (같은 살균 과정) */
+  const WEB_APP_URL = 'https://ryuseojin.github.io/markcont/';
+  // 저장한 HTML 안에 그대로 들어가는 스크립트 (바깥 변수를 쓰지 않음 — 화면 글 · 주소는 인자로)
+  function savedSourceScript(T) {
+    document.addEventListener('DOMContentLoaded', () => {
+      const holder = document.getElementById('mc-source');
+      let pack = null, win = null;
+      try { pack = JSON.parse(holder.textContent); } catch (err) { pack = null; }
+      if (!pack) return;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'so-btn';
+      b.textContent = T.label;
+      b.title = T.tip;
+      // 연 탭이 준비됐다고 알리면 그 탭에만 건넴
+      window.addEventListener('message', (e) => {
+        if (!win || e.source !== win || e.origin !== T.origin || !e.data || e.data.type !== 'markcont-ready') return;
+        win.postMessage({ type: 'markcont-open', pack }, T.origin);
+      });
+      b.addEventListener('click', () => { win = window.open(T.url, '_blank'); if (!win) alert(T.blocked); });
+      document.body.append(b);
+    });
+  }
+  const SAVED_SRC_CSS = `.so-btn { position: fixed; right: 14px; top: 12px; height: 34px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: 600 12.5px/1 var(--font); cursor: pointer; z-index: 21; }
+.so-btn:hover { background: var(--surface-2); }
+@media print { .so-btn { display: none !important; } }`;
+  // 받은 원문 묶음을 확인 · 정리: { main: { path, text }, docs: [...] } (이상하면 null). 경로는 위로 올라가지 못하게, 확장자는 마크다운으로
+  function readSourcePack(raw) {
+    try {
+      if (!raw || typeof raw !== 'object' || raw.app !== 'markcont' || !raw.main) return null;
+      const list = [raw.main, ...(Array.isArray(raw.docs) ? raw.docs.slice(0, 50) : [])];
+      let total = 0;
+      const seen = new Set(), out = [];
+      for (const it of list) {
+        if (!it || typeof it.text !== 'string' || typeof it.path !== 'string') { if (it === raw.main) return null; continue; }
+        total += it.text.length;
+        if (total > 20 * 1024 * 1024) return null;
+        let path = it.path.replace(/\\/g, '/').split('/').map((s) => s.trim()).filter((s) => s && s !== '.' && s !== '..' && !/[<>:"|?*\u0000-\u001f]/.test(s)).join('/').slice(-200) || 'document.md';
+        if (!MD_EXT.test(path)) path += '.md';
+        if (seen.has(path)) { if (it === raw.main) return null; continue; }
+        seen.add(path);
+        out.push({ path, text: toLF(it.text) });
+      }
+      return out.length ? { main: out[0], docs: out.slice(1) } : null;
+    } catch { return null; }
+  }
+  // 저장한 HTML 글에서 원문 묶음 꺼내기 (없으면 null)
+  function sourcePackOfHtml(html) {
+    const m = String(html || '').match(/<script type="application\/json" id="mc-source">([\s\S]*?)<\/script>/);
+    if (!m) return null;
+    try { return readSourcePack(JSON.parse(m[1])); } catch { return null; }
+  }
+  // 원문 묶음을 따로 연 파일로 올리고 본 문서를 엶
+  function openSourcePack(pack) {
+    const entry = (it) => ({ name: it.path.split('/').pop(), path: it.path, file: new File([it.text], it.path.split('/').pop(), { type: 'text/markdown' }), text: null, loose: true });
+    for (const it of pack.docs) {
+      const e = entry(it), i = state.files.findIndex((f) => f.loose && f.path === e.path);
+      if (i >= 0) state.files[i] = e; else state.files.push(e);
+    }
+    return addFiles([entry(pack.main)], false);
+  }
+  // 파일 열기 · 끌어다 놓기로 받은 .html: 원문이 든 첫 파일을 엶. 원문이 없으면 알려 줌
+  const HTML_EXT = /\.html?$/i;
+  async function openSavedHtml(files) {
+    for (const f of files) {
+      let pack = null;
+      try { pack = sourcePackOfHtml(await f.text()); } catch {}
+      if (pack) { await openSourcePack(pack); return true; }
+    }
+    toast(L('이 HTML 파일에는 마크다운 원문이 들어 있지 않습니다 (markcont에서 「마크다운 원문도 함께 넣기」로 저장한 파일만 열 수 있습니다)', 'This HTML file has no markdown source inside (only files saved from markcont with "Also include the markdown source" can be opened)'), 5000);
+    return false;
+  }
+
   // 보기 설정을 HTML 저장 · 숨은 틀에 옮길 CSS 변수
   const docVars = () => `:root{--doc-size:${settings.size}px;--doc-width:${WIDTHS[settings.width]};--doc-font:${settings.font === 'serif' ? 'var(--serif)' : 'var(--font)'};--doc-lh:${LINE_H[settings.lh] || LINE_H.normal};--doc-para:${PARA_GAP[settings.para] || PARA_GAP.normal};}`;
   // 내보내기 · 서식 복사 · Word 저장 전에 그린 문서를 정리한 사본: 단추 빼기, 접힌 곳 · 탭 펴기, 찾기 표시 지우기
@@ -7830,16 +7913,17 @@ body.sd-open { padding-right: calc(min(46vw, 680px) + 16px); }
     const clone = cleanClone(el.doc, { keepTabs: true });
     // 링크된 문서: 무엇을 함께 넣을지 먼저 묻고, 고른 문서를 그려서 파일 안에 넣음
     const cands = savedLinkedDocs(el.doc);
-    const picked = cands.length ? await askSavedDocs(cands) : new Set();
-    if (!picked) return;
+    const ask = await askSavedDocs(cands);
+    if (!ask) return;
+    const picked = ask.keys;
     const media = await inlineMedia(clone);
     const docs = [], failed = [];
     if (picked.size) toast(L('링크된 문서를 넣는 중…', 'Adding linked documents…'), 20000);
     for (const c of cands) {
       if (!picked.has(c.key)) continue;
       try {
-        const r = await savedRenderDoc(await svEntryOf(c.to), docs.length);
-        docs.push({ key: c.key, name: c.name, clone: r.clone });
+        const entry = await svEntryOf(c.to), r = await savedRenderDoc(entry, docs.length);
+        docs.push({ key: c.key, name: c.name, clone: r.clone, entry });
         media.added += r.media.added;
         media.skipped.push(...r.media.skipped);
       } catch { failed.push(c.name); }
@@ -7849,6 +7933,20 @@ body.sd-open { padding-right: calc(min(46vw, 680px) + 16px); }
     docs.forEach((d) => savedMarkLinks(d.clone, keys));
     if (failed.length && !confirm(L(`읽지 못해 넣지 못한 문서: ${failed.join(', ')}\n\n그래도 저장할까요?`, `Couldn't read and include: ${failed.join(', ')}\n\nSave anyway?`))) return;
     if (media.skipped.length && !confirmSkippedMedia(media.skipped)) return;
+    // 원문 넣기: 이 문서와 함께 넣은 문서의 마크다운을 파일 안에 (「markcont에서 열기」 · markcont 의 파일 열기가 읽음)
+    let srcHtml = '';
+    if (ask.src) {
+      const items = [{ path: state.current.path || state.current.name, text: source() }];
+      for (const d of docs) if (!d.entry.builtin) { try { items.push({ path: d.entry.path || d.entry.name, text: await svRead(d.entry) }); } catch {} }
+      // 경로는 문서끼리의 상대 위치만 남김 (함께 있는 폴더 앞부분은 뺌)
+      const dirs = items.map((i) => String(i.path).replace(/\\/g, '/').split('/'));
+      let cut = 0;
+      while (dirs.every((d) => d.length - 1 > cut && d[cut] === dirs[0][cut])) cut++;
+      items.forEach((i, k) => (i.path = dirs[k].slice(cut).join('/')));
+      srcHtml = `<script type="application/json" id="mc-source">${JSON.stringify({ app: 'markcont', v: 1, main: items[0], docs: items.slice(1) }).replace(/</g, '\\u003c')}</script>`;
+    }
+    const web = !isTauri() && /^https?:$/.test(location.protocol) ? location.origin + location.pathname.replace(/[^/]*$/, '') : WEB_APP_URL; // 웹에서 저장했으면 그 주소의 markcont 로
+    const srcT = JSON.stringify({ label: L('markcont에서 열기', 'Open in markcont'), tip: L('이 문서의 마크다운 원문을 markcont 웹에서 엽니다 (편집 · 문서 점검 · 다른 형식으로 저장)', "Opens this document's markdown source in the markcont web app (edit · check · save in other formats)"), blocked: L('새 탭을 열지 못했습니다. 브라우저의 팝업 차단을 확인해 주세요.', "Couldn't open a new tab. Check the browser's pop-up blocker."), url: web + '#from-html', origin: new URL(web).origin }).replace(/</g, '\\u003c');
     const toc = settings.htmlToc !== false ? savedTocHtml(clone) : '';
     const hasDocLinks = !!clone.querySelector('a[data-doc], a.st-missing');
     const docsT = JSON.stringify({ side: L('옆 보기', 'Beside'), back: L('이전 문서', 'Previous document'), close: L('닫기 (Esc)', 'Close (Esc)'), missing: L('이 파일에는 들어 있지 않은 문서입니다', 'This document is not included in this file') }).replace(/</g, '\\u003c');
@@ -7872,15 +7970,16 @@ ${vars}
 ${userCssText()}
 body { margin: 0; background: var(--bg); padding: 48px 16px 96px; }
 @media print { body { background: #fff; padding: 0; } }
-${SAVED_TABS_CSS}${toc ? '\n' + SAVED_TOC_CSS : ''}${hasDocLinks ? '\n' + SAVED_DOCS_CSS : ''}
+${SAVED_TABS_CSS}${toc ? '\n' + SAVED_TOC_CSS : ''}${hasDocLinks ? '\n' + SAVED_DOCS_CSS : ''}${srcHtml ? '\n' + SAVED_SRC_CSS : ''}
 </style>
-<script>(${savedTabsScript.toString()})(${printTabHeads.toString()});${toc ? `(${savedTocScript.toString()})();` : ''}${hasDocLinks ? `(${savedDocsScript.toString()})(${docsT});` : ''}</script>
+<script>(${savedTabsScript.toString()})(${printTabHeads.toString()});${toc ? `(${savedTocScript.toString()})();` : ''}${hasDocLinks ? `(${savedDocsScript.toString()})(${docsT});` : ''}${srcHtml ? `(${savedSourceScript.toString()})(${srcT});` : ''}</script>
 </head>
 <body${toc ? ' class="has-toc"' : ''}>
 ${toc}<article class="markdown-body">
 ${clone.innerHTML}
 </article>
 ${docsHtml}
+${srcHtml}
 </body>
 </html>`;
     download(state.current.name.replace(MD_EXT, '') + '.html', out, 'text/html;charset=utf-8');
@@ -8306,7 +8405,7 @@ ${docsHtml}
 
   applySettings();
   // 버전 표시 (새 버전을 낼 때 package.json · tauri.conf.json 과 함께 올리세요)
-  const APP_VERSION = '1.16.1';
+  const APP_VERSION = '1.17.0';
   $('#appVersion').textContent = `markcont v${APP_VERSION} · ${window.__TAURI__ ? L('PC 프로그램', 'PC app') : L('웹 앱', 'web app')}`;
   setSideTab(side.tab);
   renderFileList();
@@ -8710,6 +8809,21 @@ ${docsHtml}
       reloading = true;
       location.reload();
     });
+  }
+  // 저장한 HTML 의 「markcont에서 열기」로 열린 탭: 준비됐다고 알리고, 연 창이 보낸 원문만 한 번 받음 (열기 전에 물어봄)
+  if (location.hash === '#from-html' && window.opener && !isTauri()) {
+    const from = window.opener;
+    let got = false;
+    try { history.replaceState(null, '', location.pathname + location.search); } catch {}
+    window.addEventListener('message', (e) => {
+      if (got || e.source !== from || !e.data || e.data.type !== 'markcont-open') return;
+      got = true;
+      const pack = readSourcePack(e.data.pack);
+      if (!pack) { toast(L('받은 문서를 읽지 못했습니다', "Couldn't read the document that was sent")); return; }
+      const names = [pack.main, ...pack.docs].map((d) => '• ' + d.path).join(String.fromCharCode(10));
+      if (confirm(L('저장한 HTML 파일이 보낸 문서를 열까요?', 'Open the documents sent from the saved HTML file?') + String.fromCharCode(10, 10) + names)) openSourcePack(pack);
+    });
+    try { from.postMessage({ type: 'markcont-ready' }, '*'); } catch {}
   }
   if ('launchQueue' in window) {
     window.launchQueue.setConsumer((params) => {
