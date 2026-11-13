@@ -1348,7 +1348,16 @@
   function uiInline(t) {
     return esc(t).replace(/\[([^\]]+)\]/g, '<span class="ut-btn">$1</span>');
   }
-  // 다른 뷰어용으로 저장: 제목은 굵은 글 한 줄로, 「@범례」 줄과 「{종류}」 표시는 빼고 보통 들여 쓴 목록으로
+  // 그림 줄: 목록 기호를 뗀 줄 전체가 그림 하나 — ![설명](경로) · ![설명|폭](경로) · ![설명|폭x높이](경로)
+  //  → { alt, w, h, src } (아니면 null). 도형 줄이 아니라 바로 위 부모 줄에 붙은 그림으로 그림
+  const UI_IMG_RE = /^!\[([^\]]*)\]\(\s*(<[^<>]+>|[^()\s]+)(?:\s+"[^"]*")?\s*\)$/;
+  function uiImage(line) {
+    const m = String(line).trim().replace(/^([-*+]|\d+[.)])\s+/, '').match(UI_IMG_RE);
+    if (!m) return null;
+    const sz = m[1].match(/^(.*?)\s*\\?\|\s*(\d{1,5})(?:\s*[x×]\s*(\d{1,5}))?\s*$/);
+    return { alt: (sz ? sz[1] : m[1]).trim(), w: sz ? +sz[2] : 0, h: sz ? +(sz[3] || 0) : 0, src: m[2].replace(/^<(.*)>$/, '$1') };
+  }
+  // 다른 뷰어용으로 저장: 제목은 굵은 글 한 줄로, 「@범례」 줄과 「{종류}」 표시는 빼고 보통 들여 쓴 목록으로 (그림 줄은 목록 줄 그대로)
   function uiToList(src) {
     const lines = src.split('\n'), head = uiHead(lines), out = [];
     if (head.title) out.push('**' + head.title + '**', '');
@@ -1362,7 +1371,7 @@
     return out.join('\n');
   }
   function renderUiTree(src) {
-    const root = { kids: [], level: -1 };
+    const root = { kids: [], imgs: [], level: -1 };
     const stack = [{ node: root, indent: -1 }];
     let count = 0;
     const lines = src.split('\n'), head = uiHead(lines);
@@ -1371,7 +1380,14 @@
       if (head.skip.has(li) || !raw.trim() || /^\s*(%%|\/\/)/.test(raw)) continue;
       const indent = raw.replace(/\t/g, '    ').match(/^ */)[0].length;
       let text = raw.trim().replace(/^([-*+]|\d+[.)])\s+/, '');
-      const n = { kids: [], entry: false };
+      // 그림 줄: 다른 해석보다 먼저. 들여쓰기로 정한 부모 줄에 붙임 (들여쓰기가 없으면 블록 맨 위)
+      const im = uiImage(text);
+      if (im) {
+        while (stack.length > 1 && stack[stack.length - 1].indent >= indent) stack.pop();
+        stack[stack.length - 1].node.imgs.push(im);
+        continue;
+      }
+      const n = { kids: [], imgs: [], entry: false };
       // 줄 맨 앞의 {종류}
       let kind = uiTakeKind(text);
       text = kind.text;
@@ -1395,7 +1411,7 @@
       stack.push({ node: n, indent });
       count++;
     }
-    if (!count) fail([{ msg: L('목록이 비어 있습니다 (들여 쓴 줄로 씁니다)', 'The list is empty (write indented lines)') }]);
+    if (!count && !root.imgs.length) fail([{ msg: L('목록이 비어 있습니다 (들여 쓴 줄로 씁니다)', 'The list is empty (write indented lines)') }]);
     // 진입점의 위쪽 줄은 「위치」
     const markPath = (n) => { let has = n.entry; for (const k of n.kids) has = markPath(k) || has; if (has && !n.entry) n.path = true; return has; };
     root.kids.forEach(markPath);
@@ -1407,12 +1423,16 @@
         (n.trigger ? `<span class="ut-trigger">${uiInline(n.trigger)}</span><span class="ut-arrow">→</span>` : '') +
         `<span class="ut-name">${uiInline(n.name)}</span>` + (n.note ? `<span class="ut-note">${uiInline(n.note)}</span>` : '') + tag + '</div>';
     };
+    // 그림 줄: 부모 줄 바로 아래 · 자식 목록보다 먼저, 이어 쓴 그림은 가로로 나란히 (폭이 없으면 160px)
+    const imgs = (n) => (n.imgs.length ? '<div class="ut-imgs">' + n.imgs.map((g) =>
+      `<figure class="ut-img"><img src="${esc(g.src)}" alt="${esc(g.alt)}" width="${g.w || 160}"${g.h ? ` height="${g.h}"` : ''} data-nocap="1">` +
+      (g.alt ? `<figcaption>${esc(g.alt)}</figcaption>` : '') + '</figure>').join('') + '</div>' : '');
     const list = (kids) => '<ul>' + kids.map((n) => {
       let sub = '';
       if (n.kids.length) sub = n.entry
         ? `<div class="ut-exposed"><div class="ut-exposed-label">${esc(L('진입하면 노출', 'Shown after entering'))}</div>${list(n.kids)}</div>`
         : list(n.kids);
-      return `<li class="${n.entry ? 'ut-entry' : n.path ? 'ut-path' : ''}">${row(n)}${sub}</li>`;
+      return `<li class="${n.entry ? 'ut-entry' : n.path ? 'ut-path' : ''}">${row(n)}${imgs(n)}${sub}</li>`;
     }).join('') + '</ul>';
     // 범례: 기본은 꺼짐. 「@범례 켬」을 쓴 블록에서만, 이 블록에 실제로 쓰인 아이콘만 (하나도 없으면 숨김). 제목이 있으면 제목 아래에
     const seen = new Set();
@@ -1420,7 +1440,7 @@
     const showLegend = head.legend === true;
     const legend = showLegend ? UI_LEGEND.filter(([id]) => seen.has(id)).map(([, i, t]) => `<span>${i} ${esc(t())}</span>`).join('') : '';
     return '<div class="ut">' + (head.title ? `<div class="ut-title${legend ? ' with-legend' : ''}">${uiInline(head.title)}</div>` : '') +
-      (legend ? `<div class="ut-legend">${legend}</div>` : '') + list(root.kids) + '</div>';
+      (legend ? `<div class="ut-legend">${legend}</div>` : '') + imgs(root) + (root.kids.length ? list(root.kids) : '') + '</div>';
   }
 
   /* =====================================================================
@@ -2088,6 +2108,7 @@
     drawDataLinks,
     dataToTables,
     uiToList,
+    uiImage,
     flowTable,
     // 파일 안의 노드 표 모두 (머리 첫 칸이 「코드」인 표)
     flowTables(text) {

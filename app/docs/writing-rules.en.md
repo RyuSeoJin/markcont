@@ -430,11 +430,28 @@ Some lines go at the top of the block, and each line can carry a marker.
 | First line `# Title` | Shows a title above the block |
 | `@legend on` | Shows the legend (under the title, if there is one) |
 | `{kind} name` | Sets the kind for a line whose name doesn't tell it. The marker is removed and only the icon stays |
+| A line with only `![alt](image.png)` | Image line. Shows the image attached to the parent line right above it (size with `![alt\|width](…)` · `![alt\|widthxheight](…)`) |
 
 - The **legend** is off by default. With `@legend on` it lists only the icons actually used in that block; if no line has an icon, it stays hidden.
 - With neither, only the tree is drawn.
 - **Kinds**: `{screen}` · `{sheet}` · `{popup}` · `{toast}` · `{button}` · `{badge}` · `{list}` · `{card}`. `{item}` shows no icon — use it when a word in the name picks the wrong icon (for example "Cards owned").
 - In an "action → result" line, put it before the result: `[Apply] → {sheet} Chat mode`
+- An **image line** is a line that, without its list marker, is a single image and nothing else. It isn't drawn as a box: the image goes right under the parent line set by the indentation, before the child lines, at the child lines' indent. Consecutive image lines under one parent sit side by side and wrap when the width runs out. With no indentation it goes under the title, before the first line.
+- The width of an image line comes from `|width`, or 160px without it. The alt text shows small under the image, and clicking the image opens the large view. Paths are relative to the document like normal images; a missing image shows "Couldn't find the image" and is caught by the document check.
+- Image lines get no icon and don't count for entry points, locations or the legend. Save for other viewers keeps them as `- ![alt](path)` list lines (`<img width>` when a width is given).
+
+````markdown example
+```ui
+# Terms agreement dialog
+![Whole dialog|160](icons/icon-192.png)
+- Why auto sign-in failed
+  - Sign-in expired "Please sign in again."
+    - ![Sign-in expired|96](icons/icon-192.png)
+  - Couldn't restore the saved sign-in "Please sign in again."
+    - ![Restore failed|96](icons/icon-192.png)
+- [Agree and continue]
+```
+````
 
 ````markdown example
 ```ui

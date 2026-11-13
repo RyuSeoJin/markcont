@@ -314,7 +314,8 @@
           continue;
         }
         if (kind === 'ui') {
-          out.push(...MarkDiagram.uiToList(body.join('\n')).split('\n')); // 제목은 굵은 글로, 「@범례」 · 「{종류}」 표시는 빼고
+          // 제목은 굵은 글로, 「@범례」 · 「{종류}」 표시는 빼고. 그림 줄은 보통 그림처럼 (폭 표시는 <img width> 로)
+          out.push(...MarkDiagram.uiToList(body.join('\n')).split('\n').map((l) => (MarkDiagram.uiImage(l) ? inline(l, ln) : l)));
           note(ln, 'uiTree', lang);
           i = j + 1;
           continue;
