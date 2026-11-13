@@ -1345,8 +1345,10 @@
     ['toast', '💬', () => L('토스트', 'Toast')], ['button', '🔘', () => L('버튼', 'Button')], ['dot', '🔴', () => L('표시', 'Badge')],
     ['list', '📋', () => L('목록', 'List')], ['card', '🃏', () => L('카드', 'Card')],
   ];
+  // 줄 글자: 이스케이프한 뒤 [ ] 는 버튼 모양, <br> · <br/> · <br /> 만 줄바꿈으로 풂 (그 밖의 태그는 글자 그대로)
+  const UI_BR = /<br\s*\/?>/gi;
   function uiInline(t) {
-    return esc(t).replace(/\[([^\]]+)\]/g, '<span class="ut-btn">$1</span>');
+    return esc(t).replace(/\[([^\]]+)\]/g, '<span class="ut-btn">$1</span>').replace(/&lt;br\s*\/?&gt;/gi, '<br>');
   }
   // 그림 줄: 목록 기호를 뗀 줄 전체가 그림 하나 — ![설명](경로) · ![설명|폭](경로) · ![설명|폭x높이](경로)
   //  → { alt, w, h, src } (아니면 null). 도형 줄이 아니라 바로 위 부모 줄에 붙은 그림으로 그림
@@ -1405,7 +1407,7 @@
       // 「조작 → {종류} 결과」: 결과 쪽에 붙인 종류
       const rk = uiTakeKind(n.name);
       if (rk.type) n.name = rk.text;
-      n.type = rk.type || kind.type || uiType(n.name);
+      n.type = rk.type || kind.type || uiType(n.name.replace(UI_BR, ' ').trim()); // <br> 은 종류 해석에 끼지 않음
       while (stack.length > 1 && stack[stack.length - 1].indent >= indent) stack.pop();
       stack[stack.length - 1].node.kids.push(n);
       stack.push({ node: n, indent });
@@ -1419,9 +1421,12 @@
     const row = (n) => {
       const tag = n.entry ? `<span class="ut-tag">${esc(L('진입점', 'Entry'))}</span>` : '';
       const ico = n.entry ? '🚪' : n.path ? '📍' : n.type[1];
-      return `<div class="ut-row" data-t="${n.entry ? 'entry' : n.path ? 'path' : n.type[0]}"><span class="ut-ico">${ico}</span>` +
-        (n.trigger ? `<span class="ut-trigger">${uiInline(n.trigger)}</span><span class="ut-arrow">→</span>` : '') +
-        `<span class="ut-name">${uiInline(n.name)}</span>` + (n.note ? `<span class="ut-note">${uiInline(n.note)}</span>` : '') + tag + '</div>';
+      const body = (n.trigger ? `<span class="ut-trigger">${uiInline(n.trigger)}</span><span class="ut-arrow">→</span>` : '') +
+        `<span class="ut-name">${uiInline(n.name)}</span>` + (n.note ? `<span class="ut-note">${uiInline(n.note)}</span>` : '') + tag;
+      // 줄 안에서 줄을 바꾼 카드: 글을 한 덩어리로 묶어 다음 줄이 아이콘 아래가 아니라 글자 왼쪽 끝에서 시작하게
+      const br = body.includes('<br>');
+      return `<div class="ut-row${br ? ' ut-multi' : ''}" data-t="${n.entry ? 'entry' : n.path ? 'path' : n.type[0]}"><span class="ut-ico">${ico}</span>` +
+        (br ? `<span class="ut-body">${body}</span>` : body) + '</div>';
     };
     // 그림 줄: 부모 줄 바로 아래 · 자식 목록보다 먼저, 이어 쓴 그림은 가로로 나란히 (폭이 없으면 160px)
     const imgs = (n) => (n.imgs.length ? '<div class="ut-imgs">' + n.imgs.map((g) =>

@@ -462,6 +462,11 @@
 .markdown-body .ut > ul > li { padding-left: 0; }
 .markdown-body .ut > ul > li::before, .markdown-body .ut > ul > li::after { display: none; }
 .markdown-body .ut-row { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 7px; padding: 4px 11px; border: 1px solid var(--border); border-left-width: 3px; border-radius: 4px; background: var(--surface); max-width: 100%; }
+/* 줄 안에서 <br> 로 줄을 바꾼 카드: 아이콘은 첫 줄 높이에, 다음 줄은 글자 왼쪽 끝에 맞춤 */
+.markdown-body .ut-row.ut-multi { align-items: baseline; flex-wrap: nowrap; }
+.markdown-body .ut-row.ut-multi .ut-ico { flex: none; }
+.markdown-body .ut-body { min-width: 0; }
+.markdown-body .ut-body > :not(:last-child):not(br) { margin-right: 7px; }
 .markdown-body .ut-row[data-t="path"] { background: transparent; border-style: dashed; border-left-width: 1px; color: var(--muted); }
 .markdown-body .ut-row[data-t="entry"] { border-color: var(--c-green); background: color-mix(in srgb, var(--c-green) 11%, var(--surface)); font-weight: 600; }
 .markdown-body .ut-row[data-t="screen"] { border-left-color: var(--c-purple); }
