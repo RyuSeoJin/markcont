@@ -3,6 +3,12 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.18.1 · 2026-11-13
+
+- Exposure block: `<br>` (`<br/>` · `<br />` · uppercase too) inside a tree line now breaks the line inside the same box. It works in the name, the action and the trailing parentheses, and entry points, trailing parentheses, "action → result", `{kind}`, `[button]` and image lines are read as before
+- Exposure block: in a box with a line break the icon stays at the first line and the next line starts at the left edge of the text. HTML export, Word export and print break at the same place, and Save for other viewers keeps the `<br>`. Tags other than `<br>` are still shown as text
+- Changed behavior: a `<br>` inside a line, which used to show as text, now shows as a line break. Blocks without `<br>` look the same as before
+
 ## 1.18.0 · 2026-11-13
 
 - Exposure block: image lines can go inside the tree. When a line, without its list marker, is a single image (`![alt](path)` · `![alt|width](path)` · `![alt|widthxheight](path)`), it is shown as an image attached to the parent line right above, not as a box. Consecutive images sit side by side, and an image line with no indentation goes under the title, before the first line

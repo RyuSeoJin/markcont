@@ -430,12 +430,14 @@ Some lines go at the top of the block, and each line can carry a marker.
 | First line `# Title` | Shows a title above the block |
 | `@legend on` | Shows the legend (under the title, if there is one) |
 | `{kind} name` | Sets the kind for a line whose name doesn't tell it. The marker is removed and only the icon stays |
+| `<br>` inside a line | Breaks the line inside the same box (`<br/>` · `<br />` · uppercase work too) |
 | A line with only `![alt](image.png)` | Image line. Shows the image attached to the parent line right above it (size with `![alt\|width](…)` · `![alt\|widthxheight](…)`) |
 
 - The **legend** is off by default. With `@legend on` it lists only the icons actually used in that block; if no line has an icon, it stays hidden.
 - With neither, only the tree is drawn.
 - **Kinds**: `{screen}` · `{sheet}` · `{popup}` · `{toast}` · `{button}` · `{badge}` · `{list}` · `{card}`. `{item}` shows no icon — use it when a word in the name picks the wrong icon (for example "Cards owned").
 - In an "action → result" line, put it before the result: `[Apply] → {sheet} Chat mode`
+- **Line breaks**: when a name and a long message share one line, write `Sign-in expired<br>"Please sign in again."` and the line breaks at the `<br>`. It works in the name, the action and the trailing parentheses, and entry points, trailing parentheses, "action → result", `{kind}` and `[button]` are read as before. The next line starts at the left edge of the text, not under the icon. Tags other than `<br>` are shown as text. Writing the rest on the next line would make it a child line (one more box), so keep it on one line with `<br>`.
 - An **image line** is a line that, without its list marker, is a single image and nothing else. It isn't drawn as a box: the image goes right under the parent line set by the indentation, before the child lines, at the child lines' indent. Consecutive image lines under one parent sit side by side and wrap when the width runs out. With no indentation it goes under the title, before the first line.
 - The width of an image line comes from `|width`, or 160px without it. The alt text shows small under the image, and clicking the image opens the large view. Paths are relative to the document like normal images; a missing image shows "Couldn't find the image" and is caught by the document check.
 - Image lines get no icon and don't count for entry points, locations or the legend. Save for other viewers keeps them as `- ![alt](path)` list lines (`<img width>` when a width is given).
