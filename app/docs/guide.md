@@ -1,6 +1,6 @@
 ---
 title: markcont 사용 안내서
-version: 1.18.1
+version: 1.18.2
 ---
 
 # markcont 사용 안내서

@@ -3,6 +3,12 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.18.2 · 2026-11-13
+
+- Exposure block: block description lines. `> …` lines right after `# Title` with no blank line between (or, without a title, at the very top) are shown as small gray text under the title, above the legend and the top image. Each line starts a new line, and a `>` line with no text is a gap between paragraphs
+- Exposure block: the description has no icon or box and doesn't count for entry points, locations or the legend. `[button]` and `<br>` are read as in tree lines. HTML export, Word export, rich copy and print show it in the same place, and Save for other viewers keeps it as a normal paragraph after `**Title**`
+- Changed behavior: `> …` lines right after the title (or at the very top without a title), which used to show as tree lines (boxes), now show as the description. `> …` lines anywhere else and blocks without description lines look the same as before
+
 ## 1.18.1 · 2026-11-13
 
 - Exposure block: `<br>` (`<br/>` · `<br />` · uppercase too) inside a tree line now breaks the line inside the same box. It works in the name, the action and the trailing parentheses, and entry points, trailing parentheses, "action → result", `{kind}`, `[button]` and image lines are read as before
