@@ -1196,7 +1196,7 @@
     });
 
     // 그림, 동영상, 소리, 유튜브
-    doc.querySelectorAll('img[src]').forEach((img) => {
+    const fixImg = (img) => {
       const src = img.getAttribute('src');
       const id = ytId(src);
       if (id) { img.replaceWith(ytCard(id)); return; }
@@ -1228,7 +1228,8 @@
         }
         img.replaceWith(missingImage(src, leavesRoot(base, rel)));
       }
-    });
+    };
+    doc.querySelectorAll('img[src]').forEach(fixImg);
 
     // 한 줄에 따로 쓴 그림: 설명(alt)을 그림 아래에 (링크로 감싼 그림 · 설명 없는 ![[그림]] 은 그대로)
     doc.querySelectorAll('p > img').forEach((img) => {
@@ -1269,7 +1270,15 @@
         d.className = 'dg';
         if (lineAttr) d.dataset.line = lineAttr;
         try {
-          if (dgKind === 'ui') { d.classList.add('dg-html'); d.innerHTML = MarkDiagram.render(dgKind, code.textContent); }
+          if (dgKind === 'ui') {
+            d.classList.add('dg-html'); d.innerHTML = MarkDiagram.render(dgKind, code.textContent);
+            // 그림 줄: 보통 그림과 같은 경로 처리 · 「그림 없음」 표시 (폭x높이로 쓴 그림은 그 높이에 맞춤)
+            d.querySelectorAll('.ut-img img[src]').forEach((img) => {
+              const h = +img.getAttribute('height');
+              if (h) applySize(img, { w: +img.getAttribute('width'), h });
+              fixImg(img);
+            });
+          }
           else if (dgKind === 'data') {
             d.classList.add('dg-html');
             d.innerHTML = MarkDiagram.render(dgKind, code.textContent); // 카드 사이 연결선은 다 그린 뒤 drawAllDataLinks
@@ -3364,6 +3373,11 @@
         used.set(slug, n + 1);
         if (n) slug += '-' + n;
         heads.push({ level: +t.tag.slice(1), title, slug, line: at });
+        continue;
+      }
+      // 노출 블록 안의 그림 줄도 그림 링크로 (없는 그림이 문서 점검에 잡히게)
+      if (t.type === 'fence' && t.map && window.MarkDiagram && MarkDiagram.kindOf((t.info || '').trim().split(/\s+/)[0]) === 'ui') {
+        t.content.split('\n').forEach((l, k) => { const g = MarkDiagram.uiImage(l); if (g) links.push({ kind: 'img', line: t.map[0] + 1 + k, href: g.src }); });
         continue;
       }
       if (t.type !== 'inline' || !t.children) continue;
@@ -8405,7 +8419,7 @@ ${srcHtml}
 
   applySettings();
   // 버전 표시 (새 버전을 낼 때 package.json · tauri.conf.json 과 함께 올리세요)
-  const APP_VERSION = '1.17.3';
+  const APP_VERSION = '1.18.0';
   $('#appVersion').textContent = `markcont v${APP_VERSION} · ${window.__TAURI__ ? L('PC 프로그램', 'PC app') : L('웹 앱', 'web app')}`;
   setSideTab(side.tab);
   renderFileList();

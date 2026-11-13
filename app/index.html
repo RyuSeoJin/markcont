@@ -477,6 +477,14 @@
 .markdown-body .ut-btn { display: inline-block; padding: 0 .45em; border: 1px solid var(--border); border-radius: 5px; background: var(--surface-2); font-size: .9em; font-weight: 600; line-height: 1.55; }
 .markdown-body .ut-tag { font-size: 11px; font-weight: 700; color: #fff; background: var(--c-green); border-radius: 999px; padding: 0 8px; line-height: 1.7; }
 .markdown-body .ut-exposed { margin: 6px 0 2px; padding: 8px 12px 6px 8px; border: 1px dashed color-mix(in srgb, var(--c-green) 50%, var(--border)); border-radius: 6px; background: color-mix(in srgb, var(--c-green) 4%, transparent); }
+/* 그림 줄: 부모 줄 바로 아래 · 자식 줄과 같은 들여쓰기 자리에, 이어 쓴 그림은 가로로 나란히 (좁으면 다음 줄로) */
+.markdown-body .ut-imgs { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 12px; margin: 6px 0 4px 38px; }
+.markdown-body .ut > .ut-imgs { margin: 0 0 10px; }
+.markdown-body .ut-exposed .ut-imgs { margin-left: 22px; }
+.markdown-body .ut-img { margin: 0; max-width: 100%; }
+.markdown-body .ut-img img { display: block; box-sizing: border-box; border: 1px solid var(--border); }
+.markdown-body .ut-img figcaption { margin-top: 3px; font-size: .82em; line-height: 1.4; color: var(--muted); }
+.markdown-body .ut-img .img-missing { font-size: .85em; }
 .markdown-body .ut-exposed-label { font-size: 11.5px; font-weight: 700; color: var(--c-green); margin: 0 0 4px 4px; }
 .markdown-body .ut-exposed > ul { padding-left: 4px; }
 .markdown-body .dg svg { display: block; margin: 0 auto; max-width: none; font-family: var(--font); }

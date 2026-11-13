@@ -3,6 +3,13 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.18.0 · 2026-11-13
+
+- Exposure block: image lines can go inside the tree. When a line, without its list marker, is a single image (`![alt](path)` · `![alt|width](path)` · `![alt|widthxheight](path)`), it is shown as an image attached to the parent line right above, not as a box. Consecutive images sit side by side, and an image line with no indentation goes under the title, before the first line
+- Exposure block: an image line's width comes from `|width`, or 160px without it. The alt text shows small under the image and clicking opens the large view. Paths are relative to the document like normal images; a missing image shows "Couldn't find the image" and is caught by the document check
+- Exposure block: image lines keep their place in HTML export (images embedded), Word export and print, and Save for other viewers keeps them as `- ![alt](path)` list lines. Blocks without image lines look the same as before
+- Changed behavior: a line with only `![…](…)`, which used to show as text and a button shape, now shows as an image
+
 ## 1.17.3 · 2026-11-12
 
 - Summary flow: when a `↪` line's label starts with `yes` or `no` (`↪ Box title | yes`), the line and its arrowhead are drawn in the same blue or red as branch lines. Other `↪` lines stay gray, and channel positions and label spots are unchanged
