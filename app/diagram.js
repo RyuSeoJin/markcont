@@ -1325,18 +1325,26 @@
     return type ? { type, text: text.slice(m[0].length) } : { type: null, text };
   }
   // 블록 맨 앞의 설정 줄: 「# 제목」(첫 줄일 때만) · 「@범례 켬」(기본은 꺼짐. 「@범례 끔」도 받음)
+  //  · 블록 설명 「> …」: 제목 바로 다음(제목이 없으면 맨 앞)에 빈 줄 없이 이어지는 줄들. 그 밖 자리의 「> …」는 나무 줄
   const UI_LEGEND_RE = /^@\s*(범례|legend)\s*[:：]?\s*(끔|끄기|숨김|off|none|hide|켬|켜기|보임|on|show)?\s*$/i;
   function uiHead(lines) {
-    const head = { title: '', legend: null, skip: new Set() };
-    let first = true;
+    const head = { title: '', legend: null, desc: [], skip: new Set() };
+    let first = true, open = false; // open: 설명 줄을 받는 자리인지
     lines.forEach((raw, i) => {
       const t = raw.trim();
-      if (!t || /^(%%|\/\/)/.test(t)) return;
+      if (!t) { if (!first) open = false; return; }
+      if (/^(%%|\/\/)/.test(t)) return;
       const lg = t.match(UI_LEGEND_RE);
       if (lg) { head.legend = !/^(끔|끄기|숨김|off|none|hide)$/i.test(lg[2] || ''); head.skip.add(i); return; }
-      if (first && /^#\s+\S/.test(t)) { head.title = t.replace(/^#\s+/, '').replace(/\s+#+$/, ''); head.skip.add(i); }
-      first = false;
+      if (first) {
+        first = false; open = true;
+        if (/^#\s+\S/.test(t)) { head.title = t.replace(/^#\s+/, '').replace(/\s+#+$/, ''); head.skip.add(i); return; }
+      }
+      const d = open && t.match(/^>\s?(.*)$/);
+      if (d) { head.desc.push(d[1].trim()); head.skip.add(i); } else open = false;
     });
+    while (head.desc.length && !head.desc[head.desc.length - 1]) head.desc.pop();
+    while (head.desc.length && !head.desc[0]) head.desc.shift();
     return head;
   }
   const UI_LEGEND = [
@@ -1359,10 +1367,13 @@
     const sz = m[1].match(/^(.*?)\s*\\?\|\s*(\d{1,5})(?:\s*[x×]\s*(\d{1,5}))?\s*$/);
     return { alt: (sz ? sz[1] : m[1]).trim(), w: sz ? +sz[2] : 0, h: sz ? +(sz[3] || 0) : 0, src: m[2].replace(/^<(.*)>$/, '$1') };
   }
-  // 다른 뷰어용으로 저장: 제목은 굵은 글 한 줄로, 「@범례」 줄과 「{종류}」 표시는 빼고 보통 들여 쓴 목록으로 (그림 줄은 목록 줄 그대로)
+  // 다른 뷰어용으로 저장: 제목은 굵은 글 한 줄로, 설명은 그 다음 보통 문단으로(「> 」를 뗀 글 · 줄마다 그대로),
+  //  「@범례」 줄과 「{종류}」 표시는 빼고 보통 들여 쓴 목록으로 (그림 줄은 목록 줄 그대로)
   function uiToList(src) {
     const lines = src.split('\n'), head = uiHead(lines), out = [];
-    if (head.title) out.push('**' + head.title + '**', '');
+    if (head.title) out.push('**' + head.title + '**');
+    out.push(...head.desc);
+    if (out.length) out.push('');
     lines.forEach((b, i) => {
       if (head.skip.has(i)) return;
       if (!b.trim()) { out.push(b); return; }
@@ -1444,7 +1455,13 @@
     (function walk(kids) { for (const n of kids) { seen.add(n.entry ? 'entry' : n.path ? 'path' : n.type[0]); walk(n.kids); } })(root.kids);
     const showLegend = head.legend === true;
     const legend = showLegend ? UI_LEGEND.filter(([id]) => seen.has(id)).map(([, i, t]) => `<span>${i} ${esc(t())}</span>`).join('') : '';
-    return '<div class="ut">' + (head.title ? `<div class="ut-title${legend ? ' with-legend' : ''}">${uiInline(head.title)}</div>` : '') +
+    // 블록 설명: 제목 바로 아래 · 범례와 맨 위 그림보다 위에 작은 회색 글로. 줄마다 줄바꿈, 빈 「>」 줄은 문단 사이
+    const paras = [];
+    let cur = [];
+    for (const l of head.desc) { if (l) cur.push(uiInline(l)); else if (cur.length) { paras.push(cur); cur = []; } }
+    if (cur.length) paras.push(cur);
+    const desc = paras.length ? `<div class="ut-desc${legend ? ' with-legend' : ''}">${paras.map((p) => `<p>${p.join('<br>')}</p>`).join('')}</div>` : '';
+    return '<div class="ut">' + (head.title ? `<div class="ut-title${legend || desc ? ' with-legend' : ''}">${uiInline(head.title)}</div>` : '') + desc +
       (legend ? `<div class="ut-legend">${legend}</div>` : '') + imgs(root) + (root.kids.length ? list(root.kids) : '') + '</div>';
   }
 

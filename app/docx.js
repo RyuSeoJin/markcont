@@ -224,6 +224,7 @@
         }
         return s;
       }
+      if (cls.contains('ut-desc')) return blocks(el, { ...ctx, f: { ...(ctx.f || {}), color: '666666' } }); // 노출 블록 설명: 회색 글
       if (tag === 'DETAILS') return blocks(el, ctx);
       if (tag === 'SUMMARY') return para(await runs(el, { b: true }), p);
       if (tag === 'DT') return para(await runs(el, { b: true }), p);
