@@ -125,6 +125,7 @@ fn pick_files(window: tauri::Window) -> Vec<String> {
     rfd::FileDialog::new()
         .set_parent(&window)
         .set_title(mcp::tr("마크다운 파일 열기", "Open markdown file"))
+        .add_filter(mcp::tr("마크다운 · HTML", "Markdown · HTML"), &[scope::MD_EXT, scope::HTML_EXT].concat()[..])
         .add_filter(mcp::tr("마크다운", "Markdown"), scope::MD_EXT)
         .pick_files()
         .unwrap_or_default()
@@ -207,7 +208,7 @@ struct FolderListing {
     dirs: Vec<String>,
 }
 
-/// 폴더 안의 마크다운 파일 · 그림 · 하위 폴더를 모두 찾습니다 (상대 경로, / 로 구분).
+/// 폴더 안의 마크다운 파일 · HTML 문서 · 그림 · 하위 폴더를 모두 찾습니다 (상대 경로, / 로 구분).
 #[tauri::command(async)]
 fn list_dir(root: String) -> Result<FolderListing, String> {
     scope::check(&root, Allowed::folder)?;
@@ -243,7 +244,7 @@ fn list_dir(root: String) -> Result<FolderListing, String> {
                 }
             } else {
                 let ext = path.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
-                if scope::MD_EXT.contains(&ext.as_str()) {
+                if scope::MD_EXT.contains(&ext.as_str()) || scope::HTML_EXT.contains(&ext.as_str()) {
                     out.files.push(p);
                 } else if scope::ASSET_EXT.contains(&ext.as_str()) {
                     out.assets.push(p);

@@ -10,6 +10,7 @@
 // 화면이 보낸 경로는 믿지 않고, 실제 위치(.. · 심볼릭 링크를 푼 경로)로 확인합니다.
 //
 //  - 문서 읽기 · 쓰기: 고른 파일 그 자체, 또는 고른 폴더 안의 마크다운 · 글 파일 (쓰기는 .css 도)
+//  - HTML 문서(.html · .htm): 고른 폴더 안에서 읽기만 (화면이 읽기 전용으로 보여 줌. 쓰기 · 만들기 · 이름 바꾸기 · 지우기는 안 됨)
 //  - 그림 · 동영상(ASSET_EXT) 읽기: 어디서든 (폴더 밖 그림을 가리키는 문서가 많아서. 읽기만)
 //  - 붙여 넣은 그림 만들기: 고른 폴더 안, 또는 고른 파일 옆 images 폴더에 새 파일로만
 //  - 만들기 · 이름 바꾸기 · 지우기: 고른 폴더 안의 폴더와 문서 · 그림 파일만, 고른 폴더 그 자체는 안 됨
@@ -21,6 +22,8 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
 pub const MD_EXT: &[&str] = &["md", "markdown", "mdown", "mkd", "txt"];
+/// 읽기 전용으로 보여 주는 HTML 문서
+pub const HTML_EXT: &[&str] = &["html", "htm"];
 pub const ASSET_EXT: &[&str] = &[
     "png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "avif", "mp4", "webm", "ogv", "mov", "mp3", "wav", "aac",
     "flac", "m4a", "oga", "ogg",
@@ -36,6 +39,9 @@ fn ext_of(p: &Path) -> String {
 }
 fn is_md(p: &Path) -> bool {
     MD_EXT.contains(&ext_of(p).as_str())
+}
+fn is_html(p: &Path) -> bool {
+    HTML_EXT.contains(&ext_of(p).as_str())
 }
 fn is_asset(p: &Path) -> bool {
     ASSET_EXT.contains(&ext_of(p).as_str())
@@ -122,7 +128,7 @@ impl Allowed {
     }
     /// 문서 읽기 (read_file)
     pub fn read_doc(&self, real: &Path) -> bool {
-        self.is_file(real) || (self.in_dir(real) && is_md(real))
+        self.is_file(real) || (self.in_dir(real) && (is_md(real) || is_html(real)))
     }
     /// 문서 저장 (save_file): 고른 파일, 또는 고른 폴더 안의 문서 · 스타일 파일
     pub fn write_doc(&self, real: &Path) -> bool {
@@ -343,6 +349,12 @@ mod tests {
         assert!(!t.ok(Allowed::read_doc, "picked/sub/../../outside/secret.md"));
         // 고른 폴더 안이어도 문서가 아닌 파일은 못 읽음
         assert!(!t.ok(Allowed::read_doc, "picked/.env"));
+        // HTML 문서: 고른 폴더 안에서 읽기만
+        assert!(t.ok(Allowed::read_doc, "picked/page.html"));
+        assert!(!t.ok(Allowed::read_doc, "outside/page.html"));
+        assert!(!t.ok(Allowed::write_doc, "picked/page.html"));
+        assert!(!t.ok(Allowed::new_doc, "picked/page.html"));
+        assert!(!t.ok(Allowed::entry, "picked/page.html"));
         // 고른 파일 옆의 다른 문서는 고른 것이 아님
         assert!(!t.ok(Allowed::read_doc, "loose/other.md"));
     }

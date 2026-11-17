@@ -1104,6 +1104,12 @@ body.mod-down .workspace.editing:not(.mode-preview) #doc a[data-path]:hover { bo
 .critic-pop .cp-what b { color: var(--text); }
 .critic-pop .cp-btns { display: flex; gap: 6px; flex-wrap: wrap; }
 .critic-pop .btn { height: 30px; font-size: 12.5px; }
+/* HTML 문서 보기: 맨 위 안내 줄, 그 밖의 HTML 을 담는 격리된 틀 */
+.markdown-body .html-note { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 18px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--muted); font-size: 13px; line-height: 1.5; }
+.markdown-body .html-note > span { flex: 1; min-width: 12em; }
+.markdown-body.html-frame-doc { max-width: none; }
+.markdown-body .html-frame { display: block; width: 100%; height: calc(100vh - 200px); min-height: 320px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+@media print { .markdown-body .html-note { display: none; } }
 .meta-critic { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--c-purple); font-weight: 600; }
 .link-preview {
   position: fixed; z-index: 90; width: min(440px, calc(100vw - 16px)); max-height: min(380px, 64vh); display: flex; flex-direction: column;
