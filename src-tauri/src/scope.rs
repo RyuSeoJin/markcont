@@ -13,6 +13,8 @@
 //  - HTML 문서(.html · .htm): 고른 폴더 안에서 읽기만 (화면이 읽기 전용으로 보여 줌. 쓰기 · 만들기 · 이름 바꾸기 · 지우기는 안 됨)
 //  - 그림 · 동영상(ASSET_EXT) 읽기: 어디서든 (폴더 밖 그림을 가리키는 문서가 많아서. 읽기만)
 //  - 붙여 넣은 그림 만들기: 고른 폴더 안, 또는 고른 파일 옆 images 폴더에 새 파일로만
+//  - 한번에 저장: 「저장할 폴더 고르기」 창에서 고른 폴더 안에 .html · .docx 파일 쓰기만 (읽기 · 지우기는 안 됨).
+//    이 폴더는 프로그램을 끄면 잊고(scope.json 에 남기지 않음), 문서를 읽는 범위에도 들어가지 않습니다
 //  - 만들기 · 이름 바꾸기 · 지우기: 고른 폴더 안의 폴더와 문서 · 그림 파일만, 고른 폴더 그 자체는 안 됨
 //    (.git/hooks 처럼 확장자 없는 실행 파일이나 설정 파일을 심거나 지우지 못하게)
 use serde::{Deserialize, Serialize};
@@ -28,6 +30,8 @@ pub const ASSET_EXT: &[&str] = &[
     "png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "avif", "mp4", "webm", "ogv", "mov", "mp3", "wav", "aac",
     "flac", "m4a", "oga", "ogg",
 ];
+/// 한번에 저장으로 쓸 수 있는 파일
+const EXPORT_EXT: &[&str] = &["html", "docx"];
 /// 문서 스타일 파일 (「문서 스타일을 파일로 저장」)
 const STYLE_EXT: &[&str] = &["css"];
 /// 기억해 두는 폴더 · 파일 수 (넘으면 오래된 것부터 잊음)
@@ -83,6 +87,8 @@ pub fn resolve(p: &Path) -> Option<PathBuf> {
 pub struct Allowed {
     dirs: Vec<PathBuf>,
     files: Vec<PathBuf>,
+    /// 한번에 저장할 곳으로 고른 폴더 (쓰기만 · 저장하지 않음)
+    exports: Vec<PathBuf>,
 }
 
 fn remember(list: &mut Vec<PathBuf>, p: PathBuf, max: usize) {
@@ -133,6 +139,10 @@ impl Allowed {
     /// 문서 저장 (save_file): 고른 파일, 또는 고른 폴더 안의 문서 · 스타일 파일
     pub fn write_doc(&self, real: &Path) -> bool {
         self.is_file(real) || (self.in_dir(real) && (is_md(real) || is_style(real)))
+    }
+    /// 한번에 저장 (save_export): 저장할 곳으로 고른 폴더 안의 .html · .docx
+    pub fn export_file(&self, real: &Path) -> bool {
+        EXPORT_EXT.contains(&ext_of(real).as_str()) && self.exports.iter().any(|d| real != d.as_path() && real.starts_with(d))
     }
     /// 새 문서 만들기 (create_file)
     pub fn new_doc(&self, real: &Path) -> bool {
@@ -195,6 +205,7 @@ fn load() -> Allowed {
             return Allowed {
                 dirs: s.dirs.into_iter().map(PathBuf::from).collect(),
                 files: s.files.into_iter().map(PathBuf::from).collect(),
+                exports: Vec::new(),
             };
         }
     }
@@ -234,6 +245,14 @@ pub fn allow_dir(p: &Path) {
         let mut a = state();
         a.add_dir(real);
         save(&a);
+    }
+}
+
+/// 사용자가 한번에 저장할 곳으로 고른 폴더 (쓰기만. 프로그램을 끄면 잊음)
+pub fn allow_export_dir(p: &Path) {
+    if let Some(real) = resolve(p) {
+        let mut a = state();
+        remember(&mut a.exports, real, MAX_DIRS);
     }
 }
 
@@ -349,6 +368,8 @@ mod tests {
         assert!(!t.ok(Allowed::read_doc, "picked/sub/../../outside/secret.md"));
         // 고른 폴더 안이어도 문서가 아닌 파일은 못 읽음
         assert!(!t.ok(Allowed::read_doc, "picked/.env"));
+        // 한번에 저장: 저장할 곳으로 고른 폴더가 없으면 어디에도 못 씀 (연 폴더 안이라도)
+        assert!(!t.ok(Allowed::export_file, "picked/out.html"));
         // HTML 문서: 고른 폴더 안에서 읽기만
         assert!(t.ok(Allowed::read_doc, "picked/page.html"));
         assert!(!t.ok(Allowed::read_doc, "outside/page.html"));
