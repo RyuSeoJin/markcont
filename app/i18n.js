@@ -38,6 +38,7 @@
     '다른 뷰어용으로 저장…': 'Save for other viewers…',
     'GitHub · VS Code 에서도 같게 보이도록 표준 마크다운으로 바꾼 사본. 원래 파일은 그대로': 'A copy converted to standard markdown so it looks the same on GitHub · VS Code. The original stays as it is',
     '다른 뷰어용 마크다운': 'Markdown for other viewers',
+    '여러 문서 한번에 저장': 'Save many documents at once',
     '다른 뷰어 호환': 'Other viewers',
     '다른 뷰어에서 다르게 보이는 곳': 'Spots that look different in other viewers',
     '이름 · 위치를 새로 정합니다. 원래 파일은 그대로': 'Pick a new name and place. The original file stays as it is',

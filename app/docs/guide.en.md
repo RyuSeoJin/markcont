@@ -1,6 +1,6 @@
 ---
 title: markcont User guide
-version: 1.19.0
+version: 1.20.0
 ---
 
 # markcont User guide
@@ -339,6 +339,9 @@ Open the window with the **History** button in the editing toolbar (<kbd>Ctrl</k
   - **HTML saved from markcont** is shown on the same screen as a markdown document, using its body. Tabs, the outline and the large image view work, and included documents are reached through their links. If the file holds the source, **"Open the markdown source"** at the top opens it as an editable document (Open file or drag and drop opens the source right away).
   - **Other HTML** is shown as it is inside an isolated frame. Scripts are not run, and images, fonts and styles from outside addresses are not loaded, so dynamic parts stay still and pages that rely on outside styles look plainer. Find and the outline don't reach inside this frame.
   - Either way, scripts inside the file are never run.
+- **Shrink images**: turn on "Shrink images" in the Save as HTML window to redraw the images as WebP (or JPEG). You can pick the max width (720 · 1080 · 1440px · original) and the quality (75 by default), and the choices are remembered. Documents with many screenshots become several times smaller. Only the saved HTML is affected and the original image files are not changed; images keep their size on screen even when their width is reduced. Animated GIF · SVG are not shrunk. The window shows an estimated size for the images of this document (included documents are not counted), and the real file size is shown after saving.
+- When linked documents are included, **the same image is stored only once**: an included document that has the same image as the body or an earlier document just points to it.
+- **Save many documents at once**: **⋯ → Export → Save many documents at once** saves the documents you check as HTML · Word in one go. In the PC app and Chrome · Edge you pick a folder and the files are created inside it with the same folder structure (files with the same name are overwritten), and links between documents saved together point to the saved `.html` files. Other browsers download each file to Downloads. "Shrink images" and "Also include the markdown source" work here too, and at the end you get the number saved, the total size and the images that couldn't be included. The PC app only writes `.html` · `.docx` inside the folder you picked, and forgets that folder when it closes.
 - Saving as HTML **puts the images inside the file**, so sending just that one file is enough for others to see them. Images from web addresses are included too when the site allows it. If some images can't be included (for example, ones that weren't found), you get a list before saving. In the web app, open the parent folder that contains the images with Open folder so they can be read.
 - Write `cover: yes` in the document info at the top, and the first page becomes a **cover** (title · summary · the rest of the info, like the author). The cover has no page number.
 - Word files keep heading levels · lists · tables · code · callouts · images, and diagrams become images. Math goes in as TeX text (`E=mc^2`). The paper size follows your region (Letter for the US · Canada, A4 elsewhere).

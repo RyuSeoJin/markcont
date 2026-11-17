@@ -967,7 +967,10 @@
     if (!art) return { frame: d };
     const docs = new Map();
     d.querySelectorAll('template.sd-doc[data-doc]').forEach((t) => docs.set(t.dataset.doc, { name: t.dataset.name || '', html: t.innerHTML }));
-    return { main: art.innerHTML, docs };
+    // 한 번만 넣은 그림(data-mc-id): 그것을 가리키는 그림(data-mc-ref)에 채워 줄 주소
+    const imgs = new Map();
+    for (const r of [d, ...[...d.querySelectorAll('template.sd-doc')].map((t) => t.content)]) r.querySelectorAll('img[data-mc-id][src]').forEach((m) => imgs.set(m.getAttribute('data-mc-id'), m.getAttribute('src')));
+    return { main: art.innerHTML, docs, imgs };
   }
   const HTML_FRAME_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; font-src data:";
   function renderHtmlDoc(keepScroll) {
@@ -1005,6 +1008,7 @@
       // 저장본의 탭: 꺼 둔 탭 내용을 숨기고, 기억해 둔 탭이 있으면 그 탭으로
       el.doc.querySelectorAll('.mc-tab-panel[data-tab-off]').forEach((p) => { p.hidden = true; p.removeAttribute('data-tab-off'); });
       initTabs(el.doc);
+      el.doc.querySelectorAll('img[data-mc-ref]').forEach((m) => { const u = parts.imgs.get(m.getAttribute('data-mc-ref')); if (u && /^data:image\//i.test(u)) m.setAttribute('src', u); });
       el.doc.querySelectorAll('a[href]').forEach((a) => { if (/^https?:/i.test(a.getAttribute('href'))) { a.target = '_blank'; a.rel = 'noopener noreferrer'; } });
     }
     buildToc();
@@ -5184,7 +5188,7 @@
     el.workspace.hidden = false;
     [el.btnEdit, $('#mZen'), $('#mFoldAll'), $('#mExportSub'), $('#mExport'), $('#mPortable'), $('#mPrint'), $('#mFind'), $('#mPresent'), $('#mDocx'), $('#mCopyRich')].forEach((b) => (b.disabled = false));
     // HTML 문서: 편집과, 마크다운 원문이 있어야 하는 저장 · 복사 · 발표는 끔 (찾기 · 인쇄 · 집중 보기는 그대로)
-    if (htmlDoc) [el.btnEdit, $('#mFoldAll'), $('#mExportSub'), $('#mExport'), $('#mPortable'), $('#mPresent'), $('#mDocx'), $('#mCopyRich')].forEach((b) => (b.disabled = true));
+    if (htmlDoc) [el.btnEdit, $('#mFoldAll'), $('#mExport'), $('#mPortable'), $('#mPresent'), $('#mDocx'), $('#mCopyRich')].forEach((b) => (b.disabled = true));
     document.body.classList.add('has-doc');
     if (!fromHistory) {
       state.hist = state.hist.slice(0, state.histPos + 1);
@@ -7241,13 +7245,79 @@
      HTML로 저장
      ========================================================= */
   // 주소(blob: · https:)의 내용을 data: 주소로. 받지 못했거나(404 등) 그림이 아니면 오류 (엉뚱한 오류 페이지를 넣지 않게)
-  async function blobToDataUrl(url) {
+  const readDataUrl = (blob) => new Promise((r, j) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.onerror = () => j(fr.error); fr.readAsDataURL(blob); });
+  async function mediaBlob(url) {
     const res = await fetch(url);
     if (!res.ok) throw new Error(String(res.status));
     const blob = await res.blob();
     if (/^https?:/i.test(url) && blob.type && !/^(image|video|audio)\//.test(blob.type)) throw new Error(blob.type);
-    return new Promise((r, j) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.onerror = () => j(fr.error); fr.readAsDataURL(blob); });
+    return blob;
   }
+  async function blobToDataUrl(url) { return readDataUrl(await mediaBlob(url)); }
+  // 파일 앞머리로 알아본 그림 종류 (PC 프로그램이 읽어 준 그림은 종류 표시가 없음)
+  async function imageKind(blob) {
+    const h = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
+    if (h[0] === 0x89 && h[1] === 0x50 && h[2] === 0x4e) return 'png';
+    if (h[0] === 0xff && h[1] === 0xd8) return 'jpeg';
+    if (h[0] === 0x52 && h[1] === 0x49 && h[8] === 0x57 && h[9] === 0x45) return 'webp';
+    if (h[0] === 0x47 && h[1] === 0x49 && h[2] === 0x46) return 'gif';
+    if (h[0] === 0x42 && h[1] === 0x4d) return 'bmp';
+    return '';
+  }
+  /* HTML 저장의 「그림 줄이기」: opt = { fmt: 'webp' | 'jpeg', maxW: 최대 폭(0 = 원본), q: 품질 30–95 }
+     저장하는 HTML 안의 그림에만 적용 (원본 파일은 건드리지 않음). PNG · JPEG · WebP · BMP 만 다시 그리고, 움직이는 GIF · SVG 는 그대로.
+     다시 그린 것이 더 크거나 브라우저가 그 형식으로 못 만들면 원래 그림을 씀 → { blob, w: 줄이기 전 폭(줄였을 때만) } */
+  async function shrinkImage(blob, opt) {
+    const kind = await imageKind(blob);
+    const typed = kind && (!blob.type || blob.type === 'application/octet-stream') ? new Blob([blob], { type: 'image/' + kind }) : blob;
+    if (!opt || !kind || kind === 'gif') return { blob: typed, w: 0 };
+    let bmp;
+    try { bmp = await createImageBitmap(blob); } catch { return { blob: typed, w: 0 }; }
+    try {
+      const k = opt.maxW && bmp.width > opt.maxW ? opt.maxW / bmp.width : 1;
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(bmp.width * k));
+      c.height = Math.max(1, Math.round(bmp.height * k));
+      const g = c.getContext('2d');
+      if (opt.fmt === 'jpeg') { g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); } // JPEG 는 투명이 없어 흰 바탕
+      g.imageSmoothingQuality = 'high';
+      g.drawImage(bmp, 0, 0, c.width, c.height);
+      const type = 'image/' + opt.fmt;
+      const out = await new Promise((r) => c.toBlob(r, type, opt.q / 100));
+      return out && out.type === type && out.size < blob.size ? { blob: out, w: k < 1 ? bmp.width : 0 } : { blob: typed, w: 0 };
+    } finally { if (bmp.close) bmp.close(); }
+  }
+  const fmtSize = (n) => (n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB');
+  const IMG_OPT_DEF = { on: false, fmt: 'webp', maxW: 720, q: 75 };
+  const imgOptSaved = () => ({ ...IMG_OPT_DEF, ...store.json('mdv-html-img', {}) });
+  // 저장 창에 넣는 「그림 줄이기」 줄 (HTML 로 저장 · 여러 문서 한번에 저장이 같이 씀)
+  function imgOptHtml() {
+    const o = imgOptSaved(), E = escapeHtml, sel = (v, cur) => (String(v) === String(cur) ? ' selected' : '');
+    return `<label class="check-row"><input type="checkbox" class="io-on"${o.on ? ' checked' : ''}><span>${E(L('그림 줄이기', 'Shrink images'))}<small>${E(L('캡처가 많은 문서의 파일 크기를 줄입니다. 저장하는 HTML에만 적용되고 원본 그림 파일은 바뀌지 않습니다. 움직이는 GIF · SVG 는 그대로 둡니다.', 'Makes files with many screenshots smaller. Only the saved HTML is affected; the original image files are not changed. Animated GIF · SVG are left as they are.'))}</small></span></label>
+<div class="io-opts" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin:8px 0 0 30px;font-size:13px">
+<label>${E(L('형식', 'Format'))} <select class="io-fmt"><option value="webp"${sel('webp', o.fmt)}>WebP</option><option value="jpeg"${sel('jpeg', o.fmt)}>JPEG</option></select></label>
+<label>${E(L('최대 폭', 'Max width'))} <select class="io-w">${[720, 1080, 1440, 0].map((w) => `<option value="${w}"${sel(w, o.maxW)}>${w ? w + 'px' : E(L('원본', 'Original'))}</option>`).join('')}</select></label>
+<label>${E(L('품질', 'Quality'))} <input type="number" class="io-q" min="30" max="95" step="5" value="${+o.q || 75}" style="width:4.6em"></label>
+</div>`;
+  }
+  // 창에서 고른 값 → 저장해 두고, 켰으면 opt 를 (껐으면 null)
+  function imgOptRead(m) {
+    const o = {
+      on: m.querySelector('.io-on').checked,
+      fmt: m.querySelector('.io-fmt').value === 'jpeg' ? 'jpeg' : 'webp',
+      maxW: [720, 1080, 1440].includes(+m.querySelector('.io-w').value) ? +m.querySelector('.io-w').value : 0,
+      q: Math.min(95, Math.max(30, Math.round(+m.querySelector('.io-q').value) || 75)),
+    };
+    store.set('mdv-html-img', JSON.stringify(o));
+    return o.on ? o : null;
+  }
+  function imgOptWire(m, onChange) {
+    const sync = () => { m.querySelectorAll('.io-opts select, .io-opts input').forEach((c) => (c.disabled = !m.querySelector('.io-on').checked)); if (onChange) onChange(); };
+    m.querySelectorAll('.io-on, .io-opts select, .io-opts input').forEach((c) => c.addEventListener('change', sync));
+    sync();
+  }
+  // 저장하는 동안의 그림 설정과, 같은 그림을 두 번 읽지 않게 하는 기억 (inlineMedia 가 씀)
+  let mediaOpt = null, mediaCache = null;
   /* ---------- 다른 뷰어용(표준 마크다운) 사본 저장 ---------- */
   async function exportPortable() {
     closeMenus();
@@ -7676,10 +7746,10 @@ html:not(.mc-js) .st-btn { display: none; }
 }
 @media print { .st-nav, .st-btn { display: none !important; } body.has-toc, body.has-toc.st-hide { padding-left: 0; padding-top: 0; } }`;
   // 저장본의 목차 HTML (제목 · 탭이 두 개 미만이면 빈 글). clone 의 탭 상자에는 목차가 찾을 번호(data-toc-box)를 붙임
-  function savedTocHtml(clone) {
-    const items = tocItems(el.doc);
+  function savedTocHtml(clone, root = el.doc) {
+    const items = tocItems(root);
     if (items.length < 2) return '';
-    const boxes = [...el.doc.querySelectorAll('.mc-tabs')];
+    const boxes = [...root.querySelectorAll('.mc-tabs')];
     clone.querySelectorAll('.mc-tabs').forEach((b, i) => b.setAttribute('data-toc-box', i));
     const links = items.map(({ n, isTab, box, lvl }) => isTab
       ? `<a class="l${lvl} tab" href="#" data-box="${boxes.indexOf(box)}" data-tab="${escapeHtml(n.dataset.tab)}">${escapeHtml(n.dataset.tab)}</a>`
@@ -7737,7 +7807,8 @@ ${links}
     });
   }
   // 문서 하나를 화면 밖에서 그려 저장용 사본으로 (그림 · 다이어그램이 다 그려질 때까지 기다림)
-  async function savedRenderDoc(entry, n) {
+  //  use(art, clone): 그린 것을 치우기 전에 할 일 (한번에 저장의 목차 · Word 만들기) — 돌려준 값은 extra 로
+  async function savedRenderDoc(entry, n, use) {
     const text = await svRead(entry);
     const { fm, body } = splitFrontMatter(text);
     const opts = docOptions(fm);
@@ -7760,7 +7831,8 @@ ${links}
         prev = len;
       }
       const clone = cleanClone(art, { keepTabs: true });
-      return { clone, media: await inlineMedia(clone) };
+      const media = await inlineMedia(clone);
+      return { clone, media, extra: use ? await use(art, clone) : undefined };
     } finally { host.remove(); }
   }
   // 저장 전에 묻기: 함께 넣을 문서 고르기 · 원문도 넣을지 → { keys: 고른 key 의 Set, src: 원문 넣기 } (취소하면 null)
@@ -7772,7 +7844,10 @@ ${links}
 <div class="modal-head"><div class="modal-title">${escapeHtml(list.length ? L(`링크된 문서 ${list.length}개를 함께 넣을까요?`, `Include ${list.length} linked document${list.length === 1 ? '' : 's'}?`) : L('HTML로 저장', 'Save as HTML'))}</div></div>
 <div class="modal-body">${list.length ? '' : '<!--'}<p class="side-note" style="margin:0 0 12px">${escapeHtml(L('체크한 문서는 내용이 HTML 파일 안에 들어가서, 받는 사람이 링크를 누르면 옆에서 볼 수 있습니다. 빼면 그 링크는 누를 수 없는 표시로 남습니다. 넣은 문서가 다시 링크한 문서는 넣지 않습니다.', 'Checked documents are put inside the HTML file, so readers can open them beside the page from their links. Unchecked ones stay as links that cannot be opened. Documents linked from the included ones are not added.'))}</p>
 <div class="sd-pick" style="display:grid;gap:10px;max-height:46vh;overflow:auto">${list.map((d, i) => `<label class="check-row"><input type="checkbox" data-i="${i}" checked><span>${escapeHtml(d.name)}${d.path ? `<small>${escapeHtml(d.path)}</small>` : ''}</span></label>`).join('')}</div>${list.length ? '<hr style="border:0;border-top:1px solid var(--border);margin:14px 0">' : '-->'}
-<label class="check-row"><input type="checkbox" id="sdSrc"><span>${escapeHtml(L('마크다운 원문도 함께 넣기', 'Also include the markdown source'))}<small>${escapeHtml(L('저장한 파일에 「markcont에서 열기」 단추가 생겨서, 받는 사람이 markcont에서 다시 열어 편집할 수 있습니다. 주석처럼 화면에 보이지 않는 내용도 원문에는 들어 있으니, 밖으로 보내는 파일이면 꺼 두세요.', 'The saved file gets an "Open in markcont" button, so readers can reopen and edit it in markcont. The source also holds things not shown on screen, such as comments, so leave this off for files you send outside.'))}</small></span></label></div>
+<label class="check-row"><input type="checkbox" id="sdSrc"><span>${escapeHtml(L('마크다운 원문도 함께 넣기', 'Also include the markdown source'))}<small>${escapeHtml(L('저장한 파일에 「markcont에서 열기」 단추가 생겨서, 받는 사람이 markcont에서 다시 열어 편집할 수 있습니다. 주석처럼 화면에 보이지 않는 내용도 원문에는 들어 있으니, 밖으로 보내는 파일이면 꺼 두세요.', 'The saved file gets an "Open in markcont" button, so readers can reopen and edit it in markcont. The source also holds things not shown on screen, such as comments, so leave this off for files you send outside.'))}</small></span></label>
+<hr style="border:0;border-top:1px solid var(--border);margin:14px 0">
+${imgOptHtml()}
+<p class="side-note io-size" style="margin:10px 0 0 30px"></p></div>
 <div class="modal-foot"><button class="btn" data-r="none" style="margin-right:auto"${list.length ? '' : ' hidden'}>${escapeHtml(L('모두 빼기', 'Uncheck all'))}</button><button class="btn" data-r="cancel">${escapeHtml(L('취소', 'Cancel'))}</button><button class="btn primary" data-r="save">${escapeHtml(L('저장', 'Save'))}</button></div></div>`;
       const boxes = () => [...m.querySelectorAll('.sd-pick input[type=checkbox]')];
       const done = (r) => { m.remove(); resolve(r); };
@@ -7780,8 +7855,34 @@ ${links}
         const b = e.target.closest('[data-r]');
         if (!b) return;
         if (b.dataset.r === 'none') { const any = boxes().some((c) => c.checked); boxes().forEach((c) => (c.checked = !any)); b.textContent = any ? L('모두 넣기', 'Check all') : L('모두 빼기', 'Uncheck all'); }
-        else done(b.dataset.r === 'save' ? { keys: new Set(boxes().filter((c) => c.checked).map((c) => list[+c.dataset.i].key)), src: m.querySelector('#sdSrc').checked } : null);
+        else done(b.dataset.r === 'save' ? { keys: new Set(boxes().filter((c) => c.checked).map((c) => list[+c.dataset.i].key)), src: m.querySelector('#sdSrc').checked, img: imgOptRead(m) } : null);
       });
+      // 예상 크기: 지금 문서의 그림만 잼 (함께 넣는 문서의 그림은 저장할 때 더해짐). 줄였을 때는 그림 몇 장을 실제로 줄여 본 비율로 어림
+      const sizeEl = m.querySelector('.io-size');
+      let blobs = null, tick = 0;
+      const estimate = async () => {
+        const my = ++tick;
+        try {
+          if (!blobs) {
+            const urls = [...new Set([...el.doc.querySelectorAll('img[src]')].map((x) => x.getAttribute('src')).filter((u) => /^(blob:|https?:)/i.test(u)))];
+            blobs = (await Promise.all(urls.map((u) => mediaBlob(u).catch(() => null)))).filter(Boolean);
+          }
+          if (my !== tick || !m.isConnected) return;
+          const total = blobs.reduce((a, b) => a + b.size, 0);
+          if (!blobs.length) { sizeEl.textContent = ''; return; }
+          const base = L(`지금 문서의 그림 ${blobs.length}장 · 약 ${fmtSize(total * 4 / 3)}`, `${blobs.length} image${blobs.length === 1 ? '' : 's'} in this document · about ${fmtSize(total * 4 / 3)}`);
+          const tail = list.length ? L(' (함께 넣는 문서의 그림은 더해집니다)', ' (images of included documents are added on top)') : '';
+          const on = m.querySelector('.io-on').checked;
+          sizeEl.textContent = base + (on ? L(' → 줄이면 …', ' → shrunk …') : '') + tail;
+          if (!on) return;
+          const opt = imgOptRead(m), pick = blobs.slice().sort((a, b) => b.size - a.size).filter((_, i, arr) => i % Math.max(1, Math.ceil(arr.length / 4)) === 0).slice(0, 4);
+          let before = 0, after = 0;
+          for (const b of pick) { const r = await shrinkImage(b, opt); before += b.size; after += r.blob.size; }
+          if (my !== tick || !m.isConnected) return;
+          sizeEl.textContent = base + L(` → 줄이면 약 ${fmtSize(total * (after / before) * 4 / 3)}`, ` → about ${fmtSize(total * (after / before) * 4 / 3)} when shrunk`) + tail;
+        } catch { sizeEl.textContent = ''; }
+      };
+      imgOptWire(m, estimate);
       m.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(null); } });
       document.body.append(m);
       m.querySelector('[data-r="save"]').focus();
@@ -7826,6 +7927,13 @@ ${links}
         if (push !== false) hist.push({ key, hash });
         body.textContent = '';
         body.append(t.content.cloneNode(true));
+        // 앞에 이미 들어 있는 그림을 가리키는 그림(data-mc-ref): 처음 나온 그림(data-mc-id)의 주소로 채움
+        body.querySelectorAll('img[data-mc-ref]').forEach((m) => {
+          const q = 'img[data-mc-id="' + m.getAttribute('data-mc-ref') + '"][src]';
+          let from = document.querySelector(q);
+          if (!from) for (const x of document.querySelectorAll('template.sd-doc')) { from = x.content.querySelector(q); if (from) break; }
+          if (from) m.src = from.getAttribute('src');
+        });
         title.textContent = t.dataset.name;
         backBtn.disabled = hist.length < 2;
         panel.hidden = false;
@@ -8003,7 +8111,16 @@ body.sd-open { padding-right: calc(min(46vw, 680px) + 16px); }
       const src = m.getAttribute('src');
       const web = /^https?:/i.test(src);
       if (!src.startsWith('blob:') && !(web && m.tagName === 'IMG')) continue; // 인터넷 동영상 · 소리는 크기가 커서 주소로 둠
-      try { m.setAttribute('src', await blobToDataUrl(src)); added++; }
+      try {
+        if (m.tagName !== 'IMG') { m.setAttribute('src', await blobToDataUrl(src)); added++; continue; }
+        const cache = mediaCache || new Map(), opt = mediaOpt;
+        if (!cache.has(src)) cache.set(src, (async () => { const b = await mediaBlob(src), r = await shrinkImage(b, opt); return { url: await readDataUrl(r.blob), w: r.w }; })());
+        const r = await cache.get(src);
+        m.setAttribute('src', r.url);
+        // 폭을 줄인 그림: 화면에 보이는 크기는 그대로 (폭을 따로 정하지 않은 그림에만)
+        if (r.w && !m.hasAttribute('width') && !m.hasAttribute('height') && !m.style.width) m.setAttribute('width', r.w);
+        added++;
+      }
       catch (e) { // 유튜브 썸네일은 알리지 않음. TypeError = 사이트가 허락하지 않음 · 연결 안 됨, 그 밖 = 404 등 그 주소에 그림이 없음
         if (!m.closest('a.yt')) skipped.push({ src, why: !web ? 'read' : e instanceof TypeError ? 'web' : 'webGone' });
       }
@@ -8011,6 +8128,26 @@ body.sd-open { padding-right: calc(min(46vw, 680px) + 16px); }
     root.querySelectorAll('.img-missing').forEach((sp) => skipped.push({ src: sp.querySelector('code')?.textContent || '', why: 'missing' }));
     root.querySelectorAll('img.broken:not([src])').forEach((m) => skipped.push({ src: m.alt || '', why: 'missing' }));
     return { added, skipped };
+  }
+  // 함께 넣은 문서의 그림이 앞에 이미 들어 있으면 그 그림을 가리키기만 함 (data-mc-ref → 처음 나온 그림의 data-mc-id).
+  //  본문 안의 그림은 스크립트 없이도 보이게 그대로 둠. 함께 넣은 문서는 저장본 스크립트 · markcont 의 HTML 보기가 열 때 채움 → 줄인 글자 수
+  function dedupeMedia(main, docs) {
+    const seen = new Map();
+    let n = 0, saved = 0;
+    const mark = (root, keep) => root.querySelectorAll('img[src^="data:"]').forEach((m) => {
+      const src = m.getAttribute('src');
+      if (src.length < 4096) return;
+      const hit = seen.get(src);
+      if (!hit) { seen.set(src, { el: m, id: '' }); return; }
+      if (keep) return;
+      if (!hit.id) { hit.id = 'i' + ++n; hit.el.setAttribute('data-mc-id', hit.id); }
+      m.removeAttribute('src');
+      m.setAttribute('data-mc-ref', hit.id);
+      saved += src.length;
+    });
+    mark(main, true);
+    docs.forEach((d) => mark(d, false));
+    return saved;
   }
   function confirmSkippedMedia(list) {
     const why = { missing: L('찾지 못함', 'not found'), read: L('읽지 못함', "couldn't read"), web: L('인터넷 그림 — 받아 올 수 없어 주소로 남김, 받는 사람이 인터넷에 연결돼 있으면 보임', "web image — couldn't fetch it, so the address is kept; readers see it when online"), webGone: L('인터넷 주소에 그림이 없음 — 받는 사람에게도 안 보임', "no image at that web address — readers won't see it either") };
@@ -8025,7 +8162,52 @@ body.sd-open { padding-right: calc(min(46vw, 680px) + 16px); }
     ].join(NL + NL));
   }
 
+  // 저장본 HTML 한 장: name(문서 이름) · clone(정리한 본문) · docs(함께 넣은 문서) · srcHtml(원문 묶음) · toc(미리 만든 목차. 없으면 화면의 문서로 만듦)
+  function savedPage({ name, clone, docs = [], srcHtml = '', toc = null }) {
+    const web = !isTauri() && /^https?:$/.test(location.protocol) ? location.origin + location.pathname.replace(/[^/]*$/, '') : WEB_APP_URL; // 웹에서 저장했으면 그 주소의 markcont 로
+    const srcT = JSON.stringify({ label: L('markcont에서 열기', 'Open in markcont'), tip: L('이 문서의 마크다운 원문을 markcont 웹에서 엽니다 (편집 · 문서 점검 · 다른 형식으로 저장)', "Opens this document's markdown source in the markcont web app (edit · check · save in other formats)"), blocked: L('새 탭을 열지 못했습니다. 브라우저의 팝업 차단을 확인해 주세요.', "Couldn't open a new tab. Check the browser's pop-up blocker."), url: web + '#from-html', origin: new URL(web).origin }).replace(/</g, '\\u003c');
+    if (toc == null) toc = settings.htmlToc !== false ? savedTocHtml(clone) : '';
+    const hasDocLinks = !!clone.querySelector('a[data-doc], a.st-missing');
+    const docsT = JSON.stringify({ side: L('옆 보기', 'Beside'), back: L('이전 문서', 'Previous document'), close: L('닫기 (Esc)', 'Close (Esc)'), missing: L('이 파일에는 들어 있지 않은 문서입니다', 'This document is not included in this file') }).replace(/</g, '\\u003c');
+    const docsHtml = docs.map((d) => `<template class="sd-doc" data-doc="${escapeHtml(d.key)}" data-name="${escapeHtml(d.name)}">\n${d.clone.innerHTML}\n</template>`).join('\n');
+    const theme = document.documentElement.dataset.theme;
+    const hl = theme === 'dark' ? 'github-dark' : 'github';
+    const title = escapeHtml(name.replace(MD_EXT, ''));
+    const vars = docVars();
+    const serif = settings.font === 'serif' ? '\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap">' : '';
+    const out = `<!doctype html>
+<html lang="ko" data-theme="${theme}"${settings.tint && settings.tint !== 'plain' ? ` data-tint="${settings.tint}"` : ''}>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${title}</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">${serif}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.19.1/dist/katex.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/styles/${hl}.min.css">
+<style>${$('#doc-css').textContent}
+${vars}
+${userCssText()}
+body { margin: 0; background: var(--bg); padding: 48px 16px 96px; }
+@media print { body { background: #fff; padding: 0; } }
+${SAVED_TABS_CSS}${toc ? '\n' + SAVED_TOC_CSS : ''}${hasDocLinks ? '\n' + SAVED_DOCS_CSS : ''}${srcHtml ? '\n' + SAVED_SRC_CSS : ''}
+</style>
+<script>(${savedTabsScript.toString()})(${printTabHeads.toString()});${toc ? `(${savedTocScript.toString()})();` : ''}${hasDocLinks ? `(${savedDocsScript.toString()})(${docsT});` : ''}${srcHtml ? `(${savedSourceScript.toString()})(${srcT});` : ''}</script>
+</head>
+<body${toc ? ' class="has-toc"' : ''}>
+${toc}<article class="markdown-body">
+${clone.innerHTML}
+</article>
+${docsHtml}
+${srcHtml}
+</body>
+</html>`;
+    return out;
+  }
+
   async function exportHtml() {
+    try { await exportHtmlRun(); } finally { mediaOpt = null; mediaCache = null; }
+  }
+  async function exportHtmlRun() {
     closeMenus();
     await settleMedia(); // 아직 읽는 중인 그림까지
     const clone = cleanClone(el.doc, { keepTabs: true });
@@ -8033,6 +8215,7 @@ body.sd-open { padding-right: calc(min(46vw, 680px) + 16px); }
     const cands = savedLinkedDocs(el.doc);
     const ask = await askSavedDocs(cands);
     if (!ask) return;
+    mediaOpt = ask.img; mediaCache = new Map();
     const picked = ask.keys;
     const media = await inlineMedia(clone);
     const docs = [], failed = [];
@@ -8063,46 +8246,13 @@ body.sd-open { padding-right: calc(min(46vw, 680px) + 16px); }
       items.forEach((i, k) => (i.path = dirs[k].slice(cut).join('/')));
       srcHtml = `<script type="application/json" id="mc-source">${JSON.stringify({ app: 'markcont', v: 1, main: items[0], docs: items.slice(1) }).replace(/</g, '\\u003c')}</script>`;
     }
-    const web = !isTauri() && /^https?:$/.test(location.protocol) ? location.origin + location.pathname.replace(/[^/]*$/, '') : WEB_APP_URL; // 웹에서 저장했으면 그 주소의 markcont 로
-    const srcT = JSON.stringify({ label: L('markcont에서 열기', 'Open in markcont'), tip: L('이 문서의 마크다운 원문을 markcont 웹에서 엽니다 (편집 · 문서 점검 · 다른 형식으로 저장)', "Opens this document's markdown source in the markcont web app (edit · check · save in other formats)"), blocked: L('새 탭을 열지 못했습니다. 브라우저의 팝업 차단을 확인해 주세요.', "Couldn't open a new tab. Check the browser's pop-up blocker."), url: web + '#from-html', origin: new URL(web).origin }).replace(/</g, '\\u003c');
-    const toc = settings.htmlToc !== false ? savedTocHtml(clone) : '';
-    const hasDocLinks = !!clone.querySelector('a[data-doc], a.st-missing');
-    const docsT = JSON.stringify({ side: L('옆 보기', 'Beside'), back: L('이전 문서', 'Previous document'), close: L('닫기 (Esc)', 'Close (Esc)'), missing: L('이 파일에는 들어 있지 않은 문서입니다', 'This document is not included in this file') }).replace(/</g, '\\u003c');
-    const docsHtml = docs.map((d) => `<template class="sd-doc" data-doc="${escapeHtml(d.key)}" data-name="${escapeHtml(d.name)}">\n${d.clone.innerHTML}\n</template>`).join('\n');
-    const theme = document.documentElement.dataset.theme;
-    const hl = theme === 'dark' ? 'github-dark' : 'github';
-    const title = escapeHtml(state.current.name.replace(MD_EXT, ''));
-    const vars = docVars();
-    const serif = settings.font === 'serif' ? '\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap">' : '';
-    const out = `<!doctype html>
-<html lang="ko" data-theme="${theme}"${settings.tint && settings.tint !== 'plain' ? ` data-tint="${settings.tint}"` : ''}>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${title}</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">${serif}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.19.1/dist/katex.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/styles/${hl}.min.css">
-<style>${$('#doc-css').textContent}
-${vars}
-${userCssText()}
-body { margin: 0; background: var(--bg); padding: 48px 16px 96px; }
-@media print { body { background: #fff; padding: 0; } }
-${SAVED_TABS_CSS}${toc ? '\n' + SAVED_TOC_CSS : ''}${hasDocLinks ? '\n' + SAVED_DOCS_CSS : ''}${srcHtml ? '\n' + SAVED_SRC_CSS : ''}
-</style>
-<script>(${savedTabsScript.toString()})(${printTabHeads.toString()});${toc ? `(${savedTocScript.toString()})();` : ''}${hasDocLinks ? `(${savedDocsScript.toString()})(${docsT});` : ''}${srcHtml ? `(${savedSourceScript.toString()})(${srcT});` : ''}</script>
-</head>
-<body${toc ? ' class="has-toc"' : ''}>
-${toc}<article class="markdown-body">
-${clone.innerHTML}
-</article>
-${docsHtml}
-${srcHtml}
-</body>
-</html>`;
+    if (docs.length) dedupeMedia(clone, docs.map((d) => d.clone)); // 같은 그림은 한 번만
+    const out = savedPage({ name: state.current.name, clone, docs, srcHtml });
     download(state.current.name.replace(MD_EXT, '') + '.html', out, 'text/html;charset=utf-8');
-    if (docs.length) toast(L(`HTML 파일을 다운로드 폴더에 저장했습니다 (링크된 문서 ${docs.length}개${media.added ? ` · 그림 ${media.added}개` : ''}를 파일 안에 넣음)`, `Saved the HTML file to Downloads (${docs.length} linked document${docs.length === 1 ? '' : 's'}${media.added ? ` · ${media.added} image${media.added === 1 ? '' : 's'}` : ''} included in the file)`), 3600);
-    else toast(media.added
+    const sizeNote = L(' · 파일 크기 ', ' · file size ') + fmtSize(new Blob([out]).size);
+    const say = (t, ms) => toast(t + sizeNote, ms || 3600);
+    if (docs.length) say(L(`HTML 파일을 다운로드 폴더에 저장했습니다 (링크된 문서 ${docs.length}개${media.added ? ` · 그림 ${media.added}개` : ''}를 파일 안에 넣음)`, `Saved the HTML file to Downloads (${docs.length} linked document${docs.length === 1 ? '' : 's'}${media.added ? ` · ${media.added} image${media.added === 1 ? '' : 's'}` : ''} included in the file)`), 3600);
+    else say(media.added
       ? L(`HTML 파일을 다운로드 폴더에 저장했습니다 (그림 ${media.added}개를 파일 안에 넣음)`, `Saved the HTML file to Downloads (${media.added} image${media.added === 1 ? '' : 's'} included in the file)`)
       : L('HTML 파일을 다운로드 폴더에 저장했습니다', 'Saved the HTML file to Downloads'));
   }
@@ -8393,6 +8543,177 @@ ${srcHtml}
   }
   $('#mDocx').onclick = exportDocx;
 
+  /* ---------- 여러 문서 한번에 저장 (HTML · Word) ----------
+     고른 문서를 하나씩 화면 밖에서 그려, 고른 폴더 안에 원래 폴더 구조대로 저장 (같은 이름이 있으면 덮어씀)
+     - PC 프로그램: 저장할 폴더를 고르면 그 안에 .html · .docx 만 쓸 수 있음 (scope.rs 의 export_file)
+     - Chrome · Edge: 폴더 고르기(showDirectoryPicker)  · 그 밖의 브라우저: 파일마다 내려받기 */
+  function askBatch(list) {
+    return new Promise((resolve) => {
+      const E = escapeHtml, m = document.createElement('div');
+      const title = L('여러 문서 한번에 저장', 'Save many documents at once');
+      const canPick = isTauri() || !!window.showDirectoryPicker;
+      m.className = 'modal';
+      m.innerHTML = `<div class="modal-card" role="dialog" aria-modal="true" aria-label="${E(title)}">
+<div class="modal-head"><div class="modal-title">${E(title)}</div></div>
+<div class="modal-body"><p class="side-note" style="margin:0 0 12px">${E(canPick
+    ? L('체크한 문서를 고른 폴더 안에 원래 폴더 구조대로 저장합니다. 같은 이름의 파일이 있으면 덮어씁니다. 함께 저장한 문서끼리의 링크는 저장한 파일끼리 이어집니다.', 'Saves the checked documents into the folder you pick, keeping their folder structure. Files with the same name are overwritten. Links between documents saved together point to the saved files.')
+    : L('이 브라우저는 폴더를 고를 수 없어, 체크한 문서를 파일마다 다운로드 폴더에 내려받습니다(브라우저가 여러 파일 내려받기를 허락할지 물을 수 있습니다). 폴더 구조대로 저장하려면 Chrome · Edge 나 PC 프로그램을 쓰세요.', "This browser can't pick a folder, so each checked document is downloaded to Downloads (the browser may ask to allow multiple downloads). To keep the folder structure, use Chrome · Edge or the PC app."))}</p>
+<div class="sd-pick" style="display:grid;gap:10px;max-height:36vh;overflow:auto">${list.map((d, i) => `<label class="check-row"><input type="checkbox" data-i="${i}" checked><span>${E(d.name.replace(MD_EXT, ''))}<small>${E(d.loose ? L('따로 연 파일', 'Opened separately') : parentOf(d.path))}</small></span></label>`).join('')}</div>
+<hr style="border:0;border-top:1px solid var(--border);margin:14px 0">
+<div style="display:grid;gap:10px">
+<label class="check-row"><input type="checkbox" id="bxHtml" checked><span>${E(L('HTML 파일', 'HTML file'))}<small>${E(L('그림을 파일 안에 넣습니다. 목차는 보기 설정을 따릅니다.', 'Images are put inside the file. The outline follows the view settings.'))}</small></span></label>
+<label class="check-row"><input type="checkbox" id="bxDocx"><span>${E(L('Word 파일 (.docx)', 'Word file (.docx)'))}</span></label>
+<label class="check-row"><input type="checkbox" id="bxSrc"><span>${E(L('HTML에 마크다운 원문도 함께 넣기', 'Also include the markdown source in the HTML'))}<small>${E(L('주석처럼 화면에 보이지 않는 내용도 원문에는 들어 있으니, 밖으로 보내는 파일이면 꺼 두세요.', 'The source also holds things not shown on screen, such as comments, so leave this off for files you send outside.'))}</small></span></label>
+<div>${imgOptHtml()}</div>
+</div></div>
+<div class="modal-foot"><button class="btn" data-r="none" style="margin-right:auto">${E(L('모두 빼기', 'Uncheck all'))}</button><button class="btn" data-r="cancel">${E(L('취소', 'Cancel'))}</button><button class="btn primary" data-r="save">${E(canPick ? L('저장할 폴더 고르기', 'Pick a folder to save') : L('저장', 'Save'))}</button></div></div>`;
+      const boxes = () => [...m.querySelectorAll('.sd-pick input[type=checkbox]')];
+      const done = (r) => { m.remove(); resolve(r); };
+      m.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-r]');
+        if (!b) return;
+        if (b.dataset.r === 'none') { const any = boxes().some((c) => c.checked); boxes().forEach((c) => (c.checked = !any)); b.textContent = any ? L('모두 고르기', 'Check all') : L('모두 빼기', 'Uncheck all'); return; }
+        if (b.dataset.r !== 'save') { done(null); return; }
+        const entries = boxes().filter((c) => c.checked).map((c) => list[+c.dataset.i]);
+        const html = m.querySelector('#bxHtml').checked, docx = m.querySelector('#bxDocx').checked;
+        if (!entries.length) { toast(L('저장할 문서를 하나 이상 골라 주세요', 'Pick at least one document')); return; }
+        if (!html && !docx) { toast(L('저장할 형식을 하나 이상 골라 주세요', 'Pick at least one format')); return; }
+        done({ entries, html, docx, src: m.querySelector('#bxSrc').checked, img: imgOptRead(m) });
+      });
+      imgOptWire(m);
+      m.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(null); } });
+      document.body.append(m);
+      m.querySelector('[data-r="save"]').focus();
+    });
+  }
+  // 저장할 곳: { where, write(상대 경로, Blob) } — 고르기를 그만두면 null
+  async function batchTarget() {
+    if (isTauri()) {
+      const path = await pickOnce('pick_export_folder');
+      if (!path) return null;
+      const r = path.replace(/[\\/]+$/, ''), sep = r.includes('\\') ? '\\' : '/';
+      return { where: path, write: async (rel, blob) => {
+        const p = r + sep + rel.split('/').join(sep);
+        if (/\.html$/i.test(rel)) await tinvoke('save_export', { path: p, text: await blob.text() });
+        else await tinvoke('save_export', { path: p, data: Array.from(new Uint8Array(await blob.arrayBuffer())) });
+      } };
+    }
+    if (window.showDirectoryPicker) {
+      let dir;
+      try { dir = await showDirectoryPicker({ mode: 'readwrite' }); } catch (e) { if (e.name === 'AbortError') return null; throw e; }
+      return { where: dir.name, write: async (rel, blob) => {
+        const parts = rel.split('/');
+        let d = dir;
+        for (const seg of parts.slice(0, -1)) d = await d.getDirectoryHandle(seg, { create: true });
+        const fh = await d.getFileHandle(parts[parts.length - 1], { create: true });
+        const w = await fh.createWritable();
+        await w.write(blob);
+        await w.close();
+      } };
+    }
+    return { where: '', write: async (rel, blob) => { download(rel.split('/').join(' - '), blob, blob.type); await new Promise((r) => setTimeout(r, 400)); } };
+  }
+  // 함께 저장하는 문서끼리의 링크는 저장한 .html 끼리 (상대 경로), 그 밖의 문서 링크는 누를 수 없는 표시로
+  function batchLinks(clone, entry, rel) {
+    const from = rel.get(entry).split('/').slice(0, -1);
+    clone.querySelectorAll('a').forEach((a) => {
+      if (!('path' in a.dataset)) return;
+      const to = !a.dataset.builtin && !a.classList.contains('missing') && a.dataset.path ? state.files.find((f) => f.path === a.dataset.path) : null;
+      let hash = a.dataset.hash || (a.dataset.heading ? slugify(a.dataset.heading) : '');
+      try { hash = decodeURIComponent(hash); } catch { /* % 가 그냥 글자인 제목 */ }
+      for (const n of ['data-path', 'data-builtin', 'data-outside', 'data-heading', 'data-hash', 'title']) a.removeAttribute(n);
+      if (to && rel.has(to)) {
+        const t = rel.get(to).split('/');
+        let k = 0;
+        while (k < from.length && k < t.length - 1 && from[k] === t[k]) k++;
+        const path = [...from.slice(k).map(() => '..'), ...t.slice(k)].map(encodeURIComponent).join('/') + '.html';
+        a.setAttribute('href', (to === entry && hash ? '' : path) + (hash ? '#' + encodeURIComponent(hash) : ''));
+      } else {
+        a.removeAttribute('href');
+        a.classList.add('st-missing');
+        a.setAttribute('role', 'link');
+        a.setAttribute('aria-disabled', 'true');
+        a.tabIndex = 0;
+        a.title = L('함께 저장하지 않은 문서입니다', "This document wasn't saved together");
+      }
+    });
+  }
+  async function exportBatch() {
+    closeMenus();
+    const list = state.files.filter((f) => !f.builtin && MD_EXT.test(f.name)).sort((a, b) => a.path.localeCompare(b.path, 'ko', { numeric: true }));
+    if (!list.length) { toast(L('저장할 마크다운 문서가 없습니다. 폴더나 파일을 먼저 열어 주세요', 'No markdown documents to save. Open a folder or file first')); return; }
+    const ask = await askBatch(list);
+    if (!ask) return;
+    if (ask.docx && (!window.MarkDocx || !window.MarkRich)) { toast(L('Word 파일을 만드는 부분을 불러오지 못했습니다', "Couldn't load the Word export")); return; }
+    let out;
+    try { out = await batchTarget(); } catch (e) { toast(L('저장할 폴더를 열지 못했습니다: ', "Couldn't open the folder to save in: ") + ((e && e.message) || e), 4000); return; }
+    if (!out) return;
+    // 저장 경로: 고른 문서들이 함께 있는 폴더 앞부분은 빼고, 확장자를 뗀 이름으로 (이름이 겹치면 원래 확장자를 남김)
+    const segs = ask.entries.map((e) => e.path.split('/'));
+    let cut = 0;
+    while (segs.every((d) => d.length - 1 > cut && d[cut] === segs[0][cut])) cut++;
+    const rel = new Map(), used = new Set();
+    ask.entries.forEach((e, i) => {
+      const full = segs[i].slice(cut).join('/');
+      let base = full.replace(MD_EXT, '');
+      if (used.has(base.toLowerCase())) base = full;
+      used.add(base.toLowerCase());
+      rel.set(e, base);
+    });
+    const E = escapeHtml, pm = document.createElement('div');
+    pm.className = 'modal';
+    pm.innerHTML = `<div class="modal-card" role="dialog" aria-modal="true"><div class="modal-head"><div class="modal-title">${E(L('저장하는 중…', 'Saving…'))}</div></div><div class="modal-body"><p class="side-note" style="margin:0;white-space:pre-line"></p></div><div class="modal-foot"><button class="btn" data-r="stop">${E(L('멈춤', 'Stop'))}</button></div></div>`;
+    const msg = pm.querySelector('.side-note'), btn = pm.querySelector('[data-r]');
+    let stop = false, finished = false;
+    btn.onclick = () => { if (finished) pm.remove(); else { stop = true; btn.disabled = true; } };
+    document.body.append(pm);
+    const total = ask.entries.length, failed = [];
+    let saved = 0, skipped = 0, bytes = 0;
+    mediaOpt = ask.img; mediaCache = new Map(); // 여러 문서에 같이 쓰인 그림은 한 번만 읽고 줄임
+    try {
+    for (const [i, e] of ask.entries.entries()) {
+      if (stop) break;
+      msg.textContent = `${i + 1} / ${total} · ${rel.get(e)}`;
+      try {
+        const r = await savedRenderDoc(e, 9000 + i, async (art, clone) => {
+          const x = { toc: '', docx: null };
+          if (ask.html) { batchLinks(clone, e, rel); if (settings.htmlToc !== false) x.toc = savedTocHtml(clone, art); }
+          if (ask.docx) {
+            let fr = null;
+            try {
+              fr = await lightFrame(art);
+              const title = art.querySelector('.print-cover .cover-title')?.textContent.trim() || art.querySelector('h1')?.textContent.trim() || e.name.replace(MD_EXT, '');
+              x.docx = await MarkDocx.build(fr.root, { title, lang: navigator.language });
+            } finally { fr?.dispose(); }
+          }
+          return x;
+        });
+        if (ask.html) {
+          const srcHtml = ask.src ? `<script type="application/json" id="mc-source">${JSON.stringify({ app: 'markcont', v: 1, main: { path: e.name, text: await svRead(e) }, docs: [] }).replace(/</g, '\\u003c')}</script>` : '';
+          const page = new Blob([savedPage({ name: e.name, clone: r.clone, srcHtml, toc: r.extra.toc })], { type: 'text/html;charset=utf-8' });
+          await out.write(rel.get(e) + '.html', page);
+          bytes += page.size;
+          skipped += r.media.skipped.length;
+        }
+        if (ask.docx) { await out.write(rel.get(e) + '.docx', r.extra.docx); bytes += r.extra.docx.size; }
+        saved++;
+      } catch (err) { failed.push(rel.get(e) + ' — ' + ((err && err.message) || err)); }
+    }
+    } finally { mediaOpt = null; mediaCache = null; }
+    finished = true;
+    btn.disabled = false;
+    btn.textContent = L('닫기', 'Close');
+    pm.querySelector('.modal-title').textContent = stop ? L('저장을 멈췄습니다', 'Stopped saving') : L('저장을 마쳤습니다', 'Finished saving');
+    msg.textContent = [
+      L(`문서 ${saved}개를 저장했습니다`, `Saved ${saved} document${saved === 1 ? '' : 's'}`) + (out.where ? ` · ${out.where}` : L(' · 다운로드 폴더', ' · Downloads')) + (saved ? L(` · 모두 ${fmtSize(bytes)}`, ` · ${fmtSize(bytes)} in total`) : ''),
+      stop && saved + failed.length < total ? L(`남은 문서 ${total - saved - failed.length}개는 저장하지 않았습니다`, `${total - saved - failed.length} remaining document(s) were not saved`) : '',
+      skipped ? L(`파일 안에 넣지 못한 그림 ${skipped}개 (찾지 못했거나 받아 올 수 없는 그림)`, `${skipped} image(s) couldn't be put inside the files (not found or couldn't be fetched)`) : '',
+      failed.length ? L(`저장하지 못한 문서 ${failed.length}개:`, `${failed.length} document(s) couldn't be saved:`) + '\n' + failed.slice(0, 8).join('\n') + (failed.length > 8 ? '\n…' : '') : '',
+    ].filter(Boolean).join('\n');
+    btn.focus();
+  }
+  $('#mBatch').onclick = exportBatch;
+
   // 서식 그대로 복사: 메일 · 노션 · 구글 문서 · 블로그에 붙여 넣어도 모양이 남게 (richcopy.js)
   //  - 문서 안에서 고른 곳이 있으면 그 부분만 (둘레 요소도 함께 옮겨 표 · 목록 · 알림 상자 모양이 남게)
   //  - 글자만 받는 곳에는 문서 전체면 마크다운 원본, 고른 부분이면 그 글자
@@ -8523,7 +8844,7 @@ ${srcHtml}
 
   applySettings();
   // 버전 표시 (새 버전을 낼 때 package.json · tauri.conf.json 과 함께 올리세요)
-  const APP_VERSION = '1.19.0';
+  const APP_VERSION = '1.20.0';
   $('#appVersion').textContent = `markcont v${APP_VERSION} · ${window.__TAURI__ ? L('PC 프로그램', 'PC app') : L('웹 앱', 'web app')}`;
   setSideTab(side.tab);
   renderFileList();

@@ -294,6 +294,35 @@ fn save_binary(path: String, data: Vec<u8>) -> Result<(), String> {
     f.write_all(&data).map_err(|e| e.to_string())
 }
 
+/// 한번에 저장할 폴더 고르기: 고른 폴더 안에 .html · .docx 를 쓸 수 있게 됨 (프로그램을 끄면 잊음)
+#[tauri::command]
+fn pick_export_folder(window: tauri::Window) -> Option<String> {
+    let p = rfd::FileDialog::new()
+        .set_parent(&window)
+        .set_title(mcp::tr("저장할 폴더 고르기", "Pick a folder to save in"))
+        .pick_folder()?;
+    scope::allow_export_dir(&p);
+    Some(p.to_string_lossy().into_owned())
+}
+
+/// 한번에 저장: 고른 폴더 안에 .html(text) · .docx(data) 파일을 씀 (하위 폴더는 만들고, 같은 이름은 덮어씀)
+#[tauri::command(async)]
+fn save_export(path: String, text: Option<String>, data: Option<Vec<u8>>) -> Result<(), String> {
+    scope::check(&path, Allowed::export_file)?;
+    let p = PathBuf::from(&path);
+    if let Some(dir) = p.parent() {
+        fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
+    // 폴더를 만든 뒤 한 번 더: 그사이 생긴 심볼릭 링크로 밖을 가리키지 않는지
+    scope::check(&path, Allowed::export_file)?;
+    let bytes = match (text, data) {
+        (Some(t), _) => t.into_bytes(),
+        (None, Some(d)) => d,
+        (None, None) => Vec::new(),
+    };
+    fs::write(&p, bytes).map_err(|e| e.to_string())
+}
+
 #[tauri::command(async)]
 fn create_dir(path: String) -> Result<(), String> {
     scope::check(&path, Allowed::folder)?;
@@ -388,6 +417,8 @@ fn main() {
             read_binary,
             create_file,
             save_binary,
+            pick_export_folder,
+            save_export,
             create_dir,
             rename_path,
             delete_path,

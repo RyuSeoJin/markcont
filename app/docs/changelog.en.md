@@ -3,6 +3,14 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.20.0 · 2026-11-17
+
+- Save many documents at once: **⋯ → Export → Save many documents at once** saves the documents you check as HTML · Word in one go. The PC app and Chrome · Edge create them inside the folder you pick with the same folder structure, and links between documents saved together point to the saved `.html` files. Other browsers download each file
+- Save many documents at once: the only new thing the PC app can do is write `.html` · `.docx` inside the folder picked with "Pick a folder to save". That folder is not added to what can be read, and it is forgotten when the app closes
+- Save as HTML: "Shrink images" redraws the images as WebP (or JPEG). Pick the max width (720 · 1080 · 1440px · original) and the quality (75 by default); the original image files are not changed. The window shows an estimated size, and the real file size is shown after saving
+- Save as HTML: when linked documents are included, the same image is stored only once. Images are also stored with their real type (`image/png` and so on) instead of `application/octet-stream`
+- Viewing HTML files: images that point to an image stored once are shown too. The Export group (print · save many documents at once) now opens in HTML documents as well
+
 ## 1.19.0 · 2026-11-17
 
 - Viewing HTML files: `.html` · `.htm` files open read-only. Use Open file or drag and drop, and they appear in the list when you open a folder (the PC app only reads HTML inside the folders you picked)
