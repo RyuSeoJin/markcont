@@ -24,6 +24,9 @@
   const isBuiltinPath = (p) => /^markcont (안내|docs)\//.test(p);
   const $ = (s) => document.querySelector(s);
   const MD_EXT = /\.(md|markdown|mdown|mkd|txt)$/i;
+  // HTML 문서(.html · .htm): 읽기 전용으로 보여 줌 (renderHtmlDoc)
+  const HTML_EXT = /\.html?$/i;
+  const isHtmlDoc = (e) => !!e && HTML_EXT.test(e.name || '');
   const IMG_EXT = /\.(png|jpe?g|gif|svg|webp|bmp|avif)$/i;
   const VIDEO_EXT = /\.(mp4|webm|ogv|mov)(?=$|[?#])/i;
   const AUDIO_EXT = /\.(mp3|wav|aac|flac|m4a|oga|ogg)(?=$|[?#])/i;
@@ -929,6 +932,8 @@
 
   function render(keepScroll = false) {
     if (!libsOk || !state.current) return;
+    if (isHtmlDoc(state.current)) { renderHtmlDoc(keepScroll); return; }
+    el.doc.classList.remove('html-frame-doc');
     applyUserCss(); // 문서마다 다른 스타일 (바뀐 게 없으면 그대로)
     hidePreview();
     const scroll = el.preview.scrollTop;
@@ -951,6 +956,99 @@
     if (state.editing) { paintEditor(); cursorBlock = null; updateCursor(); }
     svSync();
   }
+
+  /* ---------- HTML 문서 보기 (읽기 전용) ----------
+     - markcont 에서 저장한 HTML(<article class="markdown-body">): 본문만 꺼내 마크다운과 같은 살균(DOMPurify)을 거쳐 문서 화면에 그림.
+       파일 안의 스크립트 · <style> · 목차 틀은 쓰지 않고, 탭 · 목차 · 찾기 · 인쇄는 앱 기능이 맡음. 함께 넣은 문서(template.sd-doc)는 링크로 오감
+     - 그 밖의 HTML: 스크립트를 켜지 않은 격리된 틀(sandbox iframe)에, 바깥 주소를 모두 막는 CSP 를 넣어 보여 줌 */
+  function htmlParts(text) {
+    const d = new DOMParser().parseFromString(String(text || ''), 'text/html');
+    const art = d.querySelector('body > article.markdown-body');
+    if (!art) return { frame: d };
+    const docs = new Map();
+    d.querySelectorAll('template.sd-doc[data-doc]').forEach((t) => docs.set(t.dataset.doc, { name: t.dataset.name || '', html: t.innerHTML }));
+    return { main: art.innerHTML, docs };
+  }
+  const HTML_FRAME_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; font-src data:";
+  function renderHtmlDoc(keepScroll) {
+    const cur = state.current, scroll = el.preview.scrollTop;
+    applyUserCss();
+    hidePreview();
+    find.hits = []; find.now = -1;
+    if (!$('#findBar').hidden) setTimeout(() => runFind($('#findInput').value.trim()), 0);
+    state.docOpts = docOptions('');
+    const parts = htmlParts(cur.text);
+    const note = (label, btns = '') => `<div class="html-note"><span>${escapeHtml(label)}</span>${btns}</div>`;
+    const btn = (act, label) => `<button type="button" class="meta-btn" data-html-act="${act}">${escapeHtml(label)}</button>`;
+    el.doc.classList.toggle('html-frame-doc', !!parts.frame);
+    if (parts.frame) {
+      const d = parts.frame;
+      d.querySelectorAll('meta[http-equiv], base').forEach((m) => m.remove()); // 새로 고침 · 기준 주소 바꾸기를 뺌
+      const csp = d.createElement('meta');
+      csp.setAttribute('http-equiv', 'Content-Security-Policy');
+      csp.setAttribute('content', HTML_FRAME_CSP);
+      d.head.prepend(csp);
+      el.doc.innerHTML = note(L('HTML 파일 · 읽기 전용 · 스크립트와 바깥 주소(그림 · 글꼴 · 스타일)는 막아 두었습니다', 'HTML file · read-only · scripts and outside addresses (images · fonts · styles) are blocked'));
+      const f = document.createElement('iframe');
+      f.className = 'html-frame';
+      f.setAttribute('sandbox', ''); // 스크립트 · 양식 · 새 창 · 바깥으로 옮겨 가기 모두 끔
+      f.setAttribute('referrerpolicy', 'no-referrer');
+      f.title = cur.name;
+      f.srcdoc = '<!doctype html>' + d.documentElement.outerHTML;
+      el.doc.append(f);
+    } else {
+      const sub = cur.htmlDoc ? parts.docs.get(cur.htmlDoc) : null;
+      if (!sub) cur.htmlDoc = null;
+      el.doc.innerHTML = note(sub ? L('함께 넣은 문서: ', 'Included document: ') + sub.name : L('markcont에서 저장한 HTML · 읽기 전용', 'HTML saved from markcont · read-only'),
+        (sub ? btn('main', L('본문으로', 'Back to the document')) : '') + (sourcePackOfHtml(cur.text) ? btn('src', L('마크다운 원문 열기', 'Open the markdown source')) : '')) +
+        DOMPurify.sanitize(sub ? sub.html : parts.main, { ADD_ATTR: ['target'], FORBID_TAGS: ['style'] });
+      // 저장본의 탭: 꺼 둔 탭 내용을 숨기고, 기억해 둔 탭이 있으면 그 탭으로
+      el.doc.querySelectorAll('.mc-tab-panel[data-tab-off]').forEach((p) => { p.hidden = true; p.removeAttribute('data-tab-off'); });
+      initTabs(el.doc);
+      el.doc.querySelectorAll('a[href]').forEach((a) => { if (/^https?:/i.test(a.getAttribute('href'))) { a.target = '_blank'; a.rel = 'noopener noreferrer'; } });
+    }
+    buildToc();
+    updateMeta(parts.frame ? (parts.frame.body ? parts.frame.body.textContent : '') : el.doc.textContent);
+    requestAnimationFrame(drawAllDataLinks);
+    lineTops = null;
+    if (keepScroll) el.preview.scrollTop = scroll;
+    svSync();
+  }
+  // HTML 문서 안에서 누른 것: 안내 줄의 단추, 함께 넣은 문서 링크, 문서 안 #자리. 그 밖에는 http(s) · mailto 만 열림
+  el.doc.addEventListener('click', (e) => {
+    const cur = state.current;
+    if (!isHtmlDoc(cur) || !e.target.closest) return;
+    const b = e.target.closest('[data-html-act]');
+    if (b) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (b.dataset.htmlAct === 'src') { const pack = sourcePackOfHtml(cur.text); if (pack) openSourcePack(pack); }
+      else { cur.htmlDoc = null; render(); el.preview.scrollTop = 0; }
+      return;
+    }
+    const a = e.target.closest('a');
+    if (!a || !el.doc.contains(a)) return;
+    if ('doc' in a.dataset) {
+      e.preventDefault();
+      e.stopPropagation();
+      const hash = a.dataset.docHash;
+      cur.htmlDoc = a.dataset.doc === 'main' ? null : a.dataset.doc;
+      render();
+      el.preview.scrollTop = 0;
+      if (hash) setTimeout(() => scrollToId(hash), 0);
+      return;
+    }
+    const h = a.getAttribute('href') || '';
+    if (h.startsWith('#')) {
+      e.preventDefault();
+      e.stopPropagation();
+      let id = h.slice(1);
+      try { id = decodeURIComponent(id); } catch {}
+      if (id) scrollToId(id);
+      return;
+    }
+    if (!/^(https?:|mailto:)/i.test(h)) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
 
   // 알림 상자 > [!NOTE] (본문과 링크 미리 보기에서 같이 씀)
   function makeCallouts(root) {
@@ -2798,6 +2896,7 @@
       facts.append(sp);
     }
     el.docMeta.append(facts);
+    if (isHtmlDoc(cur)) return; // HTML 문서: 교정 표기 · 문서 점검 · 저장 안내는 마크다운 문서의 것
     // 교정 표기가 있으면 「✎ 제안 N개 · 모두 받아들이기 · 모두 버리기」
     paintCriticBar(src);
     // 문서 점검 (깨진 링크 · 다른 뷰어에서 다르게 보이는 곳 …): 지난 결과를 바로 보이고, 잠시 뒤 다시 셈
@@ -4557,7 +4656,7 @@
           if (name.startsWith('.') || name === 'node_modules' || ++count > 20000) continue;
           const p = joinRel(prefix, name);
           if (child.kind === 'directory') { dirs.add(p); if (depth < 10) await walk(child, p, depth + 1); }
-          else if (MD_EXT.test(name)) files.push({ name, path: p, handle: child, text: null });
+          else if (MD_EXT.test(name) || HTML_EXT.test(name)) files.push({ name, path: p, handle: child, text: null });
           else if (ASSET_EXT.test(name)) assets.set(p, { handle: child });
         }
       };
@@ -5075,6 +5174,8 @@
       entry.eol = entry.eol || eolOf(entry.text);
       entry.text = toLF(entry.text);
     }
+    const htmlDoc = isHtmlDoc(entry);
+    if (htmlDoc && state.editing) setEditing(false); // HTML 문서는 읽기 전용
     state.current = entry;
     state.dirty = false;
     if (!entry.history) entry.history = [{ t: Date.now(), text: entry.text, label: L('열었을 때', 'Opened'), saved: true }];
@@ -5082,6 +5183,8 @@
     el.welcome.hidden = true;
     el.workspace.hidden = false;
     [el.btnEdit, $('#mZen'), $('#mFoldAll'), $('#mExportSub'), $('#mExport'), $('#mPortable'), $('#mPrint'), $('#mFind'), $('#mPresent'), $('#mDocx'), $('#mCopyRich')].forEach((b) => (b.disabled = false));
+    // HTML 문서: 편집과, 마크다운 원문이 있어야 하는 저장 · 복사 · 발표는 끔 (찾기 · 인쇄 · 집중 보기는 그대로)
+    if (htmlDoc) [el.btnEdit, $('#mFoldAll'), $('#mExportSub'), $('#mExport'), $('#mPortable'), $('#mPresent'), $('#mDocx'), $('#mCopyRich')].forEach((b) => (b.disabled = true));
     document.body.classList.add('has-doc');
     if (!fromHistory) {
       state.hist = state.hist.slice(0, state.histPos + 1);
@@ -5164,7 +5267,7 @@
       try {
         const handles = await showOpenFilePicker({
           multiple: true,
-          types: [{ description: L('마크다운 · markcont로 저장한 HTML', 'Markdown · HTML saved from markcont'), accept: { 'text/plain': ['.md', '.markdown', '.mdown', '.mkd', '.txt'], 'text/html': ['.html', '.htm'] } }],
+          types: [{ description: L('마크다운 · HTML', 'Markdown · HTML'), accept: { 'text/plain': ['.md', '.markdown', '.mdown', '.mkd', '.txt'], 'text/html': ['.html', '.htm'] } }],
         });
         const mds = handles.filter((h) => !HTML_EXT.test(h.name));
         if (mds.length) addFiles(mds.map((h) => ({ name: h.name, path: h.name, handle: h, text: null })), false);
@@ -5221,7 +5324,7 @@
       if (/(^|\/)(node_modules|\.git)\//.test(rel) || rel.split('/').some((x) => x.startsWith('.'))) continue;
       const path = root.key + '/' + rel;
       for (let d = parentOf(path); d; d = parentOf(d)) dirs.add(d);
-      if (MD_EXT.test(f.name)) files.push({ name: f.name, path, file: f, text: null });
+      if (MD_EXT.test(f.name) || HTML_EXT.test(f.name)) files.push({ name: f.name, path, file: f, text: null });
       else if (ASSET_EXT.test(f.name)) assets.set(path, { file: f });
     }
     await addRoot(root, { files, assets, dirs });
@@ -5345,6 +5448,7 @@
      편집
      ========================================================= */
   function setEditing(on) {
+    if (on && isHtmlDoc(state.current)) { toast(L('HTML 문서는 읽기 전용입니다', 'HTML documents are read-only')); return; }
     state.editing = on;
     el.workspace.classList.toggle('editing', on);
     el.btnEdit.classList.toggle('active', on);
@@ -7834,16 +7938,16 @@ body.sd-open { padding-right: calc(min(46vw, 680px) + 16px); }
     }
     return addFiles([entry(pack.main)], false);
   }
-  // 파일 열기 · 끌어다 놓기로 받은 .html: 원문이 든 첫 파일을 엶. 원문이 없으면 알려 줌
-  const HTML_EXT = /\.html?$/i;
+  // 파일 열기 · 끌어다 놓기로 받은 .html: 원문이 든 첫 파일을 마크다운으로 엶. 원문이 없으면 HTML 문서로 엶
   async function openSavedHtml(files) {
     for (const f of files) {
       let pack = null;
       try { pack = sourcePackOfHtml(await f.text()); } catch {}
       if (pack) { await openSourcePack(pack); return true; }
     }
-    toast(L('이 HTML 파일에는 마크다운 원문이 들어 있지 않습니다 (markcont에서 「마크다운 원문도 함께 넣기」로 저장한 파일만 열 수 있습니다)', 'This HTML file has no markdown source inside (only files saved from markcont with "Also include the markdown source" can be opened)'), 5000);
-    return false;
+    // 원문이 없으면 HTML 그대로 읽기 전용으로 보여 줌
+    await addFiles(files.map((f) => ({ name: f.name, path: f.name, file: f, text: null })), false);
+    return true;
   }
 
   // 보기 설정을 HTML 저장 · 숨은 틀에 옮길 CSS 변수
@@ -8419,7 +8523,7 @@ ${srcHtml}
 
   applySettings();
   // 버전 표시 (새 버전을 낼 때 package.json · tauri.conf.json 과 함께 올리세요)
-  const APP_VERSION = '1.18.2';
+  const APP_VERSION = '1.19.0';
   $('#appVersion').textContent = `markcont v${APP_VERSION} · ${window.__TAURI__ ? L('PC 프로그램', 'PC app') : L('웹 앱', 'web app')}`;
   setSideTab(side.tab);
   renderFileList();

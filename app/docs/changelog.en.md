@@ -3,6 +3,13 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.19.0 · 2026-11-17
+
+- Viewing HTML files: `.html` · `.htm` files open read-only. Use Open file or drag and drop, and they appear in the list when you open a folder (the PC app only reads HTML inside the folders you picked)
+- Viewing HTML files: HTML saved from markcont is drawn on the document screen from its body, through the same sanitizing as markdown. Tabs, the outline, find and print work, and included documents are reached through their links. If the file holds the source, "Open the markdown source" at the top opens it as an editable document
+- Viewing HTML files: other HTML is shown as it is in an isolated frame with scripts off, and images, fonts and styles from outside addresses are not loaded. Either way scripts inside the file are never run, and the app's CSP and DOMPurify settings are unchanged
+- Changed behavior: opening an `.html` without the source now shows it as an HTML document instead of the "no markdown source inside" notice. In an HTML document, editing, HTML export, Word export, Save for other viewers, rich copy and presenting are turned off
+
 ## 1.18.2 · 2026-11-13
 
 - Exposure block: block description lines. `> …` lines right after `# Title` with no blank line between (or, without a title, at the very top) are shown as small gray text under the title, above the legend and the top image. Each line starts a new line, and a `>` line with no text is a gap between paragraphs

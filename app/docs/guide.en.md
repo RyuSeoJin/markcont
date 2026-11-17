@@ -1,6 +1,6 @@
 ---
 title: markcont User guide
-version: 1.18.2
+version: 1.19.0
 ---
 
 # markcont User guide
@@ -335,6 +335,10 @@ Open the window with the **History** button in the editing toolbar (<kbd>Ctrl</k
 - A file saved as HTML has a **contents list on the left** (for documents with two or more headings or tabs). The part you're reading is highlighted; clicking a heading jumps to it, and clicking a tab name opens that tab and jumps to it. The ☰ button at the top left hides the list, and on a narrow screen it opens and closes it. The list is left out when printing. Turn off **View settings → "Add a contents sidebar when saving as HTML"** to save without it.
 - When the document has **links to other documents**, Save as HTML first asks which ones to include. Checked documents are put inside the file, so readers can open them in a panel on the right from their links (‹ goes back, ✕ or Esc closes). Only documents linked directly from this one are offered; documents they link to in turn are not added. Links to documents that were left out or not found are shown dimmed with a dotted underline, and clicking one says "This document is not included in this file". The saved file does not keep the documents' paths.
 - In the window shown when saving as HTML, check **"Also include the markdown source"** (off by default) and the saved file gets an **"Open in markcont"** button at the top right. Clicking it opens the markcont web app in a new tab, which asks first and then opens the source as a document (together with the included documents). The source is handed only to that tab inside the browser and is not uploaded anywhere. An `.html` saved this way can also be opened in the markcont web app with **Open file or drag and drop**. The source also holds things not shown on screen, such as comments, so leave it unchecked for files you send outside. Images written as paths in the source are not carried over to markcont.
+- **Viewing HTML files**: `.html` · `.htm` files can be opened with Open file or drag and drop, and they appear in the list when you open a folder. They are read-only, so editing and saving in other formats are turned off; find, the outline and print work.
+  - **HTML saved from markcont** is shown on the same screen as a markdown document, using its body. Tabs, the outline and the large image view work, and included documents are reached through their links. If the file holds the source, **"Open the markdown source"** at the top opens it as an editable document (Open file or drag and drop opens the source right away).
+  - **Other HTML** is shown as it is inside an isolated frame. Scripts are not run, and images, fonts and styles from outside addresses are not loaded, so dynamic parts stay still and pages that rely on outside styles look plainer. Find and the outline don't reach inside this frame.
+  - Either way, scripts inside the file are never run.
 - Saving as HTML **puts the images inside the file**, so sending just that one file is enough for others to see them. Images from web addresses are included too when the site allows it. If some images can't be included (for example, ones that weren't found), you get a list before saving. In the web app, open the parent folder that contains the images with Open folder so they can be read.
 - Write `cover: yes` in the document info at the top, and the first page becomes a **cover** (title · summary · the rest of the info, like the author). The cover has no page number.
 - Word files keep heading levels · lists · tables · code · callouts · images, and diagrams become images. Math goes in as TeX text (`E=mc^2`). The paper size follows your region (Letter for the US · Canada, A4 elsewhere).
