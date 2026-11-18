@@ -4681,7 +4681,10 @@
     return key;
   }
   // 폴더를 작업 공간에 더함
-  async function addRoot(root, scan) {
+  // 폴더를 열었을 때 먼저 보여 줄 문서: 맨 위 README → 맨 위 문서 → 첫 문서
+  const rootFirst = (list) => list.find((e) => /\/readme\.md$/i.test(e.path) && e.path.split('/').length === 2) ||
+    list.find((e) => e.path.split('/').length === 2) || list[0];
+  async function addRoot(root, scan, { keepCurrent } = {}) {
     state.roots.push(root);
     for (const [k, v] of scan.assets) state.assets.set(k, v);
     for (const d of scan.dirs) state.dirs.add(d);
@@ -4693,15 +4696,13 @@
     toast(state.roots.length > 1
       ? L(`'${root.name}' 폴더를 더했습니다 (마크다운 ${scan.files.length}개) · 지금 폴더 ${state.roots.length}개`, `Added folder '${root.name}' (${scan.files.length} markdown file${scan.files.length === 1 ? '' : 's'}) · ${state.roots.length} folders open`)
       : (scan.files.length ? L(`마크다운 파일 ${scan.files.length}개를 찾았습니다`, `Found ${scan.files.length} markdown file${scan.files.length === 1 ? '' : 's'}`) : L('이 폴더에는 마크다운 파일이 없습니다', 'No markdown files in this folder')), 3200);
-    const mine = scan.files;
-    const first = mine.find((e) => /\/readme\.md$/i.test(e.path) && e.path.split('/').length === 2) ||
-      mine.find((e) => e.path.split('/').length === 2) || mine[0];
-    if (first && (!state.current || state.current.loose)) await openEntry(first);
+    const first = rootFirst(scan.files);
+    if (first && !keepCurrent && (!state.current || state.current.loose)) await openEntry(first);
     else renderFileList();
-    if (!state.current) showHome();
+    if (!state.current && !keepCurrent) showHome();
     if (window.innerWidth <= 900) { el.sidebar.classList.add('open'); el.scrim.classList.add('show'); }
   }
-  async function openFolder(root, { quiet } = {}) {
+  async function openFolder(root, { quiet, keepCurrent } = {}) {
     for (const r of state.roots) {
       if (await sameFolder(r, root)) {
         side.collapsed.delete(r.key); saveCollapsed(); renderFileList();
@@ -4714,7 +4715,7 @@
     let scan;
     try { scan = await scanFolder(root); } catch (e) { toast(L('폴더를 읽지 못했습니다: ', "Couldn't read the folder: ") + (e.message || e), 4000); return; }
     rememberFolder(root);
-    await addRoot(root, scan);
+    await addRoot(root, scan, { keepCurrent });
   }
   // 작업 공간에서 폴더 닫기 (파일은 지우지 않음)
   async function closeRoot(key) {
@@ -8844,7 +8845,7 @@ ${srcHtml}
 
   applySettings();
   // 버전 표시 (새 버전을 낼 때 package.json · tauri.conf.json 과 함께 올리세요)
-  const APP_VERSION = '1.20.0';
+  const APP_VERSION = '1.20.1';
   $('#appVersion').textContent = `markcont v${APP_VERSION} · ${window.__TAURI__ ? L('PC 프로그램', 'PC app') : L('웹 앱', 'web app')}`;
   setSideTab(side.tab);
   renderFileList();
@@ -9209,15 +9210,25 @@ ${srcHtml}
         if (entries.filter((x) => x.path === f.name).length > 1 || state.files.some((x) => x.loose && x.path === f.name && x.tauriPath !== f.path)) entries[entries.length - 1].path = f.name + ' (' + f.path.replace(/[\\/][^\\/]*$/, '').split(/[\\/]/).pop() + ')';
       } catch (e) { toast(L('파일을 열지 못했습니다: ', "Couldn't open the file: ") + e, 4000); }
     }
-    if (entries.length) addFiles(entries, false);
+    if (entries.length) await addFiles(entries, false);
+    return entries.length;
   }
   if (tauriInvoke) {
     document.documentElement.classList.add('is-desktop-app');
-    tauriInvoke('startup_file').then((p) => p && openTauriPaths([p])).catch(() => {});
-    // 지난번에 열어 둔 폴더들을 다시 열기
+    // 지난번에 열어 둔 폴더들을 다시 연 뒤에 더블클릭한 파일을 엶
+    //  (둘을 함께 돌리면 늦게 끝난 폴더 열기가 그 폴더의 README 로 바꿔 버림. 폴더 안 파일이면 그 폴더에서 엶)
     (async () => {
+      const startup = await tauriInvoke('startup_file').catch(() => null);
       for (const f of store.json('mdv-workspace', [])) {
-        try { await openFolder({ kind: 'tauri', path: f.path, name: f.name }, { quiet: true }); } catch {}
+        try { await openFolder({ kind: 'tauri', path: f.path, name: f.name }, { quiet: true, keepCurrent: !!startup }); } catch {}
+      }
+      if (!startup) return;
+      let opened = 0;
+      try { opened = await openTauriPaths([startup]); } catch {}
+      // 더블클릭한 파일을 읽지 못했으면 여느 때처럼 폴더의 첫 문서를 엶
+      if (!opened && !state.current) {
+        const first = rootFirst(state.files.filter((e) => !e.loose));
+        if (first) await openEntry(first); else showHome();
       }
     })();
     // 파일 열기 단추는 PC 프로그램의 파일 선택 창을 씀 (원래 파일에 바로 저장 가능)

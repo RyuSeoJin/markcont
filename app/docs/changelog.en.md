@@ -3,6 +3,10 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.20.1 · 2026-11-18
+
+- PC app: fixed opening a `.md` file by double-click showing that file for a moment and then switching to the README of the folder left open last time. The folders from last time are now reopened first and the double-clicked file is opened after them; if the file is inside one of those folders it opens as a document of that folder. If the file can't be read, a notice is shown and the first document of the folder opens as usual
+
 ## 1.20.0 · 2026-11-17
 
 - Save many documents at once: **⋯ → Export → Save many documents at once** saves the documents you check as HTML · Word in one go. The PC app and Chrome · Edge create them inside the folder you pick with the same folder structure, and links between documents saved together point to the saved `.html` files. Other browsers download each file
