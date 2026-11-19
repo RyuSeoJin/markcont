@@ -3,6 +3,14 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.22.0 · 2026-11-19
+
+- After a refresh (F5) or closing and reopening, you come back to the document you were viewing. The document and the files opened separately are remembered and reopened, at the place you were reading. If you were on the start screen, you return to the start screen
+- PC app: after reopening the folders from last time, the document you were viewing opens instead of the README. Files opened separately with "Open file" come back too. A file opened by double-click comes first, and if the document is gone the first document of the folder opens as usual
+- Web app: folders opened with "Open folder" on Chrome · Edge are reopened. If the browser has to ask for permission again, a "Reopen" button appears. Files opened separately are restored from a copy kept only inside this browser (IndexedDB), which is removed when you take the file off the list (up to 30 files · 2MB each)
+- The reading position is kept even when you refresh right after scrolling
+- Unsaved edits are not restored (you are still asked before a refresh)
+
 ## 1.21.0 · 2026-11-19
 
 - Summary flow: boxes or the next stage (`# name`) can now follow a fork (`- fork`). Put `↪ box title` under a fork box to continue to that box (below or above); a branch without `↪` ends there with no end mark. Boxes after a fork are not connected automatically: a line comes in only from the branches that point to them with `↪`

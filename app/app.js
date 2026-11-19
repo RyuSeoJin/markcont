@@ -27,6 +27,11 @@
   // HTML 문서(.html · .htm): 읽기 전용으로 보여 줌 (renderHtmlDoc)
   const HTML_EXT = /\.html?$/i;
   const isHtmlDoc = (e) => !!e && HTML_EXT.test(e.name || '');
+  // 새로고침 · 다시 켰을 때 보던 문서로 돌아가기: 보던 문서 · 따로 연 파일 · (웹 앱) 열어 둔 폴더 이름을 남겨 둠
+  //  ready: 시작할 때 되살리기가 끝난 뒤에만 남김 (그 전에 남기면 빈 상태로 덮어씀)
+  //  want: 아직 열지 못한 보던 문서 (폴더가 열리면 엶) · pending: 권한을 다시 받아야 하는 폴더 (웹 앱)
+  const SESS_KEY = 'mdv-session';
+  const sess = { ready: false, want: null, pending: [], sig: null, timer: 0, syncing: false };
   const IMG_EXT = /\.(png|jpe?g|gif|svg|webp|bmp|avif)$/i;
   const VIDEO_EXT = /\.(mp4|webm|ogv|mov)(?=$|[?#])/i;
   const AUDIO_EXT = /\.(mp3|wav|aac|flac|m4a|oga|ogg)(?=$|[?#])/i;
@@ -4315,6 +4320,7 @@
 
   function renderFileList() {
     svPrune();
+    saveSession();
     const box = el.fileList;
     box.innerHTML = '';
     const hasRoot = state.roots.length > 0;
@@ -4550,11 +4556,12 @@
     open() {
       if (this.db) return this.db;
       this.db = new Promise((res, rej) => {
-        const r = indexedDB.open('markcont', 2);
+        const r = indexedDB.open('markcont', 3);
         r.onupgradeneeded = () => {
           const db = r.result;
           if (!db.objectStoreNames.contains('folders')) db.createObjectStore('folders', { keyPath: 'name' });
           if (!db.objectStoreNames.contains('versions')) db.createObjectStore('versions', { keyPath: 'id', autoIncrement: true }).createIndex('key', 'key');
+          if (!db.objectStoreNames.contains('session')) db.createObjectStore('session', { keyPath: 'path' }); // 웹 앱: 따로 연 파일 (새로고침 뒤 되살림)
         };
         r.onsuccess = () => { const db = r.result; db.onversionchange = () => { db.close(); this.db = null; }; res(db); };
         r.onerror = () => rej(r.error);
@@ -4696,8 +4703,12 @@
     toast(state.roots.length > 1
       ? L(`'${root.name}' 폴더를 더했습니다 (마크다운 ${scan.files.length}개) · 지금 폴더 ${state.roots.length}개`, `Added folder '${root.name}' (${scan.files.length} markdown file${scan.files.length === 1 ? '' : 's'}) · ${state.roots.length} folders open`)
       : (scan.files.length ? L(`마크다운 파일 ${scan.files.length}개를 찾았습니다`, `Found ${scan.files.length} markdown file${scan.files.length === 1 ? '' : 's'}`) : L('이 폴더에는 마크다운 파일이 없습니다', 'No markdown files in this folder')), 3200);
+    sess.pending = sess.pending.filter((p) => p.name !== root.name);
     const first = rootFirst(scan.files);
-    if (first && !keepCurrent && (!state.current || state.current.loose)) await openEntry(first);
+    // 새로고침 전에 보던 문서가 이 폴더에 있으면 그 문서로 돌아감
+    const want = sess.want && !sess.want.loose && !sess.want.builtin ? scan.files.find((e) => e.path === sess.want.path) : null;
+    if (want) { if (!(await openEntry(want))) renderFileList(); }
+    else if (first && !keepCurrent && (!state.current || state.current.loose)) await openEntry(first);
     else renderFileList();
     if (!state.current && !keepCurrent) showHome();
     if (window.innerWidth <= 900) { el.sidebar.classList.add('open'); el.scrim.classList.add('show'); }
@@ -5205,6 +5216,8 @@
     el.fileList.querySelector('.tree-row.current')?.scrollIntoView({ block: 'nearest' });
     updateTitle();
     remember(entry);
+    sess.want = null;
+    saveSession();
     return true;
   }
 
@@ -5262,6 +5275,114 @@
     svClose();
     closeFind();
     renderRecent();
+    saveSession();
+  }
+
+  /* ---------- 새로고침 · 다시 켰을 때 보던 문서로 ---------- */
+  function sessionSnapshot() {
+    const cur = state.current && !state.current.isNew ? state.current : null;
+    const tauri = isTauri();
+    return {
+      v: 1,
+      cur: cur ? { path: cur.path, loose: !!cur.loose, builtin: !!cur.builtin, tauriPath: cur.loose ? cur.tauriPath || undefined : undefined } : sess.want,
+      home: !!cur && !el.welcome.hidden, // 문서를 연 채 처음 화면에 가 있었음
+      roots: tauri ? undefined : state.roots.filter((r) => r.kind === 'handle').map((r) => r.name).concat(sess.pending.map((p) => p.name)),
+      loose: tauri ? state.files.filter((f) => f.loose && f.tauriPath && !f.builtin).map((f) => f.tauriPath) : undefined,
+    };
+  }
+  function flushSession() {
+    clearTimeout(sess.timer); sess.timer = 0;
+    if (!sess.ready) return;
+    store.set(SESS_KEY, JSON.stringify(sessionSnapshot()));
+    syncLooseStore();
+  }
+  function saveSession() {
+    if (!sess.ready || sess.timer) return;
+    sess.timer = setTimeout(flushSession, 300);
+  }
+  window.addEventListener('pagehide', () => { saveReadPos(); if (sess.timer) flushSession(); }); // 스크롤하자마자 새로고침해도 읽던 곳이 남게
+  // 웹 앱: 따로 연 파일은 브라우저가 다시 읽게 해 주지 않으므로 내용을 이 브라우저(IndexedDB)에 남겨 둠. 목록에서 빼면 함께 지움
+  async function syncLooseStore() {
+    if (isTauri() || !window.indexedDB || sess.syncing) return;
+    sess.syncing = true;
+    try {
+      const rows = [];
+      for (const f of state.files.filter((x) => x.loose && !x.builtin && !x.isNew).slice(0, 30)) {
+        let text = f.text;
+        if (text == null) {
+          if (f.sessText == null) { try { f.sessText = (await readDoc(await entryFile(f))).text; } catch { continue; } }
+          text = f.sessText;
+        }
+        if (text.length > 2000000) continue; // 아주 큰 파일은 남기지 않음
+        rows.push({ path: f.path, name: f.name, text, handle: f.handle || undefined, lastModified: f.lastModified || 0, eol: f.eol, bom: f.bom, enc: f.enc });
+      }
+      const sig = rows.map((r) => r.path + ':' + r.text.length + ':' + r.lastModified).join('|');
+      if (sig !== sess.sig) {
+        await idb.run('readwrite', (s) => { s.clear(); rows.forEach((r) => s.put(r)); }, 'session');
+        sess.sig = sig;
+      }
+    } catch {} finally { sess.syncing = false; }
+  }
+  // 보던 문서(sess.want)를 엶. 아직 목록에 없으면(폴더 권한을 기다리는 중 등) false
+  async function openWanted() {
+    const w = sess.want;
+    if (!w || state.current) return false;
+    if (w.builtin) {
+      sess.want = null;
+      const key = Object.keys(BUILTIN).find((k) => builtinPath(k) === w.path);
+      return key ? openBuiltinDoc(key) : false;
+    }
+    const e = w.loose
+      ? state.files.find((f) => f.loose && (w.tauriPath ? f.tauriPath === w.tauriPath : f.path === w.path))
+      : state.files.find((f) => !f.loose && f.path === w.path);
+    return e ? openEntry(e) : false;
+  }
+  // 권한을 다시 받아야 하는 폴더 (웹 앱): 누르면 권한을 묻고 다시 엶. 보던 문서가 그 안에 있으면 addRoot 가 그 문서를 엶
+  async function reopenPending() {
+    for (const f of sess.pending.slice()) {
+      try {
+        if ((await f.handle.requestPermission({ mode: 'read' })) !== 'granted') continue;
+        await openFolder({ kind: 'handle', handle: f.handle, name: f.handle.name }, { quiet: true, keepCurrent: true });
+      } catch {}
+      sess.pending = sess.pending.filter((p) => p !== f); // 열었거나, 이제 없는 폴더
+    }
+    saveSession();
+  }
+  async function restoreSessionWeb() {
+    const s = store.json(SESS_KEY, null);
+    try {
+      if (!s || !window.indexedDB) return;
+      let rows = [];
+      try { rows = (await idb.run('readonly', (st) => st.getAll(), 'session')) || []; } catch {}
+      for (const r of rows) {
+        if (state.files.some((f) => f.loose && f.path === r.path)) continue;
+        const e = { name: r.name, path: r.path, text: r.text, loose: true, lastModified: r.lastModified, eol: r.eol, bom: r.bom, enc: r.enc };
+        if (r.handle) {
+          e.handle = r.handle; // 원래 파일에 다시 저장할 수 있게. 읽을 권한이 남아 있으면 파일에서 새로 읽음
+          try { if ((await r.handle.queryPermission({ mode: 'read' })) === 'granted') e.text = null; } catch {}
+        }
+        state.files.push(e);
+      }
+      state.files.sort((p, q) => p.path.localeCompare(q.path, 'ko', { numeric: true }));
+      sess.sig = rows.map((r) => r.path + ':' + r.text.length + ':' + (r.lastModified || 0)).join('|');
+      if (!state.current) sess.want = s.home ? null : s.cur;
+      let saved = [];
+      try { saved = (await idb.run('readonly', (st) => st.getAll())) || []; } catch {}
+      for (const name of s.roots || []) {
+        const f = saved.find((x) => x.name === name);
+        if (!f || !f.handle) continue;
+        let ok = false;
+        try { ok = (await f.handle.queryPermission({ mode: 'read' })) === 'granted'; } catch {}
+        if (!ok) { sess.pending.push(f); continue; }
+        try { await openFolder({ kind: 'handle', handle: f.handle, name: f.handle.name }, { quiet: true, keepCurrent: true }); } catch {}
+      }
+      await openWanted();
+      renderFileList();
+      if (sess.pending.length) {
+        const names = sess.pending.map((p) => `'${p.name}'`).join(' · ');
+        toast(L(`지난번에 열어 둔 폴더 ${names} — 브라우저가 권한을 다시 물어야 합니다`, `Folder ${names} from last time — the browser needs to ask for permission again`), 30000, { label: L('다시 열기', 'Reopen'), onClick: reopenPending });
+      }
+    } catch {} finally { sess.ready = true; }
   }
   $('#btnHome').onclick = () => { if (state.current) showHome(); };
   renderRecent();
@@ -8845,7 +8966,7 @@ ${srcHtml}
 
   applySettings();
   // 버전 표시 (새 버전을 낼 때 package.json · tauri.conf.json 과 함께 올리세요)
-  const APP_VERSION = '1.21.0';
+  const APP_VERSION = '1.22.0';
   $('#appVersion').textContent = `markcont v${APP_VERSION} · ${window.__TAURI__ ? L('PC 프로그램', 'PC app') : L('웹 앱', 'web app')}`;
   setSideTab(side.tab);
   renderFileList();
@@ -9201,15 +9322,19 @@ ${srcHtml}
      PC 프로그램(Tauri)으로 실행했을 때: 더블클릭한 파일 열기, 원래 파일에 저장
      ========================================================= */
   const tauriInvoke = window.__TAURI__?.core?.invoke || null;
-  async function openTauriPaths(paths) {
+  async function readTauriEntries(paths, quiet) {
     const entries = [];
     for (const p of paths) {
       try {
         const f = await tauriInvoke('read_file', { path: p });
         entries.push({ name: f.name, path: f.name, text: f.text, eol: f.eol, bom: f.bom, enc: f.enc, tauriPath: f.path, lastModified: f.modified });
         if (entries.filter((x) => x.path === f.name).length > 1 || state.files.some((x) => x.loose && x.path === f.name && x.tauriPath !== f.path)) entries[entries.length - 1].path = f.name + ' (' + f.path.replace(/[\\/][^\\/]*$/, '').split(/[\\/]/).pop() + ')';
-      } catch (e) { toast(L('파일을 열지 못했습니다: ', "Couldn't open the file: ") + e, 4000); }
+      } catch (e) { if (!quiet) toast(L('파일을 열지 못했습니다: ', "Couldn't open the file: ") + e, 4000); }
     }
+    return entries;
+  }
+  async function openTauriPaths(paths) {
+    const entries = await readTauriEntries(paths);
     if (entries.length) await addFiles(entries, false);
     return entries.length;
   }
@@ -9217,19 +9342,37 @@ ${srcHtml}
     document.documentElement.classList.add('is-desktop-app');
     // 지난번에 열어 둔 폴더들을 다시 연 뒤에 더블클릭한 파일을 엶
     //  (둘을 함께 돌리면 늦게 끝난 폴더 열기가 그 폴더의 README 로 바꿔 버림. 폴더 안 파일이면 그 폴더에서 엶)
+    //  새로고침하거나 다시 켰으면: 따로 연 파일도 다시 올리고, 보던 문서로 돌아감 (더블클릭한 파일이 있으면 그 파일이 먼저)
     (async () => {
       const startup = await tauriInvoke('startup_file').catch(() => null);
-      for (const f of store.json('mdv-workspace', [])) {
-        try { await openFolder({ kind: 'tauri', path: f.path, name: f.name }, { quiet: true, keepCurrent: !!startup }); } catch {}
-      }
-      if (!startup) return;
-      let opened = 0;
-      try { opened = await openTauriPaths([startup]); } catch {}
-      // 더블클릭한 파일을 읽지 못했으면 여느 때처럼 폴더의 첫 문서를 엶
-      if (!opened && !state.current) {
-        const first = rootFirst(state.files.filter((e) => !e.loose));
-        if (first) await openEntry(first); else showHome();
-      }
+      const s = store.json(SESS_KEY, null);
+      sess.want = startup || !s || s.home ? null : s.cur;
+      try {
+        for (const f of store.json('mdv-workspace', [])) {
+          try { await openFolder({ kind: 'tauri', path: f.path, name: f.name }, { quiet: true, keepCurrent: !!startup || !!s }); } catch {}
+        }
+        if (s && Array.isArray(s.loose) && s.loose.length) {
+          const same = (p, q) => String(p).replace(/\\/g, '/').toLowerCase() === String(q).replace(/\\/g, '/').toLowerCase();
+          for (const e of await readTauriEntries(s.loose.filter((p) => !startup || !same(p, startup)), true)) {
+            if ((await inWorkspace(e)) || state.files.some((f) => f.loose && f.tauriPath === e.tauriPath)) continue;
+            e.loose = true;
+            state.files.push(e);
+          }
+          state.files.sort((p, q) => p.path.localeCompare(q.path, 'ko', { numeric: true }));
+        }
+        let opened = false;
+        if (startup) { try { opened = !!(await openTauriPaths([startup])); } catch {} }
+        else if (s) opened = !!state.current || !!(await openWanted()) || !!s.home;
+        else return;
+        // 더블클릭한 파일 · 보던 문서를 열지 못했으면 여느 때처럼 폴더의 첫 문서를 엶
+        if (!opened && !state.current) {
+          sess.want = null;
+          const first = rootFirst(state.files.filter((e) => !e.loose)) || state.files.find((e) => e.loose && !e.builtin);
+          if (first) await openEntry(first);
+        }
+        if (!state.current) showHome();
+        renderFileList();
+      } finally { sess.ready = true; saveSession(); }
     })();
     // 파일 열기 단추는 PC 프로그램의 파일 선택 창을 씀 (원래 파일에 바로 저장 가능)
     const pickInApp = async () => {
@@ -9244,6 +9387,8 @@ ${srcHtml}
       if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'o') { e.stopImmediatePropagation(); e.preventDefault(); pickInApp(); }
     }, true);
   }
+
+  if (!tauriInvoke) restoreSessionWeb();
 
   /* =========================================================
      웹 앱: 오프라인 저장, 설치한 앱으로 .md 파일 열기

@@ -1,6 +1,6 @@
 ---
 title: markcont User guide
-version: 1.21.0
+version: 1.22.0
 ---
 
 # markcont User guide
@@ -135,6 +135,7 @@ Shows the documents connected to the current one. Click a row to go to that docu
 |:---|:---|:---|
 | View settings | **Aa** button at the top | Text size, Sans · Serif, body width, line spacing · paragraph spacing, color theme (Default · Paper · High contrast), callout style, heading numbers (1 · 1.1), review before saving, document styles (CSS) |
 | Where you left off | Automatic | Remembers where you were reading in each document and goes back there when you open it again |
+| The document you were viewing | Automatic | After a refresh (F5) or closing and reopening, the document you were viewing and the files opened separately come back, at the place you were reading. The PC app also reopens the folders you had open (a file opened by double-click comes first). In the web app on Chrome · Edge you click "Reopen" once if the folder permission has lapsed, and files opened separately are restored from a copy kept only inside this browser (removed when you take the file off the list · files over 2MB and folders in Safari · Firefox are not restored). Unsaved edits are not restored |
 | Reading time | The info line above the document | "~N min read" — counts Korean · Chinese · Japanese at 500 characters a minute and other languages at 230 words a minute, then adds them up (code blocks left out) |
 | Language | View settings (Aa) → Language, or the first screen of the tour | Switch between 한국어 and English |
 | Light · Dark | ☾ / ☀ button at the top | Dark mode |
