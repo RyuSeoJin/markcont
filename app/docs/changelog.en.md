@@ -3,6 +3,13 @@
 Changes in each version. New versions are added at the top.
 When a new version comes out, the PC app shows these notes and can update with one click.
 
+## 1.21.0 · 2026-11-19
+
+- Summary flow: boxes or the next stage (`# name`) can now follow a fork (`- fork`). Put `↪ box title` under a fork box to continue to that box (below or above); a branch without `↪` ends there with no end mark. Boxes after a fork are not connected automatically: a line comes in only from the branches that point to them with `↪`
+- Summary flow: when several branches point to the same box, the lines coming down from each fork box are gathered on one horizontal line and enter with a single arrow. A line to the box right below goes straight down instead of around the side channel
+- Document check: a box after a fork with no line coming in is reported as a notice (it starts a new flow), not an error
+- A fork at the very end (nothing after it · no `↪`) is drawn exactly as before, so existing documents need no changes
+
 ## 1.20.1 · 2026-11-18
 
 - PC app: fixed opening a `.md` file by double-click showing that file for a moment and then switching to the README of the folder left open last time. The folders from last time are now reopened first and the double-clicked file is opened after them; if the file is inside one of those folders it opens as a document of that folder. If the file can't be read, a notice is shown and the first document of the folder opens as usual

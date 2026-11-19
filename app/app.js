@@ -4080,7 +4080,7 @@
           if (fm && fm[1][0] === fence[0] && fm[1].length >= fence.length && !fm[2]) {
             if (buf && kind === 'summary') {
               // 요약 흐름도: 모르는 역할 · 판정 없는 예/아니오 · 빈 단계 같은 문법 오류
-              for (const it of MarkDiagram.summaryCheck(buf.join('\n'))) sumBad.push({ line: start + (it.ln || 1), what: it.msg, text: buf[(it.ln || 1) - 1] || '' });
+              for (const it of MarkDiagram.summaryCheck(buf.join('\n'))) (it.info ? flowInfo : sumBad).push({ line: start + (it.ln || 1), what: it.msg, text: buf[(it.ln || 1) - 1] || '', info: it.info });
             } else if (buf) {
               const src = buf.join('\n'), s = MarkDiagram.flowSource(src);
               const data = s ? flowState.data.get(flowDataKey(base, s)) : undefined;
@@ -8845,7 +8845,7 @@ ${srcHtml}
 
   applySettings();
   // 버전 표시 (새 버전을 낼 때 package.json · tauri.conf.json 과 함께 올리세요)
-  const APP_VERSION = '1.20.1';
+  const APP_VERSION = '1.21.0';
   $('#appVersion').textContent = `markcont v${APP_VERSION} · ${window.__TAURI__ ? L('PC 프로그램', 'PC app') : L('웹 앱', 'web app')}`;
   setSideTab(side.tab);
   renderFileList();
