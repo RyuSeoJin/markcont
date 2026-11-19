@@ -511,7 +511,8 @@ Use it to show **a whole feature at a glance**, such as in the overview of a spe
 | `- no → [role] Title`, indented under a decision | The branch that ends (a small box on the right · red line) |
 | `↪ Box title`, indented under a box | Join · go back. Draws a gray arrow line from that box to the box with the same title in this block (a join when the target is below, going back when it is above). It is not drawn as a note |
 | `↪ Box title \| Line label` | The same, with a small label next to the line (`Retry`, for example). If the label starts with `yes` or `no`, the line is drawn in the same blue or red as branch lines |
-| `- fork` + indented boxes | The parallel end. It splits from the box above into one row, with notes under each box (only at the end of the block) |
+| `- fork` + indented boxes | Parallel boxes. They split from the box above into one row, with notes under each box. A fork doesn't have to be at the end: boxes or the next stage (`# name`) can follow it |
+| `↪ box title` indented under a fork box | Where that branch goes on. A box below (join) or above (go back) both work; a branch without `↪` ends there |
 | `role name: color` (top of the block) | Change a role's color or add a role (`blue` `green` `orange` `red` `purple` `gray`) |
 
 - The built-in roles are `ops` (purple) · `user` (green) · `system` (gray), and only the roles you used appear in the legend under the diagram.
@@ -520,6 +521,8 @@ Use it to show **a whole feature at a glance**, such as in the overview of a spe
 - If it still doesn't fit, it switches to a **compact shape**. The main boxes get narrower and titles wrap to two lines at most (if any title wraps, every box gets the two-line height), and the gaps to the `no` branch boxes and the `↪` channels shrink, so the branch boxes and lines stay on one screen. Narrower still, the whole diagram scales down to 75%, and only below that do you scroll sideways (the ⤢ "Expand" button at the top right shows it large). Print · PDF · saved HTML follow the same rule for the paper or window width.
 - If the document style sets the box width (`--sf-box-width`), that value is the widest, and the compact shape shrinks within it (from about two thirds).
 - Write the box title after `↪` as it is, without the leading `[role]` (keep the `?`). If several boxes share the title, the line goes to the first one. It works under a main box, a `no` branch box, or a box in a fork.
+- Boxes after a fork are not connected to the fork automatically. A line comes in only from a branch that points to the box with `↪`; if no line comes in at all, the box starts a new flow (the document check tells you as a notice, not an error). A fork box without `↪` stays a box with no outgoing line and no end mark. A fork at the very end (nothing after it · no `↪`) is drawn exactly as before.
+- When a fork box points to the box right below, the line goes straight down from the box instead of around the side channel. When several branches point to the same box they don't get separate lines: the lines coming down from each fork box are gathered on one horizontal line and enter with a single arrow (at the top center when it is the box right below, through the right channel when it is farther away). Lines to a farther box with different labels are drawn separately.
 - `↪` lines run through a channel on the right of the diagram. Rows the line passes get their notes below the box, and the channel sits just outside the right end of those rows. Several lines run side by side at an even gap (18px), with shorter vertical runs inside and longer ones outside.
 - When several `↪` lines leave one box, lines going up leave from the upper part of the box's right side and lines going down from the lower part, whatever order you wrote them in. A line's text goes to the spot nearest its own line that doesn't overlap other lines, boxes or notes: first right next to its own vertical run (trying higher and lower), then above or below its own horizontal run if other lines pass there, and if there is still no room, outside the outermost channel with a short dotted leader to its line.
 - The color of a `↪` line comes from its label, by the same rule as branch labels (`- yes →` · `- no →`): blue if the label starts with `yes` (y · true · 예 · 네 · 참), red if it starts with `no` (n · false · 아니오 · 아니요 · 아니 · 거짓), and gray for any other label or none. Write `↪ Box title | yes` to connect a decision straight to another box without a box in between.
@@ -545,6 +548,23 @@ Use it to show **a whole feature at a glance**, such as in the overview of a spe
     Everyone · mailbox
   - [system] Draw reward
     Winners only
+```
+````
+
+When a fork is in the middle of the flow, each fork box says where it goes on with `↪`.
+
+````markdown example
+```summary
+# Entry
+- [user] Open the app
+- fork
+  - [system] Show the home tab
+    ↪ Tap a bottom tab
+  - [system] Show the deep link entry
+    ↪ Tap a bottom tab
+# Tabs
+- [user] Tap a bottom tab
+- [system] Show the tab area
 ```
 ````
 

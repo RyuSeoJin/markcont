@@ -1674,7 +1674,8 @@
          - 아니오 → [역할] 제목     판정의 끝나는 갈래 (오른쪽 작은 칸)
          ↪ 칸 제목 | 선 글자        합류 · 되돌아가기: 이 칸에서 제목이 같은 칸으로 가는 회색 선 (오른쪽 통로로)
        - 예 → [역할] 제목           판정 다음의 이어지는 갈래 (아래로)
-       - 갈래 + 들여 쓴 칸들        나란한 끝 (한 줄에 나란히, 설명은 각 칸 아래)
+       - 갈래 + 들여 쓴 칸들        나란한 칸 (한 줄에 나란히, 설명은 각 칸 아래). 갈래 칸 아래 ↪ 가 없으면 거기서 끝남
+                                   갈래 뒤의 칸은 저절로 이어지지 않음: ↪ 로 가리킨 갈래에서만 선이 들어감
        역할 이름: 색                역할 색 (기본 운영 = 보라 · 유저 = 초록 · 시스템 = 회색)
      넓은 모양(설명이 칸 오른쪽)과 좁은 모양(설명이 칸 아래)을 둘 다 그려 두고, 블록 폭에 맞는 쪽을 CSS 가 고름
      ===================================================================== */
@@ -1720,7 +1721,6 @@
         const text = m[1].trim();
         if (!parent) {
           const last = chain[chain.length - 1];
-          if (last && last.fork && !last.after) { last.after = true; errs.push({ ln, msg: L('갈래(나란한 끝) 뒤에는 칸을 둘 수 없습니다', 'Nothing can follow a fork (the parallel end)') }); }
           let it;
           if (SUM_FORK.test(text)) it = { fork: true, boxes: [], ln };
           else {
@@ -1797,7 +1797,14 @@
     for (const s of stages) if (!s.items.length) errs.push({ ln: s.ln, msg: L(`빈 단계입니다: ${s.name} (아래에 칸이 없음)`, `Empty stage: ${s.name} (no boxes under it)`) });
     if (!chain.length && !errs.length) errs.push({ msg: L('칸이 하나도 없습니다 (「- [역할] 제목」)', 'No boxes (write "- [role] title")') });
     errs.sort((p, q) => (p.ln || 0) - (q.ln || 0)); // 줄 순서대로 알려 줌
-    return { stages, chain, roles: used, anyRole, jumps: errs.length ? [] : jumps };
+    // 알림(오류 아님): 갈래 뒤의 칸에 ↪ 로 들어오는 선이 없으면 새 시작 칸
+    const notes = [];
+    if (!errs.length) chain.forEach((it, i) => {
+      if (!i || !chain[i - 1].fork) return;
+      const bs = it.fork ? it.boxes : [it];
+      if (!jumps.some((j) => bs.includes(j.to))) notes.push({ ln: it.ln, msg: L('갈래 뒤의 칸에 들어오는 선이 없어 새 시작 칸이 됩니다 (이으려면 갈래 칸 아래에 「↪ 칸 제목」)', 'No line comes into this box after the fork, so it starts a new flow (to connect, put "↪ box title" under a fork box)') });
+    });
+    return { stages, chain, roles: used, anyRole, jumps: errs.length ? [] : jumps, notes };
   }
 
   // 문서 스타일(CSS)에서 정한 길이 (--sf-box-width 등). 없으면 0
@@ -1847,13 +1854,31 @@
       it.tight = false; it.lanes = 0;
       for (const b of it.fork ? it.boxes : [it, ...it.sides]) { b.row = i; b.ends = []; b.tops = []; b.free = it.fork ? b === it.boxes[it.boxes.length - 1] : b !== it || !it.sides.length; }
     });
-    const jumps = (model.jumps || []).map((j) => {
+    // 갈래 칸의 ↪: 바로 아래 칸으로 가면 칸 아래로 곧게 내려가고(drops),
+    //  여러 갈래가 같은 칸으로 가면 칸 아래의 한 가로선으로 모아 선 하나로 감(buses). 그 밖에는 여느 ↪ 선
+    const forkOf = new Map(), plain = [];
+    chain.forEach((it) => { if (it.fork) { it.drops = []; it.buses = []; it.boxes.forEach((b) => forkOf.set(b, it)); } });
+    for (const j of model.jumps || []) {
+      const f = forkOf.get(j.from);
+      if (!f) plain.push(j);
+      else if (j.to === chain[chain.indexOf(f) + 1]) f.drops.push(j);
+      else {
+        const g = f.buses.find((u) => u.to === j.to && u.label === j.label);
+        if (g) g.from.push(j.from); else f.buses.push({ to: j.to, label: j.label, from: [j.from] });
+      }
+    }
+    for (const f of new Set(forkOf.values())) {
+      for (const g of f.buses) if (g.from.length < 2) plain.push({ from: g.from[0], to: g.to, label: g.label });
+      f.buses = f.buses.filter((g) => g.from.length > 1);
+      for (const g of f.buses) { g.from.sort((p, q) => f.boxes.indexOf(p) - f.boxes.indexOf(q)); plain.push({ from: g.from[g.from.length - 1], to: g.to, label: g.label, bus: g }); }
+    }
+    const jumps = plain.map((j) => {
       const end = (b) => {
         const e = { b, top: !b.free, pos: b.row - (b.free ? 0 : 0.5) };
         if (e.top) { chain[b.row].lanes++; b.tops.push(e); } else b.ends.push(e);
         return e;
       };
-      const s = end(j.from), t = end(j.to), a = Math.min(s.pos, t.pos), z = Math.max(s.pos, t.pos);
+      const s = j.bus ? { b: j.from, bus: j.bus, top: false, pos: j.from.row } : end(j.from), t = end(j.to), a = Math.min(s.pos, t.pos), z = Math.max(s.pos, t.pos);
       chain.forEach((it, i) => { if (i >= a && i <= z) it.tight = true; }); // 선이 지나는 줄은 설명을 칸 아래로
       return { j, s, t, a, z };
     });
@@ -1877,6 +1902,7 @@
     };
     const segBox = (p, q, pad) => ({ x0: Math.min(p.x, q.x) - pad, y0: Math.min(p.y, q.y) - pad, x1: Math.max(p.x, q.x) + pad, y1: Math.max(p.y, q.y) + pad });
     const edge = (pts, kind, more = '') => { pts.slice(1).forEach((p, i) => obs.push(segBox(pts[i], p, 3))); svg += `<path class="sf-edge ${kind}${more}" d="${pathD(pts)}" marker-end="url(#${uid}-${kind})"/>`; };
+    const stem = (pts, kind) => { pts.slice(1).forEach((p, i) => obs.push(segBox(pts[i], p, 3))); svg += `<path class="sf-edge ${kind}" d="${pathD(pts)}"/>`; }; // 화살표 없는 선 (모이는 선의 앞부분)
     for (const it of chain) {
       if (prev) y = prev.bottom + (it.fork ? FGAP : prev.decision ? DGAP : GAP);
       y += it.lanes * 10; // 위 틈으로 드나드는 선의 자리
@@ -1888,14 +1914,35 @@
         let bottom = top + H;
         it.boxes.forEach((b, k) => {
           const x = boxX + k * (boxW + COLGAP), mx = x + boxW / 2, ls = lines(b, boxW + 12);
-          if (prev) edge(k ? [{ x: cx, y: top - 14 }, { x: mx, y: top - 14 }, { x: mx, y: top - 2 }] : [{ x: cx, y: prev.out }, { x: cx, y: top - 2 }], 'normal');
+          if (prev && !prev.none) edge(k ? [{ x: cx, y: top - 14 }, { x: mx, y: top - 14 }, { x: mx, y: top - 2 }] : [{ x: cx, y: prev.out }, { x: cx, y: top - 2 }], 'normal');
           node(b, x, top, boxW, H, b.decision ? 'decision' : 'box');
           descUnder(ls, mx, top + H);
           bottom = Math.max(bottom, top + H + under(ls.length));
+          b.mx = mx; b.outY = top + H + (ls.length ? under(ls.length) + 2 : 0); // 아래로 나가는 선의 출발 높이 (설명 아래)
         });
+        // 아래로 모이는 선: 가로선(모음 선)은 칸 · 설명 아래에 한 줄씩. 바로 아래 칸으로 가는 모음 선이 맨 아래
+        const down = it.drops.slice().sort((p, q) => p.from.mx - q.from.mx), needBus = down.some((j) => j.from.mx !== cx);
+        const tagged = down.some((j) => j.label), lv0 = bottom + (tagged ? 20 : 12);
+        const dropTag = (j) => { if (j.label) { svg += text('sf-elabel', j.from.mx + 10, j.from.outY + 9, j.label); maxX = Math.max(maxX, j.from.mx + 10 + dW(j.label)); } };
+        it.buses.forEach((g, l) => {
+          g.y = lv0 + l * 10; g.x0 = g.from[0].mx;
+          for (const b of g.from) stem([{ x: b.mx, y: b.outY }, { x: b.mx, y: g.y }], kindOfLabel(g.label));
+        });
+        let levels = it.buses.length, out = bottom, okind = 'normal';
+        if (down.length) {
+          const kinds = [...new Set(down.map((j) => kindOfLabel(j.label)))];
+          okind = kinds.length === 1 ? kinds[0] : 'normal';
+          if (needBus) {
+            const by = lv0 + levels * 10; levels++;
+            for (const j of down) { stem(j.from.mx === cx ? [{ x: cx, y: j.from.outY }, { x: cx, y: by }] : [{ x: j.from.mx, y: j.from.outY }, { x: j.from.mx, y: by }, { x: cx, y: by }], kindOfLabel(j.label)); dropTag(j); }
+            out = by;
+          } else { out = down[0].from.outY; dropTag(down[0]); }
+        }
+        if (levels || tagged) bottom = Math.max(bottom, lv0 + (levels - 1) * 10);
         it.top = top; it.bottom = bottom;
         it.right = maxX; maxX = Math.max(maxX, keepX);
-        prev = { bottom, out: bottom, decision: false };
+        // 갈래 뒤의 칸은 ↪ 로 가리킨 갈래에서만 선이 들어옴 (없으면 새 시작 칸)
+        prev = { bottom, out, decision: false, none: !down.length, kind: okind };
         continue;
       }
       const h = it.decision ? DH : H;
@@ -1910,8 +1957,8 @@
       const rowH = below ? h : Math.max(h, own.length * LH + 4);
       const top = y, cy = top + Math.max(rowH / 2, sd.length ? sd[0].off : 0), shapeTop = cy - h / 2, shapeBottom = cy + h / 2;
       let bottom = Math.max(top + rowH, shapeBottom + (below ? under(own.length) : 0));
-      if (prev) {
-        edge([{ x: cx, y: prev.out }, { x: cx, y: shapeTop - 2 }], it.kind);
+      if (prev && !prev.none) {
+        edge([{ x: cx, y: prev.out }, { x: cx, y: shapeTop - 2 }], prev.kind || it.kind);
         if (it.label) { svg += text('sf-elabel', cx + 12, (prev.out + shapeTop - 2) / 2, it.label); maxX = Math.max(maxX, cx + 12 + dW(it.label)); }
       }
       node(it, boxX, shapeTop, boxW, h, it.decision ? 'decision' : 'box');
@@ -1937,7 +1984,7 @@
     // ↪ 선: 칸 → 오른쪽 통로(세로) → 대상 칸
     // 통로는 선이 지나는 줄의 오른쪽 끝 바로 바깥에서 일정 간격으로 나란히: 세로 구간이 짧은 선이 안쪽, 긴 선이 바깥
     const STEP = tiny ? 12 : 18, OUT = tiny ? 10 : 16;
-    const rough = (e) => (e.top ? chain[e.b.row].top - 8 : e.b.g.top + e.b.g.h / 2); // 끝점 높이 (출발 높이를 나누기 전)
+    const rough = (e) => (e.bus ? e.bus.y : e.top ? chain[e.b.row].top - 8 : e.b.g.top + e.b.g.h / 2); // 끝점 높이 (출발 높이를 나누기 전)
     const placed = [];
     for (const e of jumps) {
       const ys = rough(e.s), yt = rough(e.t);
@@ -1965,6 +2012,7 @@
       tops.forEach((t, k) => { t.lane = tops.length - 1 - k; });
     });
     const at = (e) => {
+      if (e.bus) return { y: e.bus.y, pts: [{ x: e.bus.x0, y: e.bus.y }] }; // 모음 선: 맨 왼쪽 갈래 칸 아래에서 통로까지 가로로
       const b = e.b, g = b.g, it = chain[b.row], mx = g.x + g.w / 2, my = g.top + g.h / 2;
       if (e.top) {
         const clear = b === it && it.label ? 20 + dW(it.label) : 0; // 들어오는 선의 예 · 아니오 글자를 피해서
@@ -2184,11 +2232,11 @@
       for (const e of f.edges) if (e.label && [...e.label].length > 12) out.push({ ln: e.ln, info: true, msg: L(`선 글자 12자 넘음: ${e.label}`, `Line label over 12 chars: ${e.label}`) });
       return out;
     },
-    // 요약 흐름도 문서 점검: 문법 오류 { ln, msg }
+    // 요약 흐름도 문서 점검: 문법 오류 { ln, msg } · 알림 { ln, msg, info }
     summaryCheck(src) {
       const errs = [];
-      parseSummary(src, errs);
-      return errs.map((e) => ({ ln: e.ln, msg: e.msg }));
+      const m = parseSummary(src, errs);
+      return errs.map((e) => ({ ln: e.ln, msg: e.msg })).concat(m.notes.map((e) => ({ ln: e.ln, msg: e.msg, info: true })));
     },
     // 다른 뷰어용: 같은 내용을 Mermaid 문법으로
     toMermaid(kind, src, opt) {
